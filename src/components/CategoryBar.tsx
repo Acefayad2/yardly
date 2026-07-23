@@ -1,21 +1,21 @@
 "use client";
 
-import { CATEGORIES } from "@/lib/listings";
-import { Category } from "@/lib/types";
+import { SPACE_TYPES } from "@/lib/spaces";
+import { SpaceType } from "@/lib/types";
 
 export default function CategoryBar({
   active,
   onChange,
 }: {
-  active: Category | "All";
-  onChange: (c: Category | "All") => void;
+  active: SpaceType | "All";
+  onChange: (c: SpaceType | "All") => void;
 }) {
-  const items: (Category | "All")[] = ["All", ...CATEGORIES.map((c) => c.name)];
+  const items: (SpaceType | "All")[] = ["All", ...SPACE_TYPES.map((c) => c.name)];
   const iconFor = (name: string) =>
-    name === "All" ? "✨" : CATEGORIES.find((c) => c.name === name)?.icon ?? "•";
+    name === "All" ? "✨" : SPACE_TYPES.find((c) => c.name === name)?.icon ?? "•";
 
   return (
-    <div className="no-scrollbar flex gap-8 overflow-x-auto px-1 py-1">
+    <div className="no-scrollbar flex gap-7 overflow-x-auto px-1 py-1">
       {items.map((name) => {
         const isActive = active === name;
         return (

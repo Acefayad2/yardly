@@ -12,9 +12,9 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "stayscape — book unique places to stay",
+  title: "Yardly — rent backyards, pools & outdoor spaces by the hour",
   description:
-    "Find and book cabins, beachfront villas, and one-of-a-kind homes around the world.",
+    "Find and book backyards, pools, outdoor kitchens, and unique outdoor spaces near you — by the hour or the day.",
 };
 
 export default function RootLayout({

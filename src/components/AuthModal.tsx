@@ -15,7 +15,7 @@ export default function AuthModal() {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const displayName = mode === "signup" ? name.trim() : email.split("@")[0];
-    login(displayName || "Guest", email.trim() || "guest@stayscape.co");
+    login(displayName || "Guest", email.trim() || "guest@yardly.co");
     reset();
   }
 
@@ -48,7 +48,7 @@ export default function AuthModal() {
         </div>
 
         <form onSubmit={submit} className="space-y-4 p-6">
-          <h3 className="text-2xl font-semibold">Welcome to stayscape</h3>
+          <h3 className="text-2xl font-semibold">Welcome to Yardly</h3>
 
           <div className="overflow-hidden rounded-xl border border-border">
             {mode === "signup" && (
@@ -80,13 +80,13 @@ export default function AuthModal() {
 
           <button
             type="submit"
-            className="w-full rounded-xl bg-gradient-to-r from-rausch to-rausch-dark py-3.5 text-sm font-semibold text-white transition hover:opacity-95"
+            className="w-full rounded-xl bg-gradient-to-r from-brand to-brand-dark py-3.5 text-sm font-semibold text-white transition hover:opacity-95"
           >
             {mode === "login" ? "Continue" : "Create account"}
           </button>
 
           <p className="text-center text-sm text-muted">
-            {mode === "login" ? "New to stayscape? " : "Already have an account? "}
+            {mode === "login" ? "New to Yardly? " : "Already have an account? "}
             <button
               type="button"
               onClick={() => setMode(mode === "login" ? "signup" : "login")}

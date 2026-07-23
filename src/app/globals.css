@@ -2,19 +2,19 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #222222;
-  --rausch: #ff385c;
-  --rausch-dark: #e00b41;
-  --muted: #717171;
-  --border: #dddddd;
-  --border-soft: #ebebeb;
+  --foreground: #1e2a22;
+  --brand: #12915a;
+  --brand-dark: #0c7247;
+  --muted: #6b7280;
+  --border: #dcdfdb;
+  --border-soft: #eceeea;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-rausch: var(--rausch);
-  --color-rausch-dark: var(--rausch-dark);
+  --color-brand: var(--brand);
+  --color-brand-dark: var(--brand-dark);
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-border-soft: var(--border-soft);

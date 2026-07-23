@@ -19,12 +19,12 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-border-soft bg-background/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
-        <Link href="/" className="flex items-center gap-2 text-rausch shrink-0">
+        <Link href="/" className="flex items-center gap-2 text-brand shrink-0">
           <svg viewBox="0 0 32 32" className="h-8 w-8 fill-current" aria-hidden>
-            <path d="M16 1c2.6 0 4.7 2.1 4.7 4.7 0 1-.3 2-.9 3.1l-.2.4-3.6 7 5.2 11.1c.6 1.3-.3 2.8-1.7 2.9h-.2c-.6 0-1.2-.3-1.6-.8L16 28l-1.7 2.4c-.4.5-1 .8-1.6.8-1.5 0-2.5-1.5-1.9-2.9L16 16l-.6-1.3-.6 1.3 4.9 10.4c.2.5-.1 1-.6 1h-.1c-.2 0-.5-.1-.6-.4L16 22l-2.3 5c-.1.3-.4.4-.6.4-.6 0-.9-.5-.7-1L16 5.9c-.5-1-1-1.6-1.6-1.9-.4-.2-.9-.3-1.4-.3-1.4 0-2.6 1.1-2.6 2.6 0 .6.2 1.3.6 2.1L16 24l-4.6-9.8C10.5 12.4 10 11 10 9.7 10 5.9 12.9 3 16.7 3" />
+            <path d="M16 2C16 8 12 10 9 12c-4 2.7-5 8-2.4 11.6C8.3 26 11 27 13.6 26.4 12.4 22 13 17.4 16 14c-2 4-2.3 8.4-1.4 12.9.3 1.5.6 2.4.6 3.1h1.6c0-.7.3-1.6.6-3.1.4-1.9.5-3.7.4-5.4 1.6 1 3.7 1.2 5.6.6C26 20.9 27 15.6 24.4 12 21.4 8 16 8 16 2z" />
           </svg>
           <span className="hidden text-xl font-bold tracking-tight sm:block">
-            stayscape
+            Yardly
           </span>
         </Link>
 
@@ -35,13 +35,13 @@ export default function Header() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search destinations"
+            placeholder="Search by city or neighborhood"
             className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted"
-            aria-label="Search destinations"
+            aria-label="Search spaces"
           />
           <button
             type="submit"
-            className="grid h-8 w-8 place-items-center rounded-full bg-rausch text-white transition hover:bg-rausch-dark"
+            className="grid h-8 w-8 place-items-center rounded-full bg-brand text-white transition hover:bg-brand-dark"
             aria-label="Search"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4 stroke-current" fill="none" strokeWidth={3}>
@@ -77,8 +77,8 @@ export default function Header() {
                       <p className="truncate text-muted">{user.email}</p>
                     </div>
                     <div className="my-1 border-t border-border-soft" />
-                    <MenuLink href="/trips" onClick={() => setMenuOpen(false)}>My trips</MenuLink>
-                    <MenuLink href="/wishlists" onClick={() => setMenuOpen(false)}>Wishlists</MenuLink>
+                    <MenuLink href="/bookings" onClick={() => setMenuOpen(false)}>My bookings</MenuLink>
+                    <MenuLink href="/wishlists" onClick={() => setMenuOpen(false)}>Saved spaces</MenuLink>
                     <button
                       onClick={() => { logout(); setMenuOpen(false); }}
                       className="block w-full px-4 py-2.5 text-left text-sm hover:bg-border-soft"
@@ -101,7 +101,7 @@ export default function Header() {
                       Sign up
                     </button>
                     <div className="my-1 border-t border-border-soft" />
-                    <MenuLink href="/trips" onClick={() => setMenuOpen(false)}>My trips</MenuLink>
+                    <MenuLink href="/bookings" onClick={() => setMenuOpen(false)}>My bookings</MenuLink>
                   </>
                 )}
               </div>

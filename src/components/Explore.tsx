@@ -3,10 +3,10 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { LISTINGS } from "@/lib/listings";
-import { Category } from "@/lib/types";
+import { SPACES } from "@/lib/spaces";
+import { SpaceType } from "@/lib/types";
 import CategoryBar from "./CategoryBar";
-import ListingCard from "./ListingCard";
+import SpaceCard from "./SpaceCard";
 
 const MapView = dynamic(() => import("./MapView"), {
   ssr: false,
@@ -20,60 +20,58 @@ const MapView = dynamic(() => import("./MapView"), {
 export default function Explore() {
   const params = useSearchParams();
   const query = (params.get("q") ?? "").toLowerCase();
-  const [category, setCategory] = useState<Category | "All">("All");
+  const [spaceType, setSpaceType] = useState<SpaceType | "All">("All");
   const [showMap, setShowMap] = useState(false);
 
-  const listings = useMemo(() => {
-    return LISTINGS.filter((l) => {
-      const matchCat =
-        category === "All" ||
-        l.category === category ||
-        (category === "Trending" && l.rating >= 4.9);
+  const spaces = useMemo(() => {
+    return SPACES.filter((s) => {
+      const matchType = spaceType === "All" || s.spaceType === spaceType;
       const matchQuery =
         !query ||
-        l.location.toLowerCase().includes(query) ||
-        l.country.toLowerCase().includes(query) ||
-        l.title.toLowerCase().includes(query);
-      return matchCat && matchQuery;
+        s.location.toLowerCase().includes(query) ||
+        s.neighborhood.toLowerCase().includes(query) ||
+        s.title.toLowerCase().includes(query) ||
+        s.spaceType.toLowerCase().includes(query);
+      return matchType && matchQuery;
     });
-  }, [category, query]);
+  }, [spaceType, query]);
 
   return (
     <div>
       <div className="sticky top-[73px] z-30 border-b border-border-soft bg-background/95 backdrop-blur">
         <div className="mx-auto max-w-7xl px-6">
-          <CategoryBar active={category} onChange={setCategory} />
+          <CategoryBar active={spaceType} onChange={setSpaceType} />
         </div>
       </div>
 
       {query && (
         <p className="mx-auto max-w-7xl px-6 pt-5 text-sm text-muted">
-          {listings.length} {listings.length === 1 ? "stay" : "stays"} matching “{query}”
+          {spaces.length} {spaces.length === 1 ? "space" : "spaces"} matching “{query}”
         </p>
       )}
 
       {showMap ? (
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-6 lg:h-[calc(100vh-160px)] lg:flex-row">
           <div className="no-scrollbar grid grid-cols-1 gap-6 overflow-y-auto sm:grid-cols-2 lg:w-1/2">
-            {listings.map((l) => (
-              <ListingCard key={l.id} listing={l} />
+            {spaces.map((s) => (
+              <SpaceCard key={s.id} space={s} />
             ))}
           </div>
           <div className="h-[400px] overflow-hidden rounded-2xl lg:h-full lg:w-1/2">
-            <MapView listings={listings} />
+            <MapView spaces={spaces} />
           </div>
         </div>
       ) : (
         <div className="mx-auto max-w-7xl px-6 py-8">
-          {listings.length === 0 ? (
+          {spaces.length === 0 ? (
             <div className="py-24 text-center">
-              <p className="text-lg font-semibold">No stays found</p>
-              <p className="text-muted">Try a different destination or category.</p>
+              <p className="text-lg font-semibold">No spaces found</p>
+              <p className="text-muted">Try a different city or space type.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {listings.map((l) => (
-                <ListingCard key={l.id} listing={l} />
+              {spaces.map((s) => (
+                <SpaceCard key={s.id} space={s} />
               ))}
             </div>
           )}

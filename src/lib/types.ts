@@ -1,47 +1,50 @@
-export type Category =
-  | "Trending"
-  | "Beachfront"
-  | "Cabins"
-  | "Tiny homes"
-  | "Amazing views"
-  | "Design"
-  | "Mansions"
-  | "Lakefront"
-  | "Countryside"
-  | "City";
+export type SpaceType =
+  | "Backyards"
+  | "Pools"
+  | "Outdoor kitchens"
+  | "Patios & decks"
+  | "Gardens"
+  | "Fire pits"
+  | "Rooftops"
+  | "Sport courts"
+  | "Event yards"
+  | "Hot tubs";
 
-export interface Listing {
+export interface Space {
   id: string;
   title: string;
-  location: string;
-  country: string;
-  category: Category;
-  price: number; // per night, USD
+  location: string; // "City, ST"
+  neighborhood: string;
+  spaceType: SpaceType;
+  hourlyPrice: number; // USD per hour
+  dayPrice: number; // USD flat full-day rate
+  minHours: number;
   rating: number;
   reviews: number;
-  beds: number;
-  baths: number;
-  guests: number;
-  bedrooms: number;
-  superhost: boolean;
+  capacity: number; // max guests
+  acres: number; // yard size in acres
+  topHost: boolean;
   lat: number;
   lng: number;
   images: string[];
-  host: { name: string; since: string; avatar: string };
+  host: { name: string; since: string; avatar: string; responseRate: number };
   description: string;
   amenities: string[];
+  rules: string[];
 }
 
 export interface Booking {
   id: string;
-  listingId: string;
+  spaceId: string;
   title: string;
   image: string;
   location: string;
-  checkIn: string; // ISO
-  checkOut: string; // ISO
+  date: string; // ISO date (yyyy-MM-dd)
+  startTime: string; // "14:00"
+  endTime: string; // "18:00"
+  hours: number;
+  fullDay: boolean;
   guests: number;
-  nights: number;
   total: number;
   createdAt: string;
 }

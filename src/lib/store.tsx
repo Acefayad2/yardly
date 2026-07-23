@@ -25,9 +25,9 @@ interface Store {
 
 const StoreContext = createContext<Store | null>(null);
 
-const USER_KEY = "abnb_user";
-const BOOKINGS_KEY = "abnb_bookings";
-const FAVS_KEY = "abnb_favorites";
+const USER_KEY = "yardly_user";
+const BOOKINGS_KEY = "yardly_bookings";
+const FAVS_KEY = "yardly_favorites";
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
