@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import { Space } from "@/lib/types";
@@ -31,8 +31,6 @@ export default function MapView({
   spaces: Space[];
   activeId?: string;
 }) {
-  const router = useRouter();
-
   return (
     <MapContainer center={[39, -98]} zoom={4} scrollWheelZoom className="h-full w-full">
       <TileLayer
@@ -45,15 +43,15 @@ export default function MapView({
           key={s.id}
           position={[s.lat, s.lng]}
           icon={priceIcon(s.hourlyPrice, s.id === activeId)}
-          eventHandlers={{ click: () => router.push(`/spaces/${s.id}`) }}
         >
           <Popup>
-            <div className="w-40">
+            <Link href={`/spaces/${s.id}`} className="block w-44">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={s.images[0]} alt={s.title} className="mb-2 h-24 w-full rounded-lg object-cover" />
-              <p className="text-sm font-semibold">{s.location}</p>
-              <p className="text-xs text-neutral-500">${s.hourlyPrice}/hr · ★ {s.rating}</p>
-            </div>
+              <img src={s.images[0]} alt={s.title} className="mb-2 h-28 w-full rounded-lg object-cover" />
+              <p className="truncate text-sm font-semibold text-neutral-900">{s.location}</p>
+              <p className="truncate text-xs text-neutral-500">{s.title}</p>
+              <p className="mt-0.5 text-xs text-neutral-700">${s.hourlyPrice}/hr · ★ {s.rating}</p>
+            </Link>
           </Popup>
         </Marker>
       ))}

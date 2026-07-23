@@ -51,13 +51,15 @@ export default function Explore() {
       )}
 
       {showMap ? (
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-6 lg:h-[calc(100vh-160px)] lg:flex-row">
-          <div className="no-scrollbar grid grid-cols-1 gap-6 overflow-y-auto sm:grid-cols-2 lg:w-1/2">
+        <div className="mx-auto flex h-[calc(100dvh-166px)] max-w-7xl gap-4 px-0 py-0 lg:h-[calc(100vh-150px)] lg:px-6 lg:py-6">
+          {/* List: hidden on mobile (map takes over, like Airbnb), left column on desktop */}
+          <div className="no-scrollbar hidden content-start gap-6 overflow-y-auto lg:grid lg:w-1/2 lg:grid-cols-2">
             {spaces.map((s) => (
               <SpaceCard key={s.id} space={s} />
             ))}
           </div>
-          <div className="h-[400px] overflow-hidden rounded-2xl lg:h-full lg:w-1/2">
+          {/* Map: full-screen on mobile, right column on desktop */}
+          <div className="h-full w-full overflow-hidden lg:w-1/2 lg:rounded-2xl">
             <MapView spaces={spaces} />
           </div>
         </div>

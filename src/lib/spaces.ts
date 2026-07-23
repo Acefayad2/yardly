@@ -16,26 +16,27 @@ export const SPACE_TYPES: { name: SpaceType; icon: string }[] = [
 const u = (id: string) =>
   `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=1200&q=70`;
 
-// Curated outdoor image bank (backyard / pool / patio / garden shots)
+// Curated outdoor image bank — every id verified against its subject
 const IMG = {
-  poolModern: u("1600585154340-be6161a56a0c"),
-  poolInfinity: u("1613490493576-7fde63acd811"),
-  poolResort: u("1571003123894-1f0594d2b5d9"),
-  poolLoungers: u("1572331165267-854da2b10ccc"),
-  poolAerial: u("1523362628745-0c100150b504"),
-  poolBackyard: u("1576013551627-0cc20b96c2a7"),
-  patioTable: u("1416331108676-a22ccb276e35"),
-  patioLights: u("1464366400600-7168b8af9bc3"),
-  deck: u("1523986371872-9d3ba2e2f642"),
-  garden: u("1558904541-efa843a96f01"),
-  gardenPath: u("1585320806297-9794b3e4eeae"),
-  greenhouse: u("1416879595882-3373a0480b5b"),
-  firePit: u("1533105079780-92b9be482077"),
-  grill: u("1544025162-d76694265947"),
-  outdoorKitchen: u("1600891964092-4316c288032e"),
-  rooftop: u("1533050487297-09b450131914"),
-  lawn: u("1558618666-fcd25c85cd64"),
-  hotTub: u("1580977276076-ae4b8c219b8e"),
+  poolModern: u("1600585154340-be6161a56a0c"), // modern house + lawn + pool
+  poolInfinity: u("1613490493576-7fde63acd811"), // infinity pool
+  poolResort: u("1571003123894-1f0594d2b5d9"), // cabana sunset pool
+  poolLoungers: u("1572331165267-854da2b10ccc"), // poolside loungers
+  poolAerial: u("1734596438204-a968213446d6"), // pool with manicured lawn
+  poolBackyard: u("1576013551627-0cc20b96c2a7"), // backyard pool + hedge
+  patioTable: u("1416331108676-a22ccb276e35"), // villa pool at night
+  patioLights: u("1464366400600-7168b8af9bc3"), // string-lit event tables
+  deck: u("1613544723371-23b514a78c85"), // deck with sectional lounge
+  garden: u("1558904541-efa843a96f01"), // green lawn / turf
+  gardenPath: u("1585320806297-9794b3e4eeae"), // rose garden path
+  greenhouse: u("1613544723412-b331bda01e87"), // garden dining deck
+  firePit: u("1595444099769-b586e92829e8"), // Adirondack chairs + fire pit
+  grill: u("1770318724110-c9d426f2125e"), // backyard grill
+  outdoorKitchen: u("1762117360871-f11fbad00ee1"), // outdoor cooktop + pergola
+  rooftop: u("1493246318656-5bfd4cfb29b8"), // rooftop dining, skyline
+  lawn: u("1558904541-efa843a96f01"), // green lawn / turf
+  hotTub: u("1657383543368-7d929944be6a"), // pool + spa at dusk
+  cedarHotTub: u("1713706980185-26059d47ea87"), // cedar barrel hot tub in woods
 };
 
 export const SPACES: Space[] = [
@@ -285,7 +286,7 @@ export const SPACES: Space[] = [
     topHost: false,
     lat: 47.6685,
     lng: -122.3830,
-    images: [IMG.hotTub, IMG.garden, IMG.gardenPath, IMG.firePit],
+    images: [IMG.cedarHotTub, IMG.gardenPath, IMG.garden, IMG.firePit],
     host: { name: "Owen", since: "2023", avatar: "https://i.pravatar.cc/150?img=68", responseRate: 93 },
     description:
       "A tucked-away cedar hot tub surrounded by ferns and fairy lights — the coziest spot in the Northwest for a small soak session with friends on a misty evening.",

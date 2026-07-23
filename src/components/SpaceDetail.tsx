@@ -36,14 +36,18 @@ export default function SpaceDetail({ space }: { space: Space }) {
         <span className="font-medium underline">{space.neighborhood}, {space.location}</span>
       </p>
 
-      {/* Gallery */}
-      <div className="mt-5 grid grid-cols-4 grid-rows-2 gap-2 overflow-hidden rounded-2xl" style={{ height: 420 }}>
+      {/* Gallery — single hero on mobile, collage on desktop */}
+      <div className="mt-5 overflow-hidden rounded-2xl">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={space.images[0]} alt="" className="col-span-2 row-span-2 h-full w-full object-cover" />
-        {space.images.slice(1, 5).map((src, i) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img key={i} src={src} alt="" className="h-full w-full object-cover" />
-        ))}
+        <img src={space.images[0]} alt="" className="h-64 w-full object-cover sm:h-80 md:hidden" />
+        <div className="hidden grid-cols-4 grid-rows-2 gap-2 md:grid" style={{ height: 420 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={space.images[0]} alt="" className="col-span-2 row-span-2 h-full w-full object-cover" />
+          {space.images.slice(1, 5).map((src, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={i} src={src} alt="" className="h-full w-full object-cover" />
+          ))}
+        </div>
       </div>
 
       <div className="mt-8 flex flex-col gap-10 lg:flex-row">
