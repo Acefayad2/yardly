@@ -1,0 +1,6 @@
+# Yardly — static export deploy config
+# The app builds to a static site (next.config.ts has output: "export"),
+# which Netlify serves from the `out` directory.
+[build]
+  command = "npm run build"
+  publish = "out"
