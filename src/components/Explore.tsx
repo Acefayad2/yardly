@@ -11,8 +11,12 @@ import SpaceCard from "./SpaceCard";
 const MapView = dynamic(() => import("./MapView"), {
   ssr: false,
   loading: () => (
-    <div className="grid h-full w-full place-items-center bg-border-soft text-sm text-muted">
-      Loading map…
+    <div className="map-loading" role="status" aria-label="Loading map">
+      <span className="map-loading__road map-loading__road--one" />
+      <span className="map-loading__road map-loading__road--two" />
+      <span className="map-loading__pin map-loading__pin--one" />
+      <span className="map-loading__pin map-loading__pin--two" />
+      <span className="map-loading__label">Finding nearby spaces</span>
     </div>
   ),
 });
@@ -22,6 +26,7 @@ export default function Explore() {
   const query = (params.get("q") ?? "").toLowerCase();
   const [spaceType, setSpaceType] = useState<SpaceType | "All">("All");
   const [showMap, setShowMap] = useState(false);
+  const [activeSpaceId, setActiveSpaceId] = useState<string>();
 
   const spaces = useMemo(() => {
     return SPACES.filter((s) => {
@@ -51,16 +56,36 @@ export default function Explore() {
       )}
 
       {showMap ? (
-        <div className="mx-auto flex h-[calc(100dvh-166px)] max-w-7xl gap-4 px-0 py-0 lg:h-[calc(100vh-150px)] lg:px-6 lg:py-6">
-          {/* List: hidden on mobile (map takes over, like Airbnb), left column on desktop */}
-          <div className="no-scrollbar hidden content-start gap-6 overflow-y-auto lg:grid lg:w-1/2 lg:grid-cols-2">
-            {spaces.map((s) => (
-              <SpaceCard key={s.id} space={s} />
-            ))}
-          </div>
-          {/* Map: full-screen on mobile, right column on desktop */}
-          <div className="h-full w-full overflow-hidden lg:w-1/2 lg:rounded-2xl">
-            <MapView spaces={spaces} />
+        <div className="mx-auto h-[calc(100dvh-166px)] max-w-[1440px] px-0 lg:h-[calc(100vh-150px)] lg:px-6 lg:py-5">
+          <div className="map-mode-layout h-full">
+            <section className="no-scrollbar hidden overflow-y-auto lg:block" aria-label="Spaces in map view">
+              <div className="map-results-heading">
+                <div>
+                  <p>Places to make your own</p>
+                  <h2>{spaces.length} spaces available</h2>
+                </div>
+                <span>Updated today</span>
+              </div>
+              <div className="grid grid-cols-1 gap-x-5 gap-y-8 px-1 pb-8 xl:grid-cols-2">
+                {spaces.map((space) => (
+                  <div
+                    key={space.id}
+                    onMouseEnter={() => setActiveSpaceId(space.id)}
+                    onMouseLeave={() => setActiveSpaceId(undefined)}
+                    onFocusCapture={() => setActiveSpaceId(space.id)}
+                  >
+                    <SpaceCard space={space} />
+                  </div>
+                ))}
+              </div>
+            </section>
+            <section className="map-canvas-frame" aria-label="Map of available spaces">
+              <MapView
+                spaces={spaces}
+                activeId={activeSpaceId}
+                onActiveChange={setActiveSpaceId}
+              />
+            </section>
           </div>
         </div>
       ) : (
@@ -82,7 +107,8 @@ export default function Explore() {
 
       <button
         onClick={() => setShowMap((v) => !v)}
-        className="fixed bottom-8 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-foreground px-5 py-3.5 text-sm font-semibold text-white shadow-lg transition hover:scale-105"
+        className="safe-bottom-floating view-toggle fixed left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-foreground px-5 py-3.5 text-sm font-semibold text-white transition"
+        aria-pressed={showMap}
       >
         {showMap ? "Show list" : "Show map"}
         <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden>
