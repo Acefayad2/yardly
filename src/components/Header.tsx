@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
+import MobileSearch from "./MobileSearch";
 
 export default function Header() {
   const { user, logout, setAuthOpen } = useStore();
@@ -81,17 +82,8 @@ export default function Header() {
           </button>
         </form>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          <Link
-            href="/#discover"
-            className="grid h-10 w-10 place-items-center rounded-full border border-border transition hover:border-brand/30 hover:bg-surface-soft md:hidden"
-            aria-label="Search Yardly spaces"
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4 stroke-current" fill="none" strokeWidth={2.25} aria-hidden="true">
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3-3" strokeLinecap="round" />
-            </svg>
-          </Link>
+        <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-2 lg:flex-none">
+          <MobileSearch />
 
           <button
             type="button"
@@ -106,7 +98,7 @@ export default function Header() {
               <button
                 type="button"
                 onClick={() => setMenuOpen(true)}
-                className="header-utility-button hidden sm:grid"
+                className="header-utility-button header-language-button"
                 aria-label="Language and region: English"
               >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
