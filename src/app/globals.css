@@ -1419,10 +1419,11 @@ select:focus-visible {
 
 .view-toggle {
   box-shadow: 0 12px 28px rgba(22, 47, 32, 0.28);
+  transform: translateX(-50%);
+  transition: background-color 180ms ease, box-shadow 180ms ease;
 }
 
 .view-toggle:hover {
-  transform: translateX(-50%) translateY(-2px);
   background: #263b2d;
   box-shadow: 0 16px 34px rgba(22, 47, 32, 0.34);
 }

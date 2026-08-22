@@ -169,7 +169,7 @@ export default function Explore() {
 
       <button
         onClick={() => setShowMap((v) => !v)}
-        className="safe-bottom-floating view-toggle fixed left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-foreground px-5 py-3.5 text-sm font-semibold text-white transition"
+        className="safe-bottom-floating view-toggle fixed left-1/2 z-30 flex items-center gap-2 rounded-full bg-foreground px-5 py-3.5 text-sm font-semibold text-white"
         aria-pressed={showMap}
       >
         {showMap ? "Show list" : "Show map"}
