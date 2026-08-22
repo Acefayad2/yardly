@@ -96,29 +96,38 @@ export default function Header() {
           <button
             type="button"
             onClick={() => setAuthOpen(true)}
-            className="hidden rounded-full px-4 py-2.5 text-sm font-semibold transition hover:bg-surface-soft active:scale-[0.98] lg:block"
+            className="hidden rounded-full px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-soft active:scale-[0.98] lg:block"
           >
             Become a host
           </button>
 
           <div className="relative">
-          <button
-            type="button"
-            onClick={() => setMenuOpen((v) => !v)}
-            className="flex items-center gap-2 rounded-full border border-border py-1.5 pl-2.5 pr-1.5 transition hover:border-brand/30 hover:shadow-md"
-            aria-label="Open account and navigation menu"
-            aria-expanded={menuOpen}
-            aria-haspopup="menu"
-          >
-            <svg viewBox="0 0 16 16" className="h-4 w-4 fill-current" aria-hidden>
-              <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-foreground text-sm font-semibold text-white">
-              {user ? user.name.charAt(0).toUpperCase() : (
-                <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white/90"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-5 0-9 2.5-9 6v1h18v-1c0-3.5-4-6-9-6z" /></svg>
-              )}
-            </span>
-          </button>
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setMenuOpen(true)}
+                className="header-utility-button hidden sm:grid"
+                aria-label="Language and region: English"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M3 12h18M12 3c2.4 2.5 3.6 5.5 3.6 9S14.4 18.5 12 21c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3Z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                className="header-utility-button"
+                aria-label="Open account and navigation menu"
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 7h14M5 12h14M5 17h14" />
+                </svg>
+                {user && <span className="header-utility-button__badge">{user.name.charAt(0).toUpperCase()}</span>}
+              </button>
+            </div>
 
           {menuOpen && (
             <>
@@ -128,45 +137,42 @@ export default function Header() {
                 onClick={() => setMenuOpen(false)}
                 aria-label="Close navigation menu"
               />
-              <div className="absolute right-0 top-12 z-20 w-60 overflow-hidden rounded-2xl border border-border-soft bg-background py-2 shadow-xl animate-fade-in" role="menu">
+              <div className="account-menu animate-fade-in" role="menu">
                 {user ? (
                   <>
-                    <div className="px-4 py-2 text-sm">
-                      <p className="font-semibold">{user.name}</p>
-                      <p className="truncate text-muted">{user.email}</p>
+                    <div className="account-menu__profile">
+                      <span>{user.name.charAt(0).toUpperCase()}</span>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{user.name}</p>
+                        <p className="truncate text-sm text-muted">{user.email}</p>
+                      </div>
                     </div>
-                    <div className="my-1 border-t border-border-soft" />
-                    <MenuLink href="/bookings" onClick={() => setMenuOpen(false)}>My bookings</MenuLink>
-                    <MenuLink href="/wishlists" onClick={() => setMenuOpen(false)}>Saved spaces</MenuLink>
+                    <div className="account-menu__divider" />
+                    <MenuLink href="/bookings" onClick={() => setMenuOpen(false)}>Bookings</MenuLink>
+                    <MenuLink href="/wishlists" onClick={() => setMenuOpen(false)}>Wishlists</MenuLink>
+                    <MenuLink href="/messages" onClick={() => setMenuOpen(false)}>Messages</MenuLink>
+                    <div className="account-menu__divider" />
                     <button
                       onClick={() => { logout(); setMenuOpen(false); }}
-                      className="block w-full px-4 py-2.5 text-left text-sm hover:bg-border-soft"
+                      className="account-menu__link"
                     >
                       Log out
                     </button>
                   </>
                 ) : (
                   <>
-                    <button
-                      onClick={() => { setAuthOpen(true); setMenuOpen(false); }}
-                      className="block w-full px-4 py-2.5 text-left text-sm font-semibold hover:bg-border-soft"
-                    >
-                      Log in
+                    <MenuLink href="/trust" onClick={() => setMenuOpen(false)} icon="help">Help Center</MenuLink>
+                    <div className="account-menu__divider" />
+                    <button type="button" className="account-menu__host" onClick={() => { setAuthOpen(true); setMenuOpen(false); }}>
+                      <strong>Become a host</strong>
+                      <span>It&apos;s easy to start hosting and earn extra income.</span>
                     </button>
-                    <button
-                      onClick={() => { setAuthOpen(true); setMenuOpen(false); }}
-                      className="block w-full px-4 py-2.5 text-left text-sm hover:bg-border-soft"
-                    >
-                      Sign up
-                    </button>
-                    <div className="my-1 border-t border-border-soft" />
-                    <button
-                      onClick={() => { setAuthOpen(true); setMenuOpen(false); }}
-                      className="block w-full px-4 py-2.5 text-left text-sm hover:bg-border-soft lg:hidden"
-                    >
-                      Become a host
-                    </button>
-                    <MenuLink href="/bookings" onClick={() => setMenuOpen(false)}>My bookings</MenuLink>
+                    <div className="account-menu__divider" />
+                    <button type="button" className="account-menu__link" onClick={() => { setAuthOpen(true); setMenuOpen(false); }}>Refer a host</button>
+                    <button type="button" className="account-menu__link" onClick={() => { setAuthOpen(true); setMenuOpen(false); }}>Find a co-host</button>
+                    <button type="button" className="account-menu__link" onClick={() => { setAuthOpen(true); setMenuOpen(false); }}>Gift cards</button>
+                    <div className="account-menu__divider" />
+                    <button type="button" className="account-menu__link" onClick={() => { setAuthOpen(true); setMenuOpen(false); }}>Log in or sign up</button>
                   </>
                 )}
               </div>
@@ -179,9 +185,12 @@ export default function Header() {
   );
 }
 
-function MenuLink({ href, children, onClick }: { href: string; children: React.ReactNode; onClick: () => void }) {
+function MenuLink({ href, children, onClick, icon }: { href: string; children: React.ReactNode; onClick: () => void; icon?: "help" }) {
   return (
-    <Link href={href} onClick={onClick} className="block px-4 py-2.5 text-sm hover:bg-border-soft">
+    <Link href={href} onClick={onClick} className="account-menu__link">
+      {icon === "help" && (
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.8 9.2a2.4 2.4 0 0 1 4.6.9c0 2-2.4 2.1-2.4 4M12 17.3h.01" /></svg>
+      )}
       {children}
     </Link>
   );
