@@ -66,9 +66,9 @@ export default function Header() {
           <button
             type="button"
             onClick={() => setAuthOpen(true)}
-            className="hidden rounded-xl px-3 py-2 text-sm font-semibold transition hover:bg-surface-soft lg:block"
+            className="hidden rounded-full px-4 py-2.5 text-sm font-semibold transition hover:bg-surface-soft active:scale-[0.98] lg:block"
           >
-            List your space
+            Become a host
           </button>
 
           <div className="relative">
@@ -134,7 +134,7 @@ export default function Header() {
                       onClick={() => { setAuthOpen(true); setMenuOpen(false); }}
                       className="block w-full px-4 py-2.5 text-left text-sm hover:bg-border-soft lg:hidden"
                     >
-                      List your space
+                      Become a host
                     </button>
                     <MenuLink href="/bookings" onClick={() => setMenuOpen(false)}>My bookings</MenuLink>
                   </>
