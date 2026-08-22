@@ -37,15 +37,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    try {
-      const u = localStorage.getItem(USER_KEY);
-      const b = localStorage.getItem(BOOKINGS_KEY);
-      const f = localStorage.getItem(FAVS_KEY);
-      if (u) setUser(JSON.parse(u));
-      if (b) setBookings(JSON.parse(b));
-      if (f) setFavorites(JSON.parse(f));
-    } catch {}
-    setHydrated(true);
+    queueMicrotask(() => {
+      try {
+        const u = localStorage.getItem(USER_KEY);
+        const b = localStorage.getItem(BOOKINGS_KEY);
+        const f = localStorage.getItem(FAVS_KEY);
+        if (u) setUser(JSON.parse(u));
+        if (b) setBookings(JSON.parse(b));
+        if (f) setFavorites(JSON.parse(f));
+      } catch {}
+      setHydrated(true);
+    });
   }, []);
 
   useEffect(() => {

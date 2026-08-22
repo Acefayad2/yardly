@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { SPACES } from "@/lib/spaces";
 import { SpaceType } from "@/lib/types";
@@ -23,10 +23,15 @@ const MapView = dynamic(() => import("./MapView"), {
 
 export default function Explore() {
   const params = useSearchParams();
-  const query = (params.get("q") ?? "").toLowerCase();
+  const router = useRouter();
+  const rawQuery = params.get("q") ?? "";
+  const query = rawQuery.toLowerCase();
+  const requestedDate = params.get("date") ?? "";
+  const requestedGuests = Math.max(1, Number(params.get("guests") ?? "1") || 1);
   const [spaceType, setSpaceType] = useState<SpaceType | "All">("All");
   const [showMap, setShowMap] = useState(false);
   const [activeSpaceId, setActiveSpaceId] = useState<string>();
+  const [visibleMapState, setVisibleMapState] = useState<{ scope: string; ids: string[] }>();
 
   const spaces = useMemo(() => {
     return SPACES.filter((s) => {
@@ -37,22 +42,75 @@ export default function Explore() {
         s.neighborhood.toLowerCase().includes(query) ||
         s.title.toLowerCase().includes(query) ||
         s.spaceType.toLowerCase().includes(query);
-      return matchType && matchQuery;
+      return matchType && matchQuery && s.capacity >= requestedGuests;
     });
-  }, [spaceType, query]);
+  }, [spaceType, query, requestedGuests]);
+
+  const spaceScope = spaces.map((space) => space.id).join("|");
+  const visibleMapIds = visibleMapState?.scope === spaceScope ? visibleMapState.ids : undefined;
+
+  const mapListSpaces = visibleMapIds
+    ? spaces.filter((space) => visibleMapIds.includes(space.id))
+    : spaces;
+
+  const bookingQuery = useMemo(() => {
+    const next = new URLSearchParams();
+    if (requestedDate) next.set("date", requestedDate);
+    if (requestedGuests > 1) next.set("guests", String(requestedGuests));
+    const value = next.toString();
+    return value ? `?${value}` : "";
+  }, [requestedDate, requestedGuests]);
+
+  function clearSearch() {
+    setSpaceType("All");
+    router.push("/#discover");
+  }
 
   return (
     <div>
-      <div className="sticky top-[73px] z-30 border-b border-border-soft bg-background/95 backdrop-blur">
+      {!showMap && (
+        <section className="hero-shell">
+          <div className="hero-content">
+            <p className="hero-eyebrow">Room for the good stuff</p>
+            <h1>Private outdoor spaces, booked by the hour.</h1>
+            <p className="hero-copy">
+              Find a backyard, pool, garden, or rooftop for celebrations, shoots, dinners, and days that deserve more space.
+            </p>
+
+            <TripSearch
+              key={`${rawQuery}|${requestedDate}|${requestedGuests}`}
+              initialLocation={rawQuery}
+              initialDate={requestedDate}
+              initialGuests={requestedGuests}
+            />
+
+            <div className="hero-assurances" aria-label="Yardly booking benefits">
+              <span>Clear hourly pricing</span>
+              <span>Rules before you book</span>
+              <span>Exact address stays private</span>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <div id="discover" className="sticky top-[65px] z-30 scroll-mt-24 border-b border-border-soft bg-background/95 backdrop-blur sm:top-[73px]">
         <div className="mx-auto max-w-7xl px-6">
           <CategoryBar active={spaceType} onChange={setSpaceType} />
         </div>
       </div>
 
-      {query && (
-        <p className="mx-auto max-w-7xl px-6 pt-5 text-sm text-muted">
-          {spaces.length} {spaces.length === 1 ? "space" : "spaces"} matching “{query}”
-        </p>
+      {(query || requestedDate || requestedGuests > 1) && (
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-6 pt-6 text-sm">
+          <p className="text-muted">
+            <strong className="text-foreground">{spaces.length} {spaces.length === 1 ? "space" : "spaces"}</strong>
+            {query ? <> near “{rawQuery}”</> : null}
+            {requestedGuests > 1 ? <> for {requestedGuests} guests</> : null}
+            {requestedDate ? <> on {new Date(`${requestedDate}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</> : null}
+          </p>
+          <button type="button" onClick={clearSearch} className="font-semibold text-brand-dark underline underline-offset-4">
+            Clear search
+          </button>
+        </div>
       )}
 
       {showMap ? (
@@ -62,19 +120,19 @@ export default function Explore() {
               <div className="map-results-heading">
                 <div>
                   <p>Places to make your own</p>
-                  <h2>{spaces.length} spaces available</h2>
+                  <h2>{mapListSpaces.length} spaces in this map area</h2>
                 </div>
                 <span>Updated today</span>
               </div>
               <div className="grid grid-cols-1 gap-x-5 gap-y-8 px-1 pb-8 xl:grid-cols-2">
-                {spaces.map((space) => (
+                {mapListSpaces.map((space) => (
                   <div
                     key={space.id}
                     onMouseEnter={() => setActiveSpaceId(space.id)}
                     onMouseLeave={() => setActiveSpaceId(undefined)}
                     onFocusCapture={() => setActiveSpaceId(space.id)}
                   >
-                    <SpaceCard space={space} />
+                    <SpaceCard space={space} bookingQuery={bookingQuery} />
                   </div>
                 ))}
               </div>
@@ -84,6 +142,7 @@ export default function Explore() {
                 spaces={spaces}
                 activeId={activeSpaceId}
                 onActiveChange={setActiveSpaceId}
+                onVisibleChange={(ids) => setVisibleMapState({ scope: spaceScope, ids })}
               />
             </section>
           </div>
@@ -91,14 +150,17 @@ export default function Explore() {
       ) : (
         <div className="mx-auto max-w-7xl px-6 py-8">
           {spaces.length === 0 ? (
-            <div className="py-24 text-center">
+            <div className="rounded-3xl bg-surface-soft px-6 py-20 text-center">
               <p className="text-lg font-semibold">No spaces found</p>
               <p className="text-muted">Try a different city or space type.</p>
+              <button type="button" onClick={clearSearch} className="mt-5 rounded-xl bg-foreground px-5 py-3 text-sm font-semibold text-white">
+                Reset search
+              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {spaces.map((s) => (
-                <SpaceCard key={s.id} space={s} />
+                <SpaceCard key={s.id} space={s} bookingQuery={bookingQuery} />
               ))}
             </div>
           )}
@@ -120,5 +182,57 @@ export default function Explore() {
         </svg>
       </button>
     </div>
+  );
+}
+
+function TripSearch({
+  initialLocation,
+  initialDate,
+  initialGuests,
+}: {
+  initialLocation: string;
+  initialDate: string;
+  initialGuests: number;
+}) {
+  const router = useRouter();
+  const [location, setLocation] = useState(initialLocation);
+  const [date, setDate] = useState(initialDate);
+  const [guests, setGuests] = useState(initialGuests);
+
+  function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const next = new URLSearchParams();
+    if (location.trim()) next.set("q", location.trim());
+    if (date) next.set("date", date);
+    if (guests > 1) next.set("guests", String(guests));
+    router.push(next.size ? `/?${next.toString()}#discover` : "/#discover");
+  }
+
+  return (
+    <form className="trip-search" onSubmit={submit} aria-label="Plan your Yardly search">
+      <label className="trip-search__field trip-search__field--location">
+        <span>Where</span>
+        <input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="City or neighborhood" />
+      </label>
+      <label className="trip-search__field">
+        <span>When</span>
+        <input type="date" value={date} onChange={(event) => setDate(event.target.value)} aria-label="Booking date" />
+      </label>
+      <label className="trip-search__field">
+        <span>Guests</span>
+        <select value={guests} onChange={(event) => setGuests(Number(event.target.value))}>
+          {Array.from({ length: 60 }, (_, index) => index + 1).map((count) => (
+            <option key={count} value={count}>{count} {count === 1 ? "guest" : "guests"}</option>
+          ))}
+        </select>
+      </label>
+      <button type="submit" className="trip-search__submit">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3-3" />
+        </svg>
+        <span>Search spaces</span>
+      </button>
+    </form>
   );
 }

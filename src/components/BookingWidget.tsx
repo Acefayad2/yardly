@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Space } from "@/lib/types";
@@ -26,6 +26,16 @@ export default function BookingWidget({ space }: { space: Space }) {
   const [error, setError] = useState("");
 
   const today = format(new Date(), "yyyy-MM-dd");
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      const params = new URLSearchParams(window.location.search);
+      const plannedDate = params.get("date");
+      const plannedGuests = Math.min(space.capacity, Math.max(1, Number(params.get("guests") ?? "1") || 1));
+      if (plannedDate) setDate(plannedDate);
+      setGuests(plannedGuests);
+    });
+  }, [space.capacity]);
 
   // keep duration within opening hours
   const maxHours = Math.max(space.minHours, CLOSE_HOUR - startHour);
@@ -68,7 +78,7 @@ export default function BookingWidget({ space }: { space: Space }) {
   }
 
   return (
-    <div className="rounded-2xl border border-border p-6 shadow-xl">
+    <div id="booking" className="scroll-mt-28 rounded-2xl border border-border bg-background p-6 shadow-xl shadow-foreground/10">
       <div className="flex items-baseline justify-between">
         <p>
           <span className="text-2xl font-semibold">${space.hourlyPrice}</span>
@@ -157,11 +167,11 @@ export default function BookingWidget({ space }: { space: Space }) {
         </p>
       )}
 
-      {error && <p className="mt-3 text-sm text-brand">{error}</p>}
+      {error && <p className="mt-3 text-sm font-medium text-brand" role="alert">{error}</p>}
 
       <button
         onClick={reserve}
-        className="mt-4 w-full rounded-xl bg-gradient-to-r from-brand to-brand-dark py-3.5 text-sm font-semibold text-white transition hover:opacity-95"
+        className="mt-4 w-full rounded-xl bg-brand py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-brand-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       >
         Reserve
       </button>

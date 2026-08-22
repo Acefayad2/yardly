@@ -13,10 +13,11 @@ export default function SpaceDetail({ space }: { space: Space }) {
   const isFav = favorites.includes(space.id);
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-6 animate-fade-in">
+    <div className="mx-auto max-w-6xl px-6 pb-28 pt-6 lg:pb-12">
       <div className="flex items-start justify-between gap-4">
-        <h1 className="text-2xl font-semibold sm:text-3xl">{space.title}</h1>
+        <h1 className="max-w-3xl text-balance text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">{space.title}</h1>
         <button
+          type="button"
           onClick={() => toggleFavorite(space.id)}
           className="flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium underline hover:bg-border-soft"
         >
@@ -39,13 +40,13 @@ export default function SpaceDetail({ space }: { space: Space }) {
       {/* Gallery — single hero on mobile, collage on desktop */}
       <div className="mt-5 overflow-hidden rounded-2xl">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={space.images[0]} alt="" className="h-64 w-full object-cover sm:h-80 md:hidden" />
+        <img src={space.images[0]} alt={space.title} className="h-64 w-full object-cover sm:h-80 md:hidden" />
         <div className="hidden grid-cols-4 grid-rows-2 gap-2 md:grid" style={{ height: 420 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={space.images[0]} alt="" className="col-span-2 row-span-2 h-full w-full object-cover" />
+          <img src={space.images[0]} alt={`${space.title}, main view`} className="col-span-2 row-span-2 h-full w-full object-cover" />
           {space.images.slice(1, 5).map((src, i) => (
             // eslint-disable-next-line @next/next/no-img-element
-            <img key={i} src={src} alt="" className="h-full w-full object-cover" />
+            <img key={i} src={src} alt={`${space.title}, view ${i + 2}`} className="h-full w-full object-cover" loading="lazy" />
           ))}
         </div>
       </div>
@@ -69,6 +70,15 @@ export default function SpaceDetail({ space }: { space: Space }) {
           </div>
 
           <p className="border-b border-border-soft py-6 leading-relaxed">{space.description}</p>
+
+          <section className="border-b border-border-soft py-6" aria-labelledby="booking-confidence">
+            <h3 id="booking-confidence" className="mb-4 text-lg font-semibold">Book with the important details up front</h3>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <TrustItem title="Clear rules" body="Review host expectations before reserving." />
+              <TrustItem title="Private address" body="Exact location follows a confirmed booking." />
+              <TrustItem title="Up-front total" body="Hourly rate and service fee are shown together." />
+            </div>
+          </section>
 
           <div className="border-b border-border-soft py-6">
             <h3 className="mb-4 text-lg font-semibold">What this space offers</h3>
@@ -114,6 +124,28 @@ export default function SpaceDetail({ space }: { space: Space }) {
       <div className="mt-10">
         <Link href="/" className="text-sm font-semibold underline">← Back to all spaces</Link>
       </div>
+
+      <div className="mobile-booking-bar fixed inset-x-0 z-30 border-t border-border bg-background/96 px-4 py-3 shadow-[0_-14px_34px_rgba(30,42,34,0.12)] backdrop-blur lg:hidden">
+        <div className="mx-auto flex max-w-lg items-center justify-between gap-4">
+          <div>
+            <p className="text-lg font-semibold tabular-nums">${space.hourlyPrice} <span className="text-sm font-normal text-muted">/ hour</span></p>
+            <p className="text-xs text-muted">{space.minHours} hr minimum · {space.rating.toFixed(2)} rating</p>
+          </div>
+          <a href="#booking" className="rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white transition active:scale-[0.98]">
+            Choose a time
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TrustItem({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-xl bg-surface-soft p-4">
+      <span className="mb-2 grid h-7 w-7 place-items-center rounded-lg bg-brand/10 text-brand-dark" aria-hidden="true">✓</span>
+      <p className="text-sm font-semibold">{title}</p>
+      <p className="mt-1 text-xs leading-5 text-muted">{body}</p>
     </div>
   );
 }

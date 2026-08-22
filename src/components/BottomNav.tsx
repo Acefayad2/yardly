@@ -1,0 +1,53 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const items = [
+  { href: "/", label: "Explore", icon: ExploreIcon },
+  { href: "/wishlists", label: "Wishlists", icon: HeartIcon },
+  { href: "/messages", label: "Messages", icon: MessageIcon },
+  { href: "/profile", label: "Profile", icon: ProfileIcon },
+];
+
+export default function BottomNav() {
+  const pathname = usePathname();
+
+  return (
+    <nav className="bottom-nav md:hidden" aria-label="Primary mobile navigation">
+      <div className="bottom-nav__items">
+        {items.map(({ href, label, icon: Icon }) => {
+          const active = href === "/" ? pathname === "/" || pathname.startsWith("/spaces/") : pathname.startsWith(href);
+
+          return (
+            <Link
+              key={href}
+              href={href}
+              className="bottom-nav__item"
+              aria-current={active ? "page" : undefined}
+            >
+              <span className="bottom-nav__icon" aria-hidden="true"><Icon /></span>
+              <span>{label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+function ExploreIcon() {
+  return <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="m15.5 8.5-2.1 4.9-4.9 2.1 2.1-4.9 4.9-2.1Z" /></svg>;
+}
+
+function HeartIcon() {
+  return <svg viewBox="0 0 24 24"><path d="M12 20.2s-7.5-4.4-9.4-9C1.4 8.1 3.2 5 6.4 5c2 0 3.5 1.2 4.4 2.6L12 9.4l1.2-1.8C14.1 6.2 15.6 5 17.6 5c3.2 0 5 3.1 3.8 6.2-1.9 4.6-9.4 9-9.4 9Z" /></svg>;
+}
+
+function MessageIcon() {
+  return <svg viewBox="0 0 24 24"><path d="M5.5 18.5 3 21l.7-4A8.5 8.5 0 1 1 12 20.5H8.5" /><path d="M8 11.5h.01M12 11.5h.01M16 11.5h.01" /></svg>;
+}
+
+function ProfileIcon() {
+  return <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5" /><path d="M5 20c.5-4 3-6 7-6s6.5 2 7 6" /></svg>;
+}

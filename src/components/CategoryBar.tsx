@@ -15,13 +15,15 @@ export default function CategoryBar({
     name === "All" ? "✨" : SPACE_TYPES.find((c) => c.name === name)?.icon ?? "•";
 
   return (
-    <div className="no-scrollbar flex gap-7 overflow-x-auto px-1 py-1">
+    <div className="no-scrollbar flex gap-6 overflow-x-auto px-1 py-1" aria-label="Filter by space type">
       {items.map((name) => {
         const isActive = active === name;
         return (
           <button
             key={name}
+            type="button"
             onClick={() => onChange(name)}
+            aria-pressed={isActive}
             className={`group flex shrink-0 flex-col items-center gap-2 border-b-2 pb-3 pt-1 transition ${
               isActive
                 ? "border-foreground text-foreground"

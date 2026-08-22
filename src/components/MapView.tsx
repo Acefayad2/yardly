@@ -11,7 +11,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import { Space } from "@/lib/types";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 function priceIcon(price: number, active: boolean) {
   return L.divIcon({
@@ -41,6 +41,33 @@ function FitBounds({ spaces }: { spaces: Space[] }) {
 
 function MapInteraction({ onBackgroundClick }: { onBackgroundClick: () => void }) {
   useMapEvents({ click: onBackgroundClick });
+  return null;
+}
+
+function ViewportReporter({
+  spaces,
+  onVisibleChange,
+}: {
+  spaces: Space[];
+  onVisibleChange: (ids: string[]) => void;
+}) {
+  const map = useMap();
+  const reportVisible = useCallback(() => {
+    const bounds = map.getBounds().pad(0.04);
+    onVisibleChange(
+      spaces
+        .filter((space) => bounds.contains([space.lat, space.lng]))
+        .map((space) => space.id),
+    );
+  }, [map, onVisibleChange, spaces]);
+
+  useMapEvents({ moveend: reportVisible, zoomend: reportVisible });
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(reportVisible);
+    return () => cancelAnimationFrame(frame);
+  }, [reportVisible]);
+
   return null;
 }
 
@@ -97,28 +124,34 @@ export default function MapView({
   spaces,
   activeId,
   onActiveChange,
+  onVisibleChange,
 }: {
   spaces: Space[];
   activeId?: string;
   onActiveChange?: (id?: string) => void;
+  onVisibleChange?: (ids: string[]) => void;
 }) {
   const [selectedId, setSelectedId] = useState<string | undefined>(activeId);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(spaces.length);
 
-  useEffect(() => {
-    if (activeId) setSelectedId(activeId);
-  }, [activeId]);
+  const effectiveSelectedId = activeId ?? selectedId;
 
   const selectedSpace = useMemo(
-    () => spaces.find((space) => space.id === selectedId),
-    [selectedId, spaces],
+    () => spaces.find((space) => space.id === effectiveSelectedId),
+    [effectiveSelectedId, spaces],
   );
 
   function selectSpace(id?: string) {
     setSelectedId(id);
     onActiveChange?.(id);
   }
+
+  const reportVisible = useCallback((ids: string[]) => {
+    setVisibleCount(ids.length);
+    onVisibleChange?.(ids);
+  }, [onVisibleChange]);
 
   return (
     <div className="yardly-map-shell">
@@ -136,6 +169,7 @@ export default function MapView({
         />
         <FitBounds spaces={spaces} />
         <MapInteraction onBackgroundClick={() => selectSpace(undefined)} />
+        <ViewportReporter spaces={spaces} onVisibleChange={reportVisible} />
         <MapControls
           onLocationFound={(location) => {
             setUserLocation(location);
@@ -153,7 +187,7 @@ export default function MapView({
         )}
 
         {spaces.map((space) => {
-          const isActive = space.id === selectedId || space.id === activeId;
+          const isActive = space.id === effectiveSelectedId;
           return (
             <Marker
               key={space.id}
@@ -170,7 +204,7 @@ export default function MapView({
 
       <div className="yardly-map-status" aria-live="polite">
         <span />
-        {locationMessage ?? `${spaces.length} ${spaces.length === 1 ? "space" : "spaces"} in view`}
+        {locationMessage ?? `${visibleCount} ${visibleCount === 1 ? "space" : "spaces"} in view`}
       </div>
 
       {selectedSpace && (
