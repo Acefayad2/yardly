@@ -9,16 +9,25 @@ export default function Header() {
   const { user, logout, setAuthOpen } = useStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [guests, setGuests] = useState("");
   const router = useRouter();
 
   function search(e: React.FormEvent) {
     e.preventDefault();
-    router.push(query.trim() ? `/?q=${encodeURIComponent(query.trim())}` : "/");
+    const form = new FormData(e.currentTarget as HTMLFormElement);
+    const location = String(form.get("q") ?? "").trim();
+    const selectedDate = String(form.get("date") ?? "");
+    const guestCount = String(form.get("guests") ?? "");
+    const params = new URLSearchParams();
+    if (location) params.set("q", location);
+    if (selectedDate) params.set("date", selectedDate);
+    if (guestCount) params.set("guests", guestCount);
+    router.push(params.size ? `/?${params.toString()}#discover` : "/#discover");
   }
 
   return (
     <header className="sticky top-0 z-40 border-b border-border-soft bg-background/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6 sm:py-4">
+      <div className="mx-auto flex max-w-[90rem] items-center gap-3 px-4 py-3 sm:px-6 lg:gap-5 lg:py-4">
         <Link href="/" className="flex shrink-0 items-center gap-2 text-brand" aria-label="Yardly home">
           <svg viewBox="0 0 32 32" className="h-8 w-8 fill-current" aria-hidden>
             <path d="M16 2C16 8 12 10 9 12c-4 2.7-5 8-2.4 11.6C8.3 26 11 27 13.6 26.4 12.4 22 13 17.4 16 14c-2 4-2.3 8.4-1.4 12.9.3 1.5.6 2.4.6 3.1h1.6c0-.7.3-1.6.6-3.1.4-1.9.5-3.7.4-5.4 1.6 1 3.7 1.2 5.6.6C26 20.9 27 15.6 24.4 12 21.4 8 16 8 16 2z" />
@@ -30,21 +39,42 @@ export default function Header() {
 
         <form
           onSubmit={search}
-          className="mx-auto hidden flex-1 max-w-md items-center rounded-full border border-border py-2 pl-5 pr-2 shadow-sm transition hover:border-brand/30 hover:shadow-md md:flex"
+          className="header-search mx-auto hidden min-w-0 flex-1 lg:grid"
+          aria-label="Search Yardly spaces"
         >
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by city or neighborhood"
-            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted"
-            aria-label="Search spaces"
-          />
+          <label className="header-search__field header-search__field--where">
+            <span>Where</span>
+            <input
+              value={query}
+              name="q"
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search destinations"
+              aria-label="Where"
+            />
+          </label>
+          <label className="header-search__field">
+            <span>When</span>
+            <input
+              type="date"
+              name="date"
+              aria-label="When"
+            />
+          </label>
+          <label className="header-search__field">
+            <span>Who</span>
+            <select name="guests" value={guests} onChange={(e) => setGuests(e.target.value)} aria-label="Who">
+              <option value="">Add guests</option>
+              {Array.from({ length: 60 }, (_, index) => index + 1).map((count) => (
+                <option key={count} value={count}>{count} {count === 1 ? "guest" : "guests"}</option>
+              ))}
+            </select>
+          </label>
           <button
             type="submit"
-            className="grid h-8 w-8 place-items-center rounded-full bg-brand text-white transition hover:bg-brand-dark"
+            className="header-search__submit"
             aria-label="Search"
           >
-            <svg viewBox="0 0 24 24" className="h-4 w-4 stroke-current" fill="none" strokeWidth={3}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="11" cy="11" r="7" />
               <path d="m20 20-3-3" strokeLinecap="round" />
             </svg>

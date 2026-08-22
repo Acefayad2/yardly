@@ -34,6 +34,106 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.header-search {
+  grid-template-columns: minmax(10rem, 1.25fr) minmax(8.5rem, 0.9fr) minmax(8.5rem, 0.9fr) auto;
+  max-width: 48rem;
+  padding: 0.4rem;
+  border: 1px solid rgba(30, 42, 34, 0.14);
+  border-radius: 999px;
+  background: white;
+  box-shadow: 0 9px 24px rgba(31, 68, 46, 0.1);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.header-search:focus-within,
+.header-search:hover {
+  border-color: rgba(18, 145, 90, 0.34);
+  box-shadow: 0 11px 28px rgba(31, 68, 46, 0.14);
+}
+
+.header-search__field {
+  display: flex;
+  min-width: 0;
+  justify-content: center;
+  flex-direction: column;
+  padding: 0.35rem 1rem;
+  border-left: 1px solid var(--border);
+  cursor: text;
+}
+
+.header-search__field--where {
+  border-left: 0;
+}
+
+.header-search__field span {
+  color: var(--foreground);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.header-search__field input,
+.header-search__field select {
+  width: 100%;
+  min-width: 0;
+  margin-top: 0.12rem;
+  border: 0;
+  background: transparent;
+  color: #6a716c;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  outline: 0;
+}
+
+.header-search__field input::placeholder {
+  color: #747b76;
+  opacity: 1;
+}
+
+.header-search__field input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.55;
+}
+
+.header-search__submit {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  align-self: center;
+  border-radius: 999px;
+  background: var(--brand);
+  color: white;
+  transition: background 180ms ease, transform 150ms ease, box-shadow 180ms ease;
+}
+
+.header-search__submit:hover {
+  background: var(--brand-dark);
+  box-shadow: 0 7px 16px rgba(12, 114, 71, 0.24);
+  transform: translateY(-1px);
+}
+
+.header-search__submit:active {
+  transform: scale(0.96);
+}
+
+.header-search__submit svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.7;
+}
+
+@media (max-width: 1180px) {
+  .header-search {
+    grid-template-columns: minmax(8rem, 1.1fr) minmax(7rem, 0.8fr) minmax(7rem, 0.8fr) auto;
+  }
+
+  .header-search__field {
+    padding-inline: 0.75rem;
+  }
+}
+
 .bottom-nav {
   position: fixed;
   right: 0;
