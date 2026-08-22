@@ -93,7 +93,7 @@ export default function Explore() {
         </section>
       )}
 
-      <div id="discover" className="sticky top-[65px] z-30 scroll-mt-24 border-b border-border-soft bg-background/95 backdrop-blur sm:top-[73px]">
+      <div id="discover" className="sticky top-[65px] z-30 scroll-mt-24 border-b border-border-soft bg-background/95 backdrop-blur sm:top-[73px] lg:top-[169px] lg:scroll-mt-48">
         <div className="mx-auto max-w-7xl px-6">
           <CategoryBar active={spaceType} onChange={setSpaceType} />
         </div>
