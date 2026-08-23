@@ -34,7 +34,7 @@ export default function Header() {
   ];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border-soft bg-background/95 backdrop-blur">
+    <header className="site-header sticky top-0 z-40 border-b border-border-soft bg-background/95 backdrop-blur">
       <div className="header-shell mx-auto max-w-[90rem] px-4 sm:px-6">
         <div className="header-primary-row">
           <Link href="/" className="header-logo flex shrink-0 items-center gap-2 text-brand" aria-label="Yardly home">

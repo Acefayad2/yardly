@@ -813,7 +813,7 @@ body {
 
 .bottom-nav__items {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   max-width: 32rem;
   margin-inline: auto;
   padding: 0.5rem 0.35rem calc(0.45rem + env(safe-area-inset-bottom, 0px));
@@ -865,6 +865,29 @@ body {
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.9;
+}
+
+.bottom-nav__item--brand .bottom-nav__icon {
+  width: 2.65rem;
+  height: 2.65rem;
+  margin-top: -1rem;
+  border: 4px solid white;
+  border-radius: 999px;
+  background: var(--brand);
+  box-shadow: 0 5px 14px rgba(18, 145, 90, 0.28);
+  color: white;
+}
+
+.bottom-nav__item--brand .bottom-nav__icon svg {
+  width: 1.55rem;
+  height: 1.55rem;
+  fill: currentColor;
+  stroke: none;
+}
+
+.bottom-nav__item--brand > span:last-child {
+  color: var(--foreground);
+  font-weight: 750;
 }
 
 .mobile-booking-bar {
@@ -1561,8 +1584,27 @@ select:focus-visible {
 }
 
 @media (max-width: 767px) {
+  :root {
+    --mobile-header-height: calc(4.1rem + max(0.75rem, env(safe-area-inset-top, 0px)));
+  }
+
   body {
     padding-bottom: calc(4.4rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .site-header {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+  }
+
+  #main-content {
+    padding-top: var(--mobile-header-height);
+  }
+
+  #discover {
+    top: var(--mobile-header-height);
   }
 
   .header-shell {
