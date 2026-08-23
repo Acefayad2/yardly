@@ -19,6 +19,8 @@
 
 # production
 /build
+/app-store/*.xcarchive/
+/app-store/Yardly-*/
 
 # misc
 .DS_Store

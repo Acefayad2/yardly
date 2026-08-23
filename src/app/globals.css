@@ -20,7 +20,7 @@
   --color-border: var(--border);
   --color-border-soft: var(--border-soft);
   --color-surface-soft: var(--surface-soft);
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 html {
