@@ -94,7 +94,7 @@ export default function Explore() {
       )}
 
       <div id="discover" className="sticky top-[65px] z-30 scroll-mt-24 border-b border-border-soft bg-background/95 backdrop-blur sm:top-[73px] lg:top-[169px] lg:scroll-mt-48">
-        <div className="mx-auto max-w-7xl px-6">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <CategoryBar active={spaceType} onChange={setSpaceType} />
         </div>
       </div>
@@ -148,7 +148,7 @@ export default function Explore() {
           </div>
         </div>
       ) : (
-        <div className="mx-auto max-w-7xl px-6 py-8">
+        <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-8">
           {spaces.length === 0 ? (
             <div className="rounded-3xl bg-surface-soft px-6 py-20 text-center">
               <p className="text-lg font-semibold">No spaces found</p>
@@ -158,11 +158,17 @@ export default function Explore() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {spaces.map((s) => (
-                <SpaceCard key={s.id} space={s} bookingQuery={bookingQuery} />
-              ))}
-            </div>
+            <>
+              <div className="mobile-discovery-heading md:hidden">
+                <h2>Popular outdoor spaces near you</h2>
+                <span aria-hidden="true">→</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-7 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-3 xl:grid-cols-4">
+                {spaces.map((s) => (
+                  <SpaceCard key={s.id} space={s} bookingQuery={bookingQuery} />
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}

@@ -21,6 +21,7 @@
 /build
 /app-store/*.xcarchive/
 /app-store/Yardly-*/
+/app-store/simulator-build/
 
 # misc
 .DS_Store

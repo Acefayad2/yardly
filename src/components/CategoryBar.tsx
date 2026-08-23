@@ -15,7 +15,7 @@ export default function CategoryBar({
     name === "All" ? "✨" : SPACE_TYPES.find((c) => c.name === name)?.icon ?? "•";
 
   return (
-    <div className="no-scrollbar flex gap-6 overflow-x-auto px-1 py-1" aria-label="Filter by space type">
+    <div className="no-scrollbar flex gap-2 overflow-x-auto px-1 py-2 md:gap-6 md:py-1" aria-label="Filter by space type">
       {items.map((name) => {
         const isActive = active === name;
         return (
@@ -24,16 +24,16 @@ export default function CategoryBar({
             type="button"
             onClick={() => onChange(name)}
             aria-pressed={isActive}
-            className={`group flex shrink-0 flex-col items-center gap-2 border-b-2 pb-3 pt-1 transition ${
+            className={`group flex shrink-0 flex-row items-center gap-2 rounded-full border px-4 py-2.5 shadow-sm transition md:flex-col md:rounded-none md:border-x-0 md:border-t-0 md:border-b-2 md:px-0 md:pb-3 md:pt-1 md:shadow-none ${
               isActive
-                ? "border-foreground text-foreground"
-                : "border-transparent text-muted hover:border-border hover:text-foreground"
+                ? "border-foreground bg-foreground text-white md:bg-transparent md:text-foreground"
+                : "border-border bg-white text-muted hover:border-foreground hover:text-foreground md:border-transparent md:bg-transparent md:hover:border-border"
             }`}
           >
-            <span className={`text-2xl transition ${isActive ? "" : "opacity-70 group-hover:opacity-100"}`}>
+            <span className={`text-base transition md:text-2xl ${isActive ? "" : "opacity-70 group-hover:opacity-100"}`}>
               {iconFor(name)}
             </span>
-            <span className="whitespace-nowrap text-xs font-medium">{name}</span>
+            <span className="whitespace-nowrap text-sm font-medium md:text-xs">{name}</span>
           </button>
         );
       })}
