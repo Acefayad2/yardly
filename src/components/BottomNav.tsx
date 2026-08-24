@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 const items = [
   { href: "/", label: "Explore", icon: ExploreIcon },
   { href: "/wishlists", label: "Wishlists", icon: HeartIcon },
-  { href: "/", label: "Yardly", icon: YardlyIcon, brand: true },
+  { href: "/trips", label: "Trips", icon: YardlyIcon, brand: true },
   { href: "/messages", label: "Messages", icon: MessageIcon },
   { href: "/profile", label: "Profile", icon: ProfileIcon },
 ];
@@ -18,7 +18,7 @@ export default function BottomNav() {
     <nav className="bottom-nav md:hidden" aria-label="Primary mobile navigation">
       <div className="bottom-nav__items">
         {items.map(({ href, label, icon: Icon, brand }) => {
-          const active = !brand && (href === "/" ? pathname === "/" || pathname.startsWith("/spaces/") : pathname.startsWith(href));
+          const active = href === "/" ? pathname === "/" || pathname.startsWith("/spaces/") : pathname.startsWith(href);
 
           return (
             <Link
@@ -26,7 +26,7 @@ export default function BottomNav() {
               href={href}
               className={`bottom-nav__item${brand ? " bottom-nav__item--brand" : ""}`}
               aria-current={active ? "page" : undefined}
-              aria-label={brand ? "Yardly home" : undefined}
+              aria-label={brand ? "Open Yardly trips" : undefined}
             >
               <span className="bottom-nav__icon" aria-hidden="true"><Icon /></span>
               <span>{label}</span>

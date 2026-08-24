@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useStore } from "@/lib/store";
 import MobileSearch from "./MobileSearch";
 
@@ -12,6 +13,7 @@ export default function Header() {
   const [query, setQuery] = useState("");
   const [guests, setGuests] = useState("");
   const router = useRouter();
+  const pathname = usePathname();
 
   function search(e: React.FormEvent) {
     e.preventDefault();
@@ -34,7 +36,7 @@ export default function Header() {
   ];
 
   return (
-    <header className="site-header sticky top-0 z-40 border-b border-border-soft bg-background/95 backdrop-blur">
+    <header className={`site-header sticky top-0 z-40 border-b border-border-soft bg-background/95 backdrop-blur${pathname.startsWith("/trips") ? " site-header--trips" : ""}`}>
       <div className="header-shell mx-auto max-w-[90rem] px-4 sm:px-6">
         <div className="header-primary-row">
           <Link href="/" className="header-logo flex shrink-0 items-center gap-2 text-brand" aria-label="Yardly home">
