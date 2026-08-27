@@ -9,6 +9,8 @@ import {
   ReactNode,
 } from "react";
 import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
+import { App } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 import { getSupabase } from "./supabase";
 import {
   Booking,
@@ -45,6 +47,7 @@ const StoreContext = createContext<Store | null>(null);
 
 const BOOKINGS_KEY = "yardly_bookings";
 const FAVS_KEY = "yardly_favorites";
+const IOS_AUTH_REDIRECT = "com.acefayad.yardly://auth/callback";
 const FALLBACK_LISTING_IMAGE = "https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&w=1200&q=85";
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -109,6 +112,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const supabase = getSupabase();
+    let disposed = false;
+    let removeAppUrlListener: (() => Promise<void>) | undefined;
     const storedBookings = localStorage.getItem(BOOKINGS_KEY);
     const storedFavorites = localStorage.getItem(FAVS_KEY);
     queueMicrotask(() => {
@@ -123,7 +128,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       queueMicrotask(() => void applySession(session));
     });
-    return () => listener.subscription.unsubscribe();
+    if (Capacitor.isNativePlatform()) {
+      void App.addListener("appUrlOpen", ({ url }) => {
+        const code = new URL(url).searchParams.get("code");
+        if (code) {
+          void supabase.auth.exchangeCodeForSession(code);
+        }
+      }).then((handle) => {
+        if (disposed) {
+          void handle.remove();
+        } else {
+          removeAppUrlListener = () => handle.remove();
+        }
+      });
+    }
+    return () => {
+      disposed = true;
+      listener.subscription.unsubscribe();
+      void removeAppUrlListener?.();
+    };
   }, [applySession]);
 
   useEffect(() => {
@@ -143,7 +166,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           password,
           options: {
             data: { full_name: name.trim() },
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: Capacitor.isNativePlatform() ? IOS_AUTH_REDIRECT : window.location.origin,
           },
         });
         if (error) throw error;
