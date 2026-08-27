@@ -21,6 +21,7 @@ function ListingsContent() {
       <HostNav />
       <div className="mx-auto max-w-6xl px-5 py-8 sm:px-6 sm:py-12">
         {searchParams.get("created") === "1" && <div className="mb-6 rounded-xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-medium text-brand-dark">Your listing draft is ready. Complete the remaining details when you are ready to publish.</div>}
+        {searchParams.get("photoWarning") === "1" && <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">Your draft was saved, but one or more photos could not be uploaded. You can add them again when editing the listing.</div>}
         <div className="flex items-end justify-between gap-5">
           <div><p className="text-sm font-semibold text-brand-dark">Your portfolio</p><h1 className="mt-1 text-3xl font-semibold tracking-[-0.04em]">Listings</h1></div>
           <Link href="/host/listings/new" className="rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white">Add a space</Link>

@@ -9,13 +9,26 @@ export default function AuthModal() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [feedback, setFeedback] = useState<{ type: "error" | "message"; text: string } | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   if (!authOpen) return null;
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const displayName = mode === "signup" ? name.trim() : email.split("@")[0];
-    login(displayName || "Guest", email.trim() || "guest@yardly.co");
+    setSubmitting(true);
+    setFeedback(null);
+    const result = await login(mode, name.trim(), email.trim(), password);
+    setSubmitting(false);
+    if (result.error) {
+      setFeedback({ type: "error", text: result.error });
+      return;
+    }
+    if (result.message) {
+      setFeedback({ type: "message", text: result.message });
+      setPassword("");
+      return;
+    }
     reset();
   }
 
@@ -27,14 +40,14 @@ export default function AuthModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={() => setAuthOpen(false)}
+        <div
+          className="absolute inset-0 bg-black/50"
+          onClick={() => { setAuthOpen(false); setFeedback(null); }}
       />
       <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-background shadow-2xl animate-fade-in">
         <div className="flex items-center justify-center border-b border-border-soft px-4 py-4">
           <button
-            onClick={() => setAuthOpen(false)}
+            onClick={() => { setAuthOpen(false); setFeedback(null); }}
             className="absolute left-4 grid h-7 w-7 place-items-center rounded-full hover:bg-border-soft"
             aria-label="Close"
           >
@@ -80,24 +93,25 @@ export default function AuthModal() {
 
           <button
             type="submit"
-            className="w-full rounded-xl bg-gradient-to-r from-brand to-brand-dark py-3.5 text-sm font-semibold text-white transition hover:opacity-95"
+            disabled={submitting}
+            className="w-full rounded-xl bg-gradient-to-r from-brand to-brand-dark py-3.5 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-wait disabled:opacity-60"
           >
-            {mode === "login" ? "Continue" : "Create account"}
+            {submitting ? "Please wait…" : mode === "login" ? "Continue" : "Create account"}
           </button>
+
+          {feedback && <p role={feedback.type === "error" ? "alert" : "status"} className={`rounded-xl px-4 py-3 text-sm ${feedback.type === "error" ? "bg-red-50 text-red-700" : "bg-brand/10 text-brand-dark"}`}>{feedback.text}</p>}
 
           <p className="text-center text-sm text-muted">
             {mode === "login" ? "New to Yardly? " : "Already have an account? "}
             <button
               type="button"
-              onClick={() => setMode(mode === "login" ? "signup" : "login")}
+              onClick={() => { setMode(mode === "login" ? "signup" : "login"); setFeedback(null); }}
               className="font-semibold text-foreground underline"
             >
               {mode === "login" ? "Sign up" : "Log in"}
             </button>
           </p>
-          <p className="text-center text-xs text-muted">
-            Demo auth — no real account is created. Data stays in your browser.
-          </p>
+          <p className="text-center text-xs text-muted">Your account and host data are securely stored with Supabase.</p>
         </form>
       </div>
     </div>

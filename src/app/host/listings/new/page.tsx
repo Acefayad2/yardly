@@ -20,13 +20,16 @@ export default function NewHostListingPage() {
   const [hourlyPrice, setHourlyPrice] = useState("45");
   const [capacity, setCapacity] = useState("12");
   const [amenities, setAmenities] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const progress = useMemo(() => `${Math.round((step / 3) * 100)}%`, [step]);
 
   function toggleAmenity(amenity: string) {
     setAmenities((current) => current.includes(amenity) ? current.filter((item) => item !== amenity) : [...current, amenity]);
   }
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
     if (!user) {
       setAuthOpen(true);
@@ -37,8 +40,9 @@ export default function NewHostListingPage() {
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
-    addHostListing({
-      id: `host-${Date.now()}`,
+    setSaving(true);
+    setSaveError("");
+    const result = await addHostListing({
       title: title.trim(),
       location: location.trim(),
       spaceType,
@@ -46,11 +50,14 @@ export default function NewHostListingPage() {
       capacity: Number(capacity),
       description: description.trim(),
       amenities,
-      image: "https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&w=1200&q=85",
       status: "draft",
-      createdAt: new Date().toISOString(),
-    });
-    router.push("/host/listings?created=1");
+    }, photos);
+    setSaving(false);
+    if (result.error) {
+      setSaveError(result.error);
+      return;
+    }
+    router.push(`/host/listings?created=1${result.message ? "&photoWarning=1" : ""}`);
   }
 
   return (
@@ -71,6 +78,18 @@ export default function NewHostListingPage() {
                   </button>
                 ))}
               </div>
+              <label className="mt-8 block rounded-2xl border border-dashed border-border-soft bg-surface-soft p-5">
+                <span className="font-semibold">Add photos</span>
+                <span className="mt-1 block text-sm leading-6 text-muted">Upload up to 8 JPG, PNG, WebP, or HEIC images. Each photo can be up to 10 MB.</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                  multiple
+                  onChange={(event) => setPhotos(Array.from(event.target.files ?? []).slice(0, 8))}
+                  className="mt-4 block w-full text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-brand file:px-4 file:py-2 file:font-semibold file:text-white"
+                />
+                {photos.length > 0 && <span className="mt-2 block text-xs font-medium text-brand-dark">{photos.length} photo{photos.length === 1 ? "" : "s"} selected</span>}
+              </label>
             </section>
           )}
 
@@ -120,10 +139,11 @@ export default function NewHostListingPage() {
           )}
         </div>
 
+        {saveError && <p role="alert" className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{saveError}</p>}
         <div className="mt-10 flex items-center justify-between border-t border-border-soft pt-6">
           {step > 1 ? <button type="button" onClick={() => setStep((current) => current - 1)} className="text-sm font-semibold underline underline-offset-4">Back</button> : <span />}
-          <button type="submit" className="rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-dark">
-            {step === 3 ? "Save draft" : "Continue"}
+          <button type="submit" disabled={saving} className="rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:cursor-wait disabled:opacity-60">
+            {saving ? "Saving…" : step === 3 ? "Save draft" : "Continue"}
           </button>
         </div>
       </form>

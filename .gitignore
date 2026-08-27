@@ -35,12 +35,14 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
 
 # local Netlify build and plugin cache
 /.netlify/
+/supabase/.temp/
 
 # typescript
 *.tsbuildinfo
