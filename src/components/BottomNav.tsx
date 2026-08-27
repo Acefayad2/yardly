@@ -11,13 +11,22 @@ const items = [
   { href: "/profile", label: "Profile", icon: ProfileIcon },
 ];
 
+const hostItems = [
+  { href: "/host/dashboard", label: "Today", icon: ExploreIcon },
+  { href: "/host/reservations", label: "Reservations", icon: HeartIcon },
+  { href: "/host/listings", label: "Listings", icon: YardlyIcon, brand: true },
+  { href: "/messages", label: "Messages", icon: MessageIcon },
+  { href: "/profile", label: "Profile", icon: ProfileIcon },
+];
+
 export default function BottomNav() {
   const pathname = usePathname();
+  const navigationItems = pathname.startsWith("/host") ? hostItems : items;
 
   return (
     <nav className="bottom-nav md:hidden" aria-label="Primary mobile navigation">
       <div className="bottom-nav__items">
-        {items.map(({ href, label, icon: Icon, brand }) => {
+        {navigationItems.map(({ href, label, icon: Icon, brand }) => {
           const active = href === "/" ? pathname === "/" || pathname.startsWith("/spaces/") : pathname.startsWith(href);
 
           return (

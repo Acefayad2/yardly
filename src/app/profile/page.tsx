@@ -31,6 +31,13 @@ export default function ProfilePage() {
               <span className="text-sm text-muted">Saved spaces</span>
             </Link>
           </div>
+          <Link href="/host/dashboard" className="mt-4 flex items-center justify-between rounded-2xl bg-[#193b2a] p-5 text-white transition hover:bg-[#214c36]">
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-white/60">Hosting</span>
+              <strong className="mt-1 block text-lg">Manage your spaces</strong>
+            </div>
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-xl" aria-hidden="true">→</span>
+          </Link>
           <button type="button" onClick={logout} className="mt-8 text-sm font-semibold underline underline-offset-4">Log out</button>
         </div>
       ) : (

@@ -39,6 +39,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local Netlify build and plugin cache
+/.netlify/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

@@ -34,6 +34,23 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.host-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  background: white;
+  padding: 0.8rem 1rem;
+  color: var(--foreground);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.host-input:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(18, 145, 90, 0.12);
+}
+
 .header-shell {
   padding-block: 0.75rem;
 }

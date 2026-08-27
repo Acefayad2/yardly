@@ -53,3 +53,34 @@ export interface User {
   name: string;
   email: string;
 }
+
+export type HostListingStatus = "draft" | "published" | "paused";
+
+export interface HostListing {
+  id: string;
+  title: string;
+  location: string;
+  spaceType: SpaceType;
+  hourlyPrice: number;
+  capacity: number;
+  description: string;
+  amenities: string[];
+  image: string;
+  status: HostListingStatus;
+  createdAt: string;
+}
+
+export type HostReservationStatus = "upcoming" | "completed" | "cancelled";
+
+export interface HostReservation {
+  id: string;
+  listingId: string;
+  listingTitle: string;
+  guestName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  guests: number;
+  payout: number;
+  status: HostReservationStatus;
+}

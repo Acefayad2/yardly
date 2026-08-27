@@ -8,17 +8,27 @@ import {
   ReactNode,
   useCallback,
 } from "react";
-import { Booking, User } from "./types";
+import {
+  Booking,
+  HostListing,
+  HostListingStatus,
+  HostReservation,
+  User,
+} from "./types";
 
 interface Store {
   user: User | null;
   bookings: Booking[];
   favorites: string[];
+  hostListings: HostListing[];
+  hostReservations: HostReservation[];
   login: (name: string, email: string) => void;
   logout: () => void;
   addBooking: (b: Booking) => void;
   cancelBooking: (id: string) => void;
   toggleFavorite: (listingId: string) => void;
+  addHostListing: (listing: HostListing) => void;
+  setHostListingStatus: (id: string, status: HostListingStatus) => void;
   authOpen: boolean;
   setAuthOpen: (v: boolean) => void;
 }
@@ -28,11 +38,15 @@ const StoreContext = createContext<Store | null>(null);
 const USER_KEY = "yardly_user";
 const BOOKINGS_KEY = "yardly_bookings";
 const FAVS_KEY = "yardly_favorites";
+const HOST_LISTINGS_KEY = "yardly_host_listings";
+const HOST_RESERVATIONS_KEY = "yardly_host_reservations";
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [hostListings, setHostListings] = useState<HostListing[]>([]);
+  const [hostReservations, setHostReservations] = useState<HostReservation[]>([]);
   const [authOpen, setAuthOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
@@ -42,9 +56,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const u = localStorage.getItem(USER_KEY);
         const b = localStorage.getItem(BOOKINGS_KEY);
         const f = localStorage.getItem(FAVS_KEY);
+        const hl = localStorage.getItem(HOST_LISTINGS_KEY);
+        const hr = localStorage.getItem(HOST_RESERVATIONS_KEY);
         if (u) setUser(JSON.parse(u));
         if (b) setBookings(JSON.parse(b));
         if (f) setFavorites(JSON.parse(f));
+        if (hl) setHostListings(JSON.parse(hl));
+        if (hr) setHostReservations(JSON.parse(hr));
       } catch {}
       setHydrated(true);
     });
@@ -57,6 +75,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (hydrated) localStorage.setItem(FAVS_KEY, JSON.stringify(favorites));
   }, [favorites, hydrated]);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem(HOST_LISTINGS_KEY, JSON.stringify(hostListings));
+  }, [hostListings, hydrated]);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem(HOST_RESERVATIONS_KEY, JSON.stringify(hostReservations));
+  }, [hostReservations, hydrated]);
 
   const login = useCallback((name: string, email: string) => {
     const u = { name, email };
@@ -86,17 +112,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const addHostListing = useCallback((listing: HostListing) => {
+    setHostListings((prev) => [listing, ...prev]);
+  }, []);
+
+  const setHostListingStatus = useCallback((id: string, status: HostListingStatus) => {
+    setHostListings((prev) => prev.map((listing) => (
+      listing.id === id ? { ...listing, status } : listing
+    )));
+  }, []);
+
   return (
     <StoreContext.Provider
       value={{
         user,
         bookings,
         favorites,
+        hostListings,
+        hostReservations,
         login,
         logout,
         addBooking,
         cancelBooking,
         toggleFavorite,
+        addHostListing,
+        setHostListingStatus,
         authOpen,
         setAuthOpen,
       }}
