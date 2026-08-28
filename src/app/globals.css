@@ -25,13 +25,17 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: clip;
 }
 
 body {
+  min-width: 0;
+  overflow-x: clip;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .host-input {
@@ -1905,6 +1909,26 @@ select:focus-visible {
     box-shadow: 0 3px 12px rgba(31, 68, 46, 0.12);
   }
 
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  .host-input {
+    min-height: 3rem;
+  }
+
+  .account-menu {
+    position: fixed;
+    right: 1rem;
+    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+    left: 1rem;
+    width: auto;
+    max-height: min(32rem, calc(100dvh - 7rem));
+    overflow-y: auto;
+  }
+
   .hero-shell {
     display: none;
   }
@@ -1932,6 +1956,20 @@ select:focus-visible {
     border-radius: 999px;
     background: var(--surface-soft);
     font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 374px) {
+  .header-shell {
+    padding-inline: 0.75rem;
+  }
+
+  .mobile-search-trigger {
+    font-size: 0.84rem;
+  }
+
+  .bottom-nav__item {
+    font-size: 0.58rem;
   }
 }
 

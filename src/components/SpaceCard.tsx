@@ -98,10 +98,10 @@ export default function SpaceCard({
             {space.rating.toFixed(2)} <span className="hidden text-xs text-muted sm:inline">({space.reviews})</span>
           </span>
         </div>
-        <p className="truncate text-sm text-muted">{space.neighborhood} · {space.spaceType}</p>
-        <p className="truncate text-sm text-muted">{space.title}</p>
+        <p className="truncate text-xs text-muted min-[375px]:text-sm">{space.neighborhood} · {space.spaceType}</p>
+        <p className="truncate text-xs text-muted min-[375px]:text-sm">{space.title}</p>
         <p className="hidden truncate text-sm text-muted sm:block">Up to {space.capacity} guests · {space.minHours} hr minimum</p>
-        <p className="mt-1 text-sm">
+        <p className="mt-1 text-xs min-[375px]:text-sm">
           <span className="font-semibold text-foreground">${space.hourlyPrice}</span>
           <span className="text-muted"> / hour</span>
         </p>

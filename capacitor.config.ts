@@ -10,13 +10,13 @@ const config: CapacitorConfig = {
   backgroundColor: "#ffffffff",
   loggingBehavior: "none",
   ios: {
-    contentInset: "automatic",
+    contentInset: "never",
     preferredContentMode: "mobile",
     allowsLinkPreview: false,
   },
   plugins: {
     StatusBar: {
-      overlaysWebView: false,
+      overlaysWebView: true,
       style: "DARK",
       backgroundColor: "#ffffffff",
     },
