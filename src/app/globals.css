@@ -1896,6 +1896,18 @@ select:focus-visible {
     display: none;
   }
 
+  .site-header--compact .header-logo {
+    display: flex;
+  }
+
+  .site-header--compact .header-actions {
+    width: auto;
+  }
+
+  .site-header--compact .header-actions > .relative {
+    display: block;
+  }
+
   .header-actions {
     width: 100%;
     margin-left: 0;
@@ -1921,8 +1933,9 @@ select:focus-visible {
 
   .account-menu {
     position: fixed;
+    top: calc(4.35rem + env(safe-area-inset-top, 0px));
     right: 1rem;
-    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+    bottom: auto;
     left: 1rem;
     width: auto;
     max-height: min(32rem, calc(100dvh - 7rem));

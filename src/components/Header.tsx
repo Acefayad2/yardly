@@ -15,6 +15,7 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const isHost = pathname.startsWith("/host");
+  const isExplore = pathname === "/";
 
   function search(e: React.FormEvent) {
     e.preventDefault();
@@ -37,7 +38,7 @@ export default function Header() {
   ];
 
   return (
-    <header className={`site-header sticky top-0 z-40 border-b border-border-soft bg-background/95 backdrop-blur${pathname.startsWith("/trips") ? " site-header--trips" : ""}${isHost ? " site-header--host" : ""}`}>
+    <header className={`site-header sticky top-0 z-40 border-b border-border-soft bg-background/95 backdrop-blur${pathname.startsWith("/trips") ? " site-header--trips" : ""}${isHost ? " site-header--host" : ""}${!isExplore ? " site-header--compact" : ""}`}>
       <div className="header-shell mx-auto max-w-[90rem] px-4 sm:px-6">
         <div className="header-primary-row">
           <Link href={isHost ? "/host/dashboard" : "/"} className="header-logo flex shrink-0 items-center gap-2 text-brand" aria-label="Yardly home">
@@ -62,7 +63,7 @@ export default function Header() {
           {isHost && <span className="hidden rounded-full bg-brand/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-brand-dark sm:inline-flex">Hosting</span>}
 
           <div className="header-actions flex min-w-0 items-center justify-end gap-2">
-            {!isHost && <MobileSearch />}
+            {isExplore && <MobileSearch />}
 
             {!isHost ? (
               <Link href="/host" className="hidden rounded-full px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-soft active:scale-[0.98] lg:block">Become a host</Link>
@@ -152,7 +153,7 @@ export default function Header() {
           </div>
         </div>
 
-        {!isHost && <form
+        {isExplore && <form
           onSubmit={search}
           className="header-search mx-auto hidden min-w-0 lg:grid"
           aria-label="Search Yardly spaces"
