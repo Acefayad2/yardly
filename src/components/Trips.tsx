@@ -16,7 +16,7 @@ const TripsMap = dynamic(() => import("./TripsMap"), {
 interface Trip {
   id: string;
   space: Space;
-  dateLabel: string;
+  scheduleLabel: string;
   guestInitials: string[];
   additionalGuests: number;
 }
@@ -25,21 +25,21 @@ const SAMPLE_TRIPS: Trip[] = [
   {
     id: "sample-la",
     space: SPACES[0],
-    dateLabel: "Sep 12 – 14, 2026",
+    scheduleLabel: "Sep 12, 2026 · 2 PM – 6 PM",
     guestInitials: ["A", "M", "J"],
     additionalGuests: 3,
   },
   {
     id: "sample-phx",
     space: SPACES[1],
-    dateLabel: "Oct 3 – 5, 2026",
+    scheduleLabel: "Oct 3, 2026 · 11 AM – 3 PM",
     guestInitials: ["K", "D", "S"],
     additionalGuests: 2,
   },
   {
     id: "sample-austin",
     space: SPACES[2],
-    dateLabel: "Nov 7 – 9, 2026",
+    scheduleLabel: "Nov 7, 2026 · 5 PM – 9 PM",
     guestInitials: ["E", "C", "T"],
     additionalGuests: 2,
   },
@@ -55,7 +55,7 @@ export default function Trips() {
     return [{
       id: booking.id,
       space,
-      dateLabel: format(new Date(`${booking.date}T12:00:00`), "MMM d, yyyy"),
+      scheduleLabel: `${format(new Date(`${booking.date}T12:00:00`), "MMM d, yyyy")} · ${tripTimeLabel(booking.startTime)} – ${tripTimeLabel(booking.endTime)}`,
       guestInitials: ["Y", "G"].slice(0, Math.min(booking.guests, 2)),
       additionalGuests: Math.max(booking.guests - 2, 0),
     }];
@@ -85,7 +85,7 @@ export default function Trips() {
               <img src={trip.space.images[0]} alt={trip.space.title} className="trip-card__image" />
               <div className="trip-card__content">
                 <h2>{trip.space.location.split(",")[0]}</h2>
-                <p>{trip.dateLabel}</p>
+                <p>{trip.scheduleLabel}</p>
                 <div className="trip-card__guests" aria-label={`${trip.guestInitials.length + trip.additionalGuests} guests`}>
                   {trip.guestInitials.map((initial, index) => (
                     <span key={`${initial}-${index}`} style={{ backgroundColor: AVATAR_COLORS[index % AVATAR_COLORS.length] }}>{initial}</span>
@@ -111,4 +111,10 @@ export default function Trips() {
       </section>
     </div>
   );
+}
+
+function tripTimeLabel(value: string) {
+  const hour = Number(value.split(":")[0]);
+  const suffix = hour >= 12 ? "PM" : "AM";
+  return `${hour % 12 || 12} ${suffix}`;
 }

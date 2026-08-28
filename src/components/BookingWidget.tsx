@@ -19,7 +19,6 @@ export default function BookingWidget({ space }: { space: Space }) {
   const { user, setAuthOpen, addBooking } = useStore();
   const router = useRouter();
   const [date, setDate] = useState("");
-  const [fullDay, setFullDay] = useState(false);
   const [startHour, setStartHour] = useState(14); // 2 PM default
   const [hours, setHours] = useState(space.minHours);
   const [guests, setGuests] = useState(1);
@@ -48,7 +47,7 @@ export default function BookingWidget({ space }: { space: Space }) {
   const effectiveHours = Math.min(hours, maxHours);
   const endHour = startHour + effectiveHours;
 
-  const subtotal = fullDay ? space.dayPrice : space.hourlyPrice * effectiveHours;
+  const subtotal = space.hourlyPrice * effectiveHours;
   const serviceFee = Math.round(subtotal * 0.12);
   const total = subtotal + serviceFee;
 
@@ -66,10 +65,10 @@ export default function BookingWidget({ space }: { space: Space }) {
       image: space.images[0],
       location: space.location,
       date,
-      startTime: fullDay ? `${OPEN_HOUR}:00` : `${startHour}:00`,
-      endTime: fullDay ? `${CLOSE_HOUR}:00` : `${endHour}:00`,
-      hours: fullDay ? CLOSE_HOUR - OPEN_HOUR : effectiveHours,
-      fullDay,
+      startTime: `${startHour}:00`,
+      endTime: `${endHour}:00`,
+      hours: effectiveHours,
+      fullDay: false,
       guests,
       total,
       createdAt: new Date().toISOString(),
@@ -90,21 +89,9 @@ export default function BookingWidget({ space }: { space: Space }) {
         </span>
       </div>
 
-      {/* Hourly / Full-day toggle */}
-      <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-border-soft p-1 text-sm font-medium">
-        <button
-          onClick={() => setFullDay(false)}
-          className={`rounded-lg py-2 transition ${!fullDay ? "bg-background shadow" : "text-muted"}`}
-        >
-          By the hour
-        </button>
-        <button
-          onClick={() => setFullDay(true)}
-          className={`rounded-lg py-2 transition ${fullDay ? "bg-background shadow" : "text-muted"}`}
-        >
-          Full day · ${space.dayPrice}
-        </button>
-      </div>
+      <p className="mt-4 rounded-xl bg-surface-soft px-3 py-2.5 text-xs font-medium text-muted">
+        Hourly bookings are for one date and must end by {label(CLOSE_HOUR)}.
+      </p>
 
       <div className="mt-3 overflow-hidden rounded-xl border border-border">
         <label className="block border-b border-border px-3 py-2.5">
@@ -118,7 +105,6 @@ export default function BookingWidget({ space }: { space: Space }) {
           />
         </label>
 
-        {!fullDay && (
           <div className="grid grid-cols-2">
             <label className="border-r border-border px-3 py-2.5">
               <span className="block text-[10px] font-bold uppercase tracking-wide">Start</span>
@@ -145,7 +131,6 @@ export default function BookingWidget({ space }: { space: Space }) {
               </select>
             </label>
           </div>
-        )}
 
         <label className="block border-t border-border px-3 py-2.5">
           <span className="block text-[10px] font-bold uppercase tracking-wide">Guests</span>
@@ -161,11 +146,9 @@ export default function BookingWidget({ space }: { space: Space }) {
         </label>
       </div>
 
-      {!fullDay && (
-        <p className="mt-2 text-center text-xs text-muted">
-          {label(startHour)} – {label(endHour)} · {space.minHours} hr minimum
-        </p>
-      )}
+      <p className="mt-2 text-center text-xs text-muted">
+        {label(startHour)} – {label(endHour)} · {space.minHours} hr minimum
+      </p>
 
       {error && <p className="mt-3 text-sm font-medium text-brand" role="alert">{error}</p>}
 
@@ -179,7 +162,7 @@ export default function BookingWidget({ space }: { space: Space }) {
       <div className="mt-5 space-y-3 text-sm">
         <p className="text-center text-muted">You won&apos;t be charged yet</p>
         <Row
-          label={fullDay ? "Full day rate" : `$${space.hourlyPrice} × ${effectiveHours} hours`}
+          label={`$${space.hourlyPrice} × ${effectiveHours} hours`}
           value={`$${subtotal}`}
         />
         <Row label="Yardly service fee" value={`$${serviceFee}`} />

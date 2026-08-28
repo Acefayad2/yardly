@@ -62,9 +62,7 @@ export default function Bookings() {
                     {format(new Date(b.date + "T00:00:00"), "EEE, MMM d, yyyy")}
                   </p>
                   <p className="text-sm text-muted">
-                    {b.fullDay
-                      ? "Full day"
-                      : `${timeLabel(b.startTime)} – ${timeLabel(b.endTime)} · ${b.hours} hrs`}
+                    {`${timeLabel(b.startTime)} – ${timeLabel(b.endTime)} · ${b.hours} hrs`}
                     {" · "}{b.guests} {b.guests === 1 ? "guest" : "guests"} · ${b.total} total
                   </p>
                 </div>

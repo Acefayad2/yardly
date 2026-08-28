@@ -109,7 +109,7 @@ export default function MobileSearch() {
               <button type="button" className="mobile-search-next" onClick={continueToGuests}>Next: guests</button>
             </section>
           ) : (
-            <CollapsedSection label="When" value={date ? new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "Add dates"} onClick={() => setStep("when")} />
+            <CollapsedSection label="When" value={date ? new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "Add a date"} onClick={() => setStep("when")} />
           )}
 
           {step === "who" ? (
