@@ -32,7 +32,7 @@ interface Store {
   hostReservations: HostReservation[];
   hostDataLoading: boolean;
   hostDataError: string | null;
-  login: (mode: AuthMode, name: string, email: string, password: string) => Promise<AuthResult>;
+  login: (mode: AuthMode, name: string, email: string, password: string, phone: string, dateOfBirth: string) => Promise<AuthResult>;
   logout: () => Promise<void>;
   addBooking: (b: Booking) => void;
   cancelBooking: (id: string) => void;
@@ -102,11 +102,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     const nextUser = mapUser(session.user);
     setUser(nextUser);
-    await getSupabase().from("profiles").upsert({
+    const profile: { id: string; full_name: string; account_type: string; phone_number?: string; date_of_birth?: string } = {
       id: nextUser.id,
       full_name: nextUser.name,
       account_type: "both",
-    });
+    };
+    const phoneNumber = String(session.user.user_metadata.phone_number || "");
+    const dateOfBirth = String(session.user.user_metadata.date_of_birth || "");
+    if (phoneNumber) profile.phone_number = phoneNumber;
+    if (dateOfBirth) profile.date_of_birth = dateOfBirth;
+    await getSupabase().from("profiles").upsert(profile);
     await loadHostData(nextUser.id);
   }, [loadHostData]);
 
@@ -157,15 +162,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (hydrated) localStorage.setItem(FAVS_KEY, JSON.stringify(favorites));
   }, [favorites, hydrated]);
 
-  const login = useCallback(async (mode: AuthMode, name: string, email: string, password: string): Promise<AuthResult> => {
+  const login = useCallback(async (mode: AuthMode, name: string, email: string, password: string, phone: string, dateOfBirth: string): Promise<AuthResult> => {
     try {
       const supabase = getSupabase();
       if (mode === "signup") {
+        const phoneNumber = normalizePhone(phone);
+        if (!phoneNumber) return { error: "Enter a valid phone number, including the country code." };
+        if (!isValidDateOfBirth(dateOfBirth)) return { error: "Enter a valid date of birth." };
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            data: { full_name: name.trim() },
+            data: {
+              full_name: name.trim(),
+              phone_number: phoneNumber,
+              date_of_birth: dateOfBirth,
+            },
             emailRedirectTo: Capacitor.isNativePlatform() ? IOS_AUTH_REDIRECT : window.location.origin,
           },
         });
@@ -297,6 +309,27 @@ function mapUser(user: SupabaseUser): User {
     email,
     name: String(user.user_metadata.full_name || email.split("@")[0] || "Yardly user"),
   };
+}
+
+function normalizePhone(value: string): string | null {
+  const digits = value.replace(/\D/g, "");
+  const normalized = value.trim().startsWith("+")
+    ? `+${digits}`
+    : digits.length === 10
+      ? `+1${digits}`
+      : `+${digits}`;
+  return /^\+[1-9]\d{7,14}$/.test(normalized) ? normalized : null;
+}
+
+function isValidDateOfBirth(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  const today = new Date();
+  const earliest = new Date("1900-01-01T00:00:00Z");
+  return !Number.isNaN(date.getTime())
+    && date.toISOString().slice(0, 10) === value
+    && date >= earliest
+    && date <= today;
 }
 
 function mapListing(row: Record<string, unknown>): HostListing {

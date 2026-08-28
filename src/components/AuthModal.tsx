@@ -9,6 +9,8 @@ export default function AuthModal() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [feedback, setFeedback] = useState<{ type: "error" | "message"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -18,7 +20,7 @@ export default function AuthModal() {
     e.preventDefault();
     setSubmitting(true);
     setFeedback(null);
-    const result = await login(mode, name.trim(), email.trim(), password);
+    const result = await login(mode, name.trim(), email.trim(), password, phone, dateOfBirth);
     setSubmitting(false);
     if (result.error) {
       setFeedback({ type: "error", text: result.error });
@@ -36,6 +38,8 @@ export default function AuthModal() {
     setName("");
     setEmail("");
     setPassword("");
+    setPhone("");
+    setDateOfBirth("");
   }
 
   return (
@@ -44,7 +48,7 @@ export default function AuthModal() {
           className="absolute inset-0 bg-black/50"
           onClick={() => { setAuthOpen(false); setFeedback(null); }}
       />
-      <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-background shadow-2xl animate-fade-in">
+      <div className="relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl bg-background shadow-2xl animate-fade-in">
         <div className="flex items-center justify-center border-b border-border-soft px-4 py-4">
           <button
             onClick={() => { setAuthOpen(false); setFeedback(null); }}
@@ -67,15 +71,44 @@ export default function AuthModal() {
             {mode === "signup" && (
               <input
                 required
+                autoComplete="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Full name"
                 className="w-full border-b border-border px-4 py-3.5 text-sm outline-none focus:ring-2 focus:ring-foreground/70"
               />
             )}
+            {mode === "signup" && (
+              <input
+                required
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Phone number (+1 555 123 4567)"
+                className="w-full border-b border-border px-4 py-3.5 text-sm outline-none focus:ring-2 focus:ring-foreground/70"
+              />
+            )}
+            {mode === "signup" && (
+              <label className="block border-b border-border px-4 pb-2 pt-2 text-xs font-medium text-muted">
+                Date of birth
+                <input
+                  required
+                  type="date"
+                  autoComplete="bday"
+                  min="1900-01-01"
+                  max={new Date().toISOString().slice(0, 10)}
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  className="mt-0.5 block w-full bg-transparent py-1 text-sm text-foreground outline-none"
+                />
+              </label>
+            )}
             <input
               required
               type="email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
@@ -84,6 +117,7 @@ export default function AuthModal() {
             <input
               required
               type="password"
+              autoComplete={mode === "signup" ? "new-password" : "current-password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
