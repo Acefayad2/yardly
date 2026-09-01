@@ -22,6 +22,7 @@ export default function Explore() {
   const query = (params.get("q") ?? "").toLowerCase();
   const [spaceType, setSpaceType] = useState<SpaceType | "All">("All");
   const [showMap, setShowMap] = useState(false);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const spaces = useMemo(() => {
     return SPACES.filter((s) => {
@@ -55,12 +56,17 @@ export default function Explore() {
           {/* List: hidden on mobile (map takes over, like Airbnb), left column on desktop */}
           <div className="no-scrollbar hidden content-start gap-6 overflow-y-auto lg:grid lg:w-1/2 lg:grid-cols-2">
             {spaces.map((s) => (
-              <SpaceCard key={s.id} space={s} />
+              <SpaceCard
+                key={s.id}
+                space={s}
+                highlighted={hoveredId === s.id}
+                onHoverChange={(hovered) => setHoveredId(hovered ? s.id : null)}
+              />
             ))}
           </div>
           {/* Map: full-screen on mobile, right column on desktop */}
           <div className="h-full w-full overflow-hidden lg:w-1/2 lg:rounded-2xl">
-            <MapView spaces={spaces} />
+            <MapView spaces={spaces} activeId={hoveredId ?? undefined} onMarkerHover={setHoveredId} />
           </div>
         </div>
       ) : (

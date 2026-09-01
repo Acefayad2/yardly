@@ -1,30 +1,70 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Space } from "@/lib/types";
 import { useStore } from "@/lib/store";
 
-export default function SpaceCard({ space }: { space: Space }) {
+const SWIPE_THRESHOLD = 40; // px of horizontal drag before we treat it as a page change
+
+export default function SpaceCard({
+  space,
+  highlighted,
+  onHoverChange,
+}: {
+  space: Space;
+  highlighted?: boolean;
+  onHoverChange?: (hovered: boolean) => void;
+}) {
   const { favorites, toggleFavorite } = useStore();
   const [idx, setIdx] = useState(0);
   const isFav = favorites.includes(space.id);
+  const touchStartX = useRef<number | null>(null);
+
+  const shift = (dir: 1 | -1) => {
+    setIdx((i) => (i + dir + space.images.length) % space.images.length);
+  };
 
   const go = (e: React.MouseEvent, dir: 1 | -1) => {
     e.preventDefault();
     e.stopPropagation();
-    setIdx((i) => (i + dir + space.images.length) % space.images.length);
+    shift(dir);
+  };
+
+  // Touch devices have no hover, so the arrow buttons below are never revealed —
+  // swiping the photo directly is how phones/tablets browse each card's gallery.
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || space.images.length < 2) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(dx) > SWIPE_THRESHOLD) shift(dx < 0 ? 1 : -1);
   };
 
   return (
-    <Link href={`/spaces/${space.id}`} className="group block">
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-border-soft">
+    <Link
+      href={`/spaces/${space.id}`}
+      className="group block"
+      onMouseEnter={() => onHoverChange?.(true)}
+      onMouseLeave={() => onHoverChange?.(false)}
+    >
+      <div
+        className={`relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-border-soft transition ${
+          highlighted ? "ring-2 ring-foreground" : ""
+        }`}
+        style={{ touchAction: "pan-y" }}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={space.images[idx]}
           alt={space.title}
           className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.04]"
           loading="lazy"
+          draggable={false}
         />
 
         <button
@@ -53,14 +93,14 @@ export default function SpaceCard({ space }: { space: Space }) {
           <>
             <button
               onClick={(e) => go(e, -1)}
-              className="absolute left-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full bg-background/90 opacity-0 shadow transition group-hover:opacity-100 hover:scale-105"
+              className="gallery-nav absolute left-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full bg-background/90 opacity-0 shadow transition group-hover:opacity-100 hover:scale-105"
               aria-label="Previous photo"
             >
               <svg viewBox="0 0 24 24" className="h-4 w-4 stroke-current" fill="none" strokeWidth={2.5}><path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
             <button
               onClick={(e) => go(e, 1)}
-              className="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full bg-background/90 opacity-0 shadow transition group-hover:opacity-100 hover:scale-105"
+              className="gallery-nav absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full bg-background/90 opacity-0 shadow transition group-hover:opacity-100 hover:scale-105"
               aria-label="Next photo"
             >
               <svg viewBox="0 0 24 24" className="h-4 w-4 stroke-current" fill="none" strokeWidth={2.5}><path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
