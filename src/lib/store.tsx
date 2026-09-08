@@ -94,6 +94,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const applySession = useCallback(async (session: Session | null) => {
     if (!session?.user) {
       setUser(null);
+      setFavorites(readStoredFavorites());
       setHostListings([]);
       setHostReservations([]);
       setHostDataLoading(false);
@@ -111,7 +112,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const dateOfBirth = String(session.user.user_metadata.date_of_birth || "");
     if (phoneNumber) profile.phone_number = phoneNumber;
     if (dateOfBirth) profile.date_of_birth = dateOfBirth;
-    await getSupabase().from("profiles").upsert(profile);
+    const supabase = getSupabase();
+    await supabase.from("profiles").upsert(profile);
+
+    const storedFavorites = readStoredFavorites();
+    if (storedFavorites.length) {
+      const { error } = await supabase.from("saved_listings").upsert(
+        storedFavorites.map((listingKey) => ({
+          user_id: nextUser.id,
+          listing_key: listingKey,
+        })),
+        { onConflict: "user_id,listing_key" },
+      );
+      if (!error) localStorage.removeItem(FAVS_KEY);
+    }
+    const { data: savedListings, error: favoritesError } = await supabase
+      .from("saved_listings")
+      .select("listing_key")
+      .eq("user_id", nextUser.id);
+    if (!favoritesError) {
+      setFavorites((savedListings ?? []).map(({ listing_key }) => String(listing_key)));
+    }
     await loadHostData(nextUser.id);
   }, [loadHostData]);
 
@@ -159,8 +180,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [bookings, hydrated]);
 
   useEffect(() => {
-    if (hydrated) localStorage.setItem(FAVS_KEY, JSON.stringify(favorites));
-  }, [favorites, hydrated]);
+    if (hydrated && !user) localStorage.setItem(FAVS_KEY, JSON.stringify(favorites));
+  }, [favorites, hydrated, user]);
 
   const login = useCallback(async (mode: AuthMode, name: string, email: string, password: string, phone: string, dateOfBirth: string): Promise<AuthResult> => {
     try {
@@ -210,10 +231,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleFavorite = useCallback((listingId: string) => {
-    setFavorites((previous) => previous.includes(listingId)
-      ? previous.filter((id) => id !== listingId)
-      : [...previous, listingId]);
-  }, []);
+    const wasSaved = favorites.includes(listingId);
+    setFavorites(wasSaved
+      ? favorites.filter((id) => id !== listingId)
+      : [...favorites, listingId]);
+
+    if (!user) return;
+    const supabase = getSupabase();
+    const request = wasSaved
+      ? supabase.from("saved_listings").delete().eq("user_id", user.id).eq("listing_key", listingId)
+      : supabase.from("saved_listings").insert({ user_id: user.id, listing_key: listingId });
+
+    void request.then(({ error }) => {
+      if (error) setFavorites(favorites);
+    });
+  }, [favorites, user]);
 
   const addHostListing = useCallback(async (listing: NewHostListing, photos: File[]): Promise<AuthResult> => {
     if (!user) return { error: "Sign in before saving a listing." };
@@ -376,4 +408,13 @@ function mapReservation(row: Record<string, unknown>): HostReservation {
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong. Please try again.";
+}
+
+function readStoredFavorites(): string[] {
+  try {
+    const value = localStorage.getItem(FAVS_KEY);
+    return value ? JSON.parse(value).filter((item: unknown) => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
 }
