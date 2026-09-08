@@ -21,30 +21,6 @@ interface Trip {
   additionalGuests: number;
 }
 
-const SAMPLE_TRIPS: Trip[] = [
-  {
-    id: "sample-la",
-    space: SPACES[0],
-    scheduleLabel: "Sep 12, 2026 · 2 PM – 6 PM",
-    guestInitials: ["A", "M", "J"],
-    additionalGuests: 3,
-  },
-  {
-    id: "sample-phx",
-    space: SPACES[1],
-    scheduleLabel: "Oct 3, 2026 · 11 AM – 3 PM",
-    guestInitials: ["K", "D", "S"],
-    additionalGuests: 2,
-  },
-  {
-    id: "sample-austin",
-    space: SPACES[2],
-    scheduleLabel: "Nov 7, 2026 · 5 PM – 9 PM",
-    guestInitials: ["E", "C", "T"],
-    additionalGuests: 2,
-  },
-];
-
 const AVATAR_COLORS = ["#dff2e5", "#ede6fb", "#fff0d2", "#dcecf8"];
 
 export default function Trips() {
@@ -61,7 +37,7 @@ export default function Trips() {
     }];
   });
 
-  const trips = bookedTrips.length ? bookedTrips.slice(0, 3) : SAMPLE_TRIPS;
+  const trips = bookedTrips.slice(0, 3);
   const mapPoints: TripMapPoint[] = trips.map(({ id, space }) => ({
     id,
     label: space.location,
@@ -78,7 +54,13 @@ export default function Trips() {
         <div className="trips-sheet__handle" aria-hidden="true" />
         <h1 id="trips-title">Trips</h1>
 
-        <div className="trips-list">
+        {trips.length === 0 ? (
+          <div className="mt-8 rounded-2xl bg-surface-soft px-6 py-10 text-center">
+            <h2 className="text-lg font-semibold">No upcoming trips</h2>
+            <p className="mx-auto mt-2 max-w-sm text-sm text-muted">When you reserve a Yardly space, the booking and directions will appear here.</p>
+            <Link href="/" className="mt-5 inline-block rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white">Explore spaces</Link>
+          </div>
+        ) : <div className="trips-list">
           {trips.map((trip) => (
             <Link key={trip.id} href={`/spaces/${trip.space.id}`} className="trip-card">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -96,7 +78,7 @@ export default function Trips() {
               <span className="trip-card__arrow" aria-hidden="true">›</span>
             </Link>
           ))}
-        </div>
+        </div>}
 
         <details className="canceled-trips">
           <summary>
