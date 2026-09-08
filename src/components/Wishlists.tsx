@@ -1,18 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { SPACES } from "@/lib/spaces";
 import { useStore } from "@/lib/store";
 import SpaceCard from "./SpaceCard";
 
 export default function Wishlists() {
-  const { favorites } = useStore();
-  const saved = SPACES.filter((s) => favorites.includes(s.id));
+  const { favorites, spaces, marketplaceLoading } = useStore();
+  const saved = spaces.filter((s) => favorites.includes(s.id));
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-10 animate-fade-in">
       <h1 className="text-3xl font-semibold">Saved spaces</h1>
-      {saved.length === 0 ? (
+      {marketplaceLoading ? (
+        <div className="mt-10 rounded-2xl bg-surface-soft p-10 text-center" role="status">Loading saved spaces…</div>
+      ) : saved.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-border p-10 text-center">
           <p className="text-lg font-semibold">No saved spaces yet</p>
           <p className="mt-1 text-muted">Tap the heart on any space to save it here.</p>

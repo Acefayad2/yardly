@@ -5,12 +5,33 @@ import Link from "next/link";
 import { Space } from "@/lib/types";
 import BookingWidget from "./BookingWidget";
 import { useStore } from "@/lib/store";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 const MapView = dynamic(() => import("./MapView"), { ssr: false });
 
 export default function SpaceDetail({ space }: { space: Space }) {
-  const { favorites, toggleFavorite } = useStore();
+  const { user, favorites, toggleFavorite, startConversation, setAuthOpen } = useStore();
+  const router = useRouter();
+  const [messageError, setMessageError] = useState("");
+  const [openingConversation, setOpeningConversation] = useState(false);
   const isFav = favorites.includes(space.id);
+
+  async function messageHost() {
+    if (!user) {
+      setAuthOpen(true);
+      return;
+    }
+    setOpeningConversation(true);
+    setMessageError("");
+    const result = await startConversation(space.id);
+    setOpeningConversation(false);
+    if (result.error) {
+      setMessageError(result.error);
+      return;
+    }
+    router.push(`/messages?conversation=${encodeURIComponent(result.id ?? "")}`);
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-28 pt-6 lg:pb-12">
@@ -30,9 +51,9 @@ export default function SpaceDetail({ space }: { space: Space }) {
       <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm">
         <span className="flex items-center gap-1 font-medium">
           <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current"><path d="M12 2l2.9 6.3 6.9.6-5.2 4.6 1.6 6.8L12 17.3 5.8 20.9l1.6-6.8L2.2 8.9l6.9-.6z" /></svg>
-          {space.rating.toFixed(2)}
+          {space.reviews ? space.rating.toFixed(2) : "New"}
         </span>
-        <span className="text-muted">· {space.reviews} reviews ·</span>
+        <span className="text-muted">· {space.reviews ? `${space.reviews} reviews` : "No reviews yet"} ·</span>
         {space.topHost && <span className="font-medium">★ Top host ·</span>}
         <span className="font-medium underline">{space.neighborhood}, {space.location}</span>
       </p>
@@ -64,6 +85,10 @@ export default function SpaceDetail({ space }: { space: Space }) {
               <p className="mt-1 text-sm text-muted">
                 {space.topHost ? "Top host · " : ""}Hosting since {space.host.since} · {space.host.responseRate}% response rate
               </p>
+              <button type="button" onClick={() => void messageHost()} disabled={openingConversation} className="mt-3 text-sm font-semibold text-brand-dark underline underline-offset-4 disabled:cursor-wait disabled:opacity-60">
+                {openingConversation ? "Opening conversation…" : "Message host"}
+              </button>
+              {messageError && <p role="alert" className="mt-2 text-sm text-red-700">{messageError}</p>}
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={space.host.avatar} alt={space.host.name} className="h-14 w-14 rounded-full object-cover" />
@@ -129,7 +154,7 @@ export default function SpaceDetail({ space }: { space: Space }) {
         <div className="mx-auto flex max-w-lg items-center justify-between gap-4">
           <div>
             <p className="text-lg font-semibold tabular-nums">${space.hourlyPrice} <span className="text-sm font-normal text-muted">/ hour</span></p>
-            <p className="text-xs text-muted">{space.minHours} hr minimum · {space.rating.toFixed(2)} rating</p>
+            <p className="text-xs text-muted">{space.minHours} hr minimum · {space.reviews ? `${space.rating.toFixed(2)} rating` : "New listing"}</p>
           </div>
           <a href="#booking" className="rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white transition active:scale-[0.98]">
             Choose a time

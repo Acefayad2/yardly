@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Space } from "@/lib/types";
 import { useStore } from "@/lib/store";
+import { spaceHref } from "@/lib/spaces";
 
 export default function SpaceCard({
   space,
@@ -24,7 +25,7 @@ export default function SpaceCard({
     setIdx((i) => (i + dir + space.images.length) % space.images.length);
   };
 
-  const href = `/spaces/${space.id}${bookingQuery}`;
+  const href = spaceHref(space.id, bookingQuery);
 
   const select = (event: React.MouseEvent<HTMLAnchorElement>) => {
     if (!onSelect) return;

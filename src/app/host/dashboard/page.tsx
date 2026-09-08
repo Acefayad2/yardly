@@ -2,24 +2,16 @@
 
 import Link from "next/link";
 import HostNav from "@/components/HostNav";
+import HostSignInRequired from "@/components/HostSignInRequired";
 import { useStore } from "@/lib/store";
 
 export default function HostDashboardPage() {
-  const { user, hostListings, hostReservations, setAuthOpen } = useStore();
+  const { user, hostListings, hostReservations, hostDataLoading, hostDataError } = useStore();
   const upcoming = hostReservations.filter((reservation) => reservation.status === "upcoming");
   const earnings = hostReservations.filter((reservation) => reservation.status !== "cancelled").reduce((sum, reservation) => sum + reservation.payout, 0);
 
   if (!user) {
-    return (
-      <div>
-        <HostNav />
-        <div className="mx-auto max-w-xl px-6 py-24 text-center">
-          <h1 className="text-3xl font-semibold tracking-[-0.04em]">Sign in to host</h1>
-          <p className="mt-3 text-muted">Your host dashboard, listings, and reservations are connected to your Yardly account.</p>
-          <button type="button" onClick={() => setAuthOpen(true)} className="mt-7 rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white">Sign in</button>
-        </div>
-      </div>
-    );
+    return <HostSignInRequired />;
   }
 
   return (
@@ -35,7 +27,9 @@ export default function HostDashboardPage() {
           <Link href="/host/listings/new" className="inline-flex w-fit rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white">Add a space</Link>
         </div>
 
-        <section className="mt-8 grid gap-4 sm:grid-cols-3" aria-label="Hosting summary">
+        {hostDataError && <p role="alert" className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{hostDataError}</p>}
+
+        <section className={`mt-8 grid gap-4 sm:grid-cols-3 ${hostDataLoading ? "animate-pulse opacity-60" : ""}`} aria-label="Hosting summary" aria-busy={hostDataLoading}>
           <Metric label="Upcoming reservations" value={upcoming.length.toString()} detail="Next 30 days" />
           <Metric label="Active listings" value={hostListings.filter((listing) => listing.status === "published").length.toString()} detail={`${hostListings.length} total`} />
           <Metric label="Estimated earnings" value={`$${earnings.toLocaleString()}`} detail="After Yardly fees" />

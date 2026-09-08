@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { SPACES } from "@/lib/spaces";
 import { SpaceType } from "@/lib/types";
+import { useStore } from "@/lib/store";
 import CategoryBar from "./CategoryBar";
 import SpaceCard from "./SpaceCard";
 
@@ -22,6 +22,7 @@ const MapView = dynamic(() => import("./MapView"), {
 });
 
 export default function Explore() {
+  const { spaces: marketplaceSpaces, marketplaceLoading, marketplaceError, refreshMarketplace } = useStore();
   const params = useSearchParams();
   const router = useRouter();
   const rawQuery = params.get("q") ?? "";
@@ -35,7 +36,7 @@ export default function Explore() {
   const [visibleMapState, setVisibleMapState] = useState<{ scope: string; ids: string[] }>();
 
   const spaces = useMemo(() => {
-    return SPACES.filter((s) => {
+    return marketplaceSpaces.filter((s) => {
       const matchType = spaceType === "All" || s.spaceType === spaceType;
       const matchQuery =
         !query ||
@@ -45,7 +46,7 @@ export default function Explore() {
         s.spaceType.toLowerCase().includes(query);
       return matchType && matchQuery && s.capacity >= requestedGuests;
     });
-  }, [spaceType, query, requestedGuests]);
+  }, [marketplaceSpaces, spaceType, query, requestedGuests]);
 
   const spaceScope = spaces.map((space) => space.id).join("|");
   const visibleMapIds = visibleMapState?.scope === spaceScope ? visibleMapState.ids : undefined;
@@ -156,10 +157,21 @@ export default function Explore() {
         </div>
       ) : (
         <div className="mx-auto max-w-7xl px-3 py-4 min-[375px]:px-4 sm:px-6 sm:py-8">
-          {spaces.length === 0 ? (
+          {marketplaceLoading ? (
+            <div className="rounded-3xl bg-surface-soft px-6 py-20 text-center" role="status">
+              <p className="text-lg font-semibold">Finding available spaces…</p>
+              <p className="mt-1 text-muted">Loading current Yardly listings.</p>
+            </div>
+          ) : marketplaceError ? (
+            <div className="rounded-3xl border border-red-200 bg-red-50 px-6 py-20 text-center" role="alert">
+              <p className="text-lg font-semibold text-red-800">Spaces could not be loaded</p>
+              <p className="mt-1 text-sm text-red-700">{marketplaceError}</p>
+              <button type="button" onClick={() => void refreshMarketplace()} className="mt-5 rounded-xl bg-foreground px-5 py-3 text-sm font-semibold text-white">Try again</button>
+            </div>
+          ) : spaces.length === 0 ? (
             <div className="rounded-3xl bg-surface-soft px-6 py-20 text-center">
-              <p className="text-lg font-semibold">No spaces found</p>
-              <p className="text-muted">Try a different city or space type.</p>
+              <p className="text-lg font-semibold">No spaces available yet</p>
+              <p className="text-muted">Try a different search, or check back as Yardly hosts publish new spaces.</p>
               <button type="button" onClick={clearSearch} className="mt-5 rounded-xl bg-foreground px-5 py-3 text-sm font-semibold text-white">
                 Reset search
               </button>
@@ -180,20 +192,22 @@ export default function Explore() {
         </div>
       )}
 
-      <button
-        onClick={() => setShowMap((v) => !v)}
-        className="safe-bottom-floating view-toggle fixed left-1/2 z-30 flex items-center gap-2 rounded-full bg-foreground px-5 py-3.5 text-sm font-semibold text-white"
-        aria-pressed={showMap}
-      >
-        {showMap ? "Show list" : "Show map"}
-        <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden>
-          {showMap ? (
-            <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          ) : (
-            <path d="M9 3L3 6v15l6-3 6 3 6-3V3l-6 3-6-3zm0 0v15m6-12v15" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round" />
-          )}
-        </svg>
-      </button>
+      {!marketplaceLoading && !marketplaceError && marketplaceSpaces.length > 0 && (
+        <button
+          onClick={() => setShowMap((v) => !v)}
+          className="safe-bottom-floating view-toggle fixed left-1/2 z-30 flex items-center gap-2 rounded-full bg-foreground px-5 py-3.5 text-sm font-semibold text-white"
+          aria-pressed={showMap}
+        >
+          {showMap ? "Show list" : "Show map"}
+          <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden>
+            {showMap ? (
+              <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            ) : (
+              <path d="M9 3L3 6v15l6-3 6 3 6-3V3l-6 3-6-3zm0 0v15m6-12v15" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round" />
+            )}
+          </svg>
+        </button>
+      )}
     </div>
   );
 }

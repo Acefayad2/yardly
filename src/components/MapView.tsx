@@ -11,6 +11,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import { Space } from "@/lib/types";
+import { spaceHref } from "@/lib/spaces";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 function priceIcon(price: number, active: boolean) {
@@ -241,13 +242,13 @@ export default function MapView({
               <path d="m6 6 12 12M18 6 6 18" />
             </svg>
           </button>
-          <Link href={`/spaces/${selectedSpace.id}`} className="yardly-map-preview__link">
+          <Link href={spaceHref(selectedSpace.id)} className="yardly-map-preview__link">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={selectedSpace.images[0]} alt={selectedSpace.title} />
             <div>
               <div className="yardly-map-preview__eyebrow">
                 <span>{selectedSpace.neighborhood}</span>
-                <span aria-label={`${selectedSpace.rating} out of 5 stars`}>★ {selectedSpace.rating}</span>
+                <span aria-label={selectedSpace.reviews ? `${selectedSpace.rating} out of 5 stars` : "New listing"}>{selectedSpace.reviews ? `★ ${selectedSpace.rating.toFixed(2)}` : "New"}</span>
               </div>
               <h3>{selectedSpace.title}</h3>
               <p>

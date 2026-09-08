@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import { useStore } from "@/lib/store";
+import { spaceHref } from "@/lib/spaces";
+import { useState } from "react";
 
 function timeLabel(t: string) {
   const hour = parseInt(t.split(":")[0], 10);
@@ -13,8 +15,18 @@ function timeLabel(t: string) {
 }
 
 export default function Bookings() {
-  const { user, bookings, cancelBooking, setAuthOpen } = useStore();
+  const { user, bookings, bookingsLoading, bookingsError, cancelBooking, setAuthOpen } = useStore();
   const justBooked = useSearchParams().get("booked") === "1";
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState("");
+
+  async function cancel(id: string) {
+    setCancellingId(id);
+    setActionError("");
+    const result = await cancelBooking(id);
+    setCancellingId(null);
+    if (result.error) setActionError(result.error);
+  }
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10 animate-fade-in">
@@ -27,6 +39,9 @@ export default function Bookings() {
         </div>
       )}
 
+      {actionError && <p role="alert" className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</p>}
+      {bookingsError && <p role="alert" className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{bookingsError}</p>}
+
       {!user ? (
         <div className="mt-10 rounded-2xl border border-border p-10 text-center">
           <p className="text-lg font-semibold">Log in to see your bookings</p>
@@ -38,6 +53,8 @@ export default function Bookings() {
             Log in
           </button>
         </div>
+      ) : bookingsLoading ? (
+        <div className="mt-10 rounded-2xl bg-surface-soft p-10 text-center" role="status">Loading your reservations…</div>
       ) : bookings.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-border p-10 text-center">
           <p className="text-lg font-semibold">No bookings yet</p>
@@ -50,14 +67,14 @@ export default function Bookings() {
         <div className="mt-8 space-y-5">
           {bookings.map((b) => (
             <div key={b.id} className="flex flex-col gap-4 rounded-2xl border border-border p-4 sm:flex-row">
-              <Link href={`/spaces/${b.spaceId}`} className="shrink-0">
+              <Link href={spaceHref(b.spaceId)} className="shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={b.image} alt={b.title} className="h-40 w-full rounded-xl object-cover sm:h-32 sm:w-48" />
               </Link>
               <div className="flex flex-1 flex-col justify-between">
                 <div>
                   <p className="text-sm text-muted">{b.location}</p>
-                  <Link href={`/spaces/${b.spaceId}`} className="font-semibold hover:underline">{b.title}</Link>
+                  <Link href={spaceHref(b.spaceId)} className="font-semibold hover:underline">{b.title}</Link>
                   <p className="mt-1 text-sm">
                     {format(new Date(b.date + "T00:00:00"), "EEE, MMM d, yyyy")}
                   </p>
@@ -65,14 +82,19 @@ export default function Bookings() {
                     {`${timeLabel(b.startTime)} – ${timeLabel(b.endTime)} · ${b.hours} hrs`}
                     {" · "}{b.guests} {b.guests === 1 ? "guest" : "guests"} · ${b.total} total
                   </p>
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-brand-dark">{b.status}</p>
                 </div>
                 <div className="mt-3">
-                  <button
-                    onClick={() => cancelBooking(b.id)}
-                    className="text-sm font-semibold text-brand underline"
-                  >
-                    Cancel booking
-                  </button>
+                  {b.status !== "cancelled" && b.status !== "completed" && (
+                    <button
+                      type="button"
+                      disabled={cancellingId === b.id}
+                      onClick={() => void cancel(b.id)}
+                      className="text-sm font-semibold text-brand underline disabled:cursor-wait disabled:opacity-60"
+                    >
+                      {cancellingId === b.id ? "Cancelling…" : "Cancel booking"}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
