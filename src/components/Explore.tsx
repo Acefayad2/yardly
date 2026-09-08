@@ -31,6 +31,7 @@ export default function Explore() {
   const [spaceType, setSpaceType] = useState<SpaceType | "All">("All");
   const [showMap, setShowMap] = useState(false);
   const [activeSpaceId, setActiveSpaceId] = useState<string>();
+  const [hoveredSpaceId, setHoveredSpaceId] = useState<string>();
   const [visibleMapState, setVisibleMapState] = useState<{ scope: string; ids: string[] }>();
 
   const spaces = useMemo(() => {
@@ -128,11 +129,16 @@ export default function Explore() {
                 {mapListSpaces.map((space) => (
                   <div
                     key={space.id}
-                    onMouseEnter={() => setActiveSpaceId(space.id)}
-                    onMouseLeave={() => setActiveSpaceId(undefined)}
-                    onFocusCapture={() => setActiveSpaceId(space.id)}
+                    onMouseEnter={() => setHoveredSpaceId(space.id)}
+                    onMouseLeave={() => setHoveredSpaceId(undefined)}
+                    onFocusCapture={() => setHoveredSpaceId(space.id)}
+                    onBlurCapture={() => setHoveredSpaceId(undefined)}
                   >
-                    <SpaceCard space={space} bookingQuery={bookingQuery} />
+                    <SpaceCard
+                      space={space}
+                      bookingQuery={bookingQuery}
+                      onSelect={() => setActiveSpaceId(space.id)}
+                    />
                   </div>
                 ))}
               </div>
@@ -140,7 +146,8 @@ export default function Explore() {
             <section className="map-canvas-frame" aria-label="Map of available spaces">
               <MapView
                 spaces={spaces}
-                activeId={activeSpaceId}
+                activeId={hoveredSpaceId ?? activeSpaceId}
+                focusId={activeSpaceId}
                 onActiveChange={setActiveSpaceId}
                 onVisibleChange={(ids) => setVisibleMapState({ scope: spaceScope, ids })}
               />

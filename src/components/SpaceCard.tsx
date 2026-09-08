@@ -8,9 +8,11 @@ import { useStore } from "@/lib/store";
 export default function SpaceCard({
   space,
   bookingQuery = "",
+  onSelect,
 }: {
   space: Space;
   bookingQuery?: string;
+  onSelect?: () => void;
 }) {
   const { favorites, toggleFavorite } = useStore();
   const [idx, setIdx] = useState(0);
@@ -24,10 +26,21 @@ export default function SpaceCard({
 
   const href = `/spaces/${space.id}${bookingQuery}`;
 
+  const select = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!onSelect) return;
+    event.preventDefault();
+    onSelect();
+  };
+
   return (
     <article className="group min-w-0">
       <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-border-soft sm:aspect-[4/3]">
-        <Link href={href} className="absolute inset-0 z-0" aria-label={`View ${space.title}`}>
+        <Link
+          href={href}
+          onClick={select}
+          className="absolute inset-0 z-0"
+          aria-label={onSelect ? `Show ${space.title} on the map` : `View ${space.title}`}
+        >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={space.images[idx]}
@@ -89,7 +102,7 @@ export default function SpaceCard({
       <div className="mt-2 sm:mt-2.5">
         <div className="flex items-start justify-between gap-2">
           <h3 className="truncate text-sm font-semibold text-foreground sm:text-base">
-            <Link href={href} className="rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+            <Link href={href} onClick={select} className="rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
               {space.location}
             </Link>
           </h3>

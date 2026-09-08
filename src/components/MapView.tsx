@@ -39,6 +39,20 @@ function FitBounds({ spaces }: { spaces: Space[] }) {
   return null;
 }
 
+function FocusSpace({ space }: { space?: Space }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!space) return;
+    map.flyTo([space.lat, space.lng], Math.max(map.getZoom(), 14), {
+      animate: true,
+      duration: 0.85,
+    });
+  }, [map, space]);
+
+  return null;
+}
+
 function MapInteraction({ onBackgroundClick }: { onBackgroundClick: () => void }) {
   useMapEvents({ click: onBackgroundClick });
   return null;
@@ -123,11 +137,13 @@ function MapControls({
 export default function MapView({
   spaces,
   activeId,
+  focusId,
   onActiveChange,
   onVisibleChange,
 }: {
   spaces: Space[];
   activeId?: string;
+  focusId?: string;
   onActiveChange?: (id?: string) => void;
   onVisibleChange?: (ids: string[]) => void;
 }) {
@@ -141,6 +157,11 @@ export default function MapView({
   const selectedSpace = useMemo(
     () => spaces.find((space) => space.id === effectiveSelectedId),
     [effectiveSelectedId, spaces],
+  );
+
+  const focusedSpace = useMemo(
+    () => spaces.find((space) => space.id === focusId),
+    [focusId, spaces],
   );
 
   function selectSpace(id?: string) {
@@ -168,6 +189,7 @@ export default function MapView({
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         />
         <FitBounds spaces={spaces} />
+        <FocusSpace space={focusedSpace} />
         <MapInteraction onBackgroundClick={() => selectSpace(undefined)} />
         <ViewportReporter spaces={spaces} onVisibleChange={reportVisible} />
         <MapControls
