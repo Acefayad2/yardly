@@ -894,9 +894,23 @@ body {
   margin-top: -1rem;
   border: 4px solid white;
   border-radius: 999px;
-  background: var(--brand);
-  box-shadow: 0 5px 14px rgba(18, 145, 90, 0.28);
-  color: white;
+  background: white;
+  box-shadow:
+    0 5px 14px rgba(18, 65, 43, 0.16),
+    inset 0 0 0 1.5px rgba(18, 145, 90, 0.42);
+  color: var(--brand);
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.bottom-nav__item--brand[aria-current="page"] .bottom-nav__icon {
+  background: #eaf7f0;
+  box-shadow:
+    0 5px 14px rgba(18, 65, 43, 0.16),
+    inset 0 0 0 2px var(--brand);
 }
 
 .bottom-nav__item--brand .bottom-nav__icon svg {
