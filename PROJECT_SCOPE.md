@@ -57,4 +57,5 @@ A task is done only when its acceptance criteria are demonstrated in the deploye
 - Messages has no conversation or message persistence.
 - Marketplace inventory and reviews are curated source data rather than database-backed records.
 - Automated browser tests, accessibility checks, and performance budgets are not configured.
+- Netlify deploy previews do not currently receive the public Supabase configuration, so preview runtime verification is blocked.
 - The repository has active, unmerged development branches that require full base-to-head review.
