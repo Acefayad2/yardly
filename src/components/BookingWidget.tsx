@@ -23,6 +23,7 @@ export default function BookingWidget({ space }: { space: Space }) {
   const [hours, setHours] = useState(space.minHours);
   const [guests, setGuests] = useState(1);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const today = format(new Date(), "yyyy-MM-dd");
 
@@ -51,28 +52,26 @@ export default function BookingWidget({ space }: { space: Space }) {
   const serviceFee = Math.round(subtotal * 0.12);
   const total = subtotal + serviceFee;
 
-  function reserve() {
+  async function reserve() {
     setError("");
     if (!date) return setError("Pick a date for your booking.");
     if (!user) {
       setAuthOpen(true);
       return;
     }
-    addBooking({
-      id: crypto.randomUUID(),
+    setSubmitting(true);
+    const result = await addBooking({
       spaceId: space.id,
-      title: space.title,
-      image: space.images[0],
-      location: space.location,
       date,
-      startTime: `${startHour}:00`,
-      endTime: `${endHour}:00`,
-      hours: effectiveHours,
-      fullDay: false,
+      startTime: `${String(startHour).padStart(2, "0")}:00`,
+      endTime: `${String(endHour).padStart(2, "0")}:00`,
       guests,
-      total,
-      createdAt: new Date().toISOString(),
     });
+    setSubmitting(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
     router.push("/bookings?booked=1");
   }
 
@@ -85,7 +84,7 @@ export default function BookingWidget({ space }: { space: Space }) {
         </p>
         <span className="flex items-center gap-1 text-sm">
           <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current"><path d="M12 2l2.9 6.3 6.9.6-5.2 4.6 1.6 6.8L12 17.3 5.8 20.9l1.6-6.8L2.2 8.9l6.9-.6z" /></svg>
-          {space.rating.toFixed(2)} · <span className="text-muted underline">{space.reviews} reviews</span>
+          {space.reviews ? space.rating.toFixed(2) : "New"} · <span className="text-muted underline">{space.reviews ? `${space.reviews} reviews` : "No reviews yet"}</span>
         </span>
       </div>
 
@@ -153,10 +152,12 @@ export default function BookingWidget({ space }: { space: Space }) {
       {error && <p className="mt-3 text-sm font-medium text-brand" role="alert">{error}</p>}
 
       <button
-        onClick={reserve}
-        className="mt-4 w-full rounded-xl bg-brand py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-brand-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        type="button"
+        onClick={() => void reserve()}
+        disabled={submitting}
+        className="mt-4 w-full rounded-xl bg-brand py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-brand-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-wait disabled:opacity-60"
       >
-        Reserve
+        {submitting ? "Checking availability…" : "Reserve"}
       </button>
 
       <div className="mt-5 space-y-3 text-sm">

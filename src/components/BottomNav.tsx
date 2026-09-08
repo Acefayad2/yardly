@@ -27,7 +27,7 @@ export default function BottomNav() {
     <nav className="bottom-nav md:hidden" aria-label="Primary mobile navigation">
       <div className="bottom-nav__items">
         {navigationItems.map(({ href, label, icon: Icon, brand }) => {
-          const active = href === "/" ? pathname === "/" || pathname.startsWith("/spaces/") : pathname.startsWith(href);
+          const active = href === "/" ? pathname === "/" || pathname === "/spaces" || pathname.startsWith("/spaces/") : pathname.startsWith(href);
 
           return (
             <Link

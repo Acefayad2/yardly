@@ -5,8 +5,10 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import HostNav from "@/components/HostNav";
+import HostSignInRequired from "@/components/HostSignInRequired";
 import { useStore } from "@/lib/store";
 import { HostListingStatus } from "@/lib/types";
+import { spaceHref } from "@/lib/spaces";
 
 export default function HostListingsPage() {
   return <Suspense fallback={<div className="p-12 text-center text-muted">Loading listings…</div>}><ListingsContent /></Suspense>;
@@ -14,7 +16,9 @@ export default function HostListingsPage() {
 
 function ListingsContent() {
   const searchParams = useSearchParams();
-  const { hostListings, setHostListingStatus } = useStore();
+  const { user, hostListings, hostDataLoading, hostDataError, setHostListingStatus } = useStore();
+
+  if (!user) return <HostSignInRequired />;
 
   return (
     <div className="min-h-screen bg-[#f7f8f5]">
@@ -27,7 +31,11 @@ function ListingsContent() {
           <Link href="/host/listings/new" className="rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white">Add a space</Link>
         </div>
 
-        {hostListings.length ? (
+        {hostDataError && <p role="alert" className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{hostDataError}</p>}
+
+        {hostDataLoading ? (
+          <div className="mt-8 rounded-2xl bg-white px-6 py-20 text-center" role="status">Loading listings…</div>
+        ) : hostListings.length ? (
           <div className="mt-8 space-y-4">
             {hostListings.map((listing) => (
               <article key={listing.id} className="grid gap-4 rounded-2xl border border-border-soft bg-white p-4 sm:grid-cols-[10rem_1fr_auto] sm:items-center">
@@ -41,6 +49,7 @@ function ListingsContent() {
                   {listing.status !== "published" && <ActionButton onClick={() => setHostListingStatus(listing.id, "published")}>Publish</ActionButton>}
                   {listing.status === "published" && <ActionButton onClick={() => setHostListingStatus(listing.id, "paused")}>Pause</ActionButton>}
                   {listing.status === "paused" && <ActionButton onClick={() => setHostListingStatus(listing.id, "draft")}>Move to draft</ActionButton>}
+                  {listing.status === "published" && <Link href={spaceHref(listing.id)} className="rounded-lg border border-border-soft px-3 py-2 text-center text-xs font-semibold transition hover:bg-surface-soft">View listing</Link>}
                 </div>
               </article>
             ))}

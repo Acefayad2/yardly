@@ -3,11 +3,21 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import HostNav from "@/components/HostNav";
+import HostSignInRequired from "@/components/HostSignInRequired";
 import { useStore } from "@/lib/store";
 import { SpaceType } from "@/lib/types";
 
 const spaceTypes: SpaceType[] = ["Backyards", "Pools", "Outdoor kitchens", "Patios & decks", "Gardens", "Fire pits", "Rooftops", "Sport courts", "Event yards", "Hot tubs"];
 const amenityOptions = ["Restroom access", "Wi-Fi", "Outdoor seating", "Grill", "Fire pit", "Pool", "Parking", "Speakers"];
+const timezoneOptions = [
+  ["America/New_York", "Eastern Time"],
+  ["America/Chicago", "Central Time"],
+  ["America/Denver", "Mountain Time"],
+  ["America/Phoenix", "Arizona Time"],
+  ["America/Los_Angeles", "Pacific Time"],
+  ["America/Anchorage", "Alaska Time"],
+  ["Pacific/Honolulu", "Hawaii Time"],
+] as const;
 
 export default function NewHostListingPage() {
   const router = useRouter();
@@ -16,14 +26,22 @@ export default function NewHostListingPage() {
   const [spaceType, setSpaceType] = useState<SpaceType>("Backyards");
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
   const [description, setDescription] = useState("");
   const [hourlyPrice, setHourlyPrice] = useState("45");
+  const [minHours, setMinHours] = useState("2");
   const [capacity, setCapacity] = useState("12");
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
+  const [timezone, setTimezone] = useState("America/New_York");
+  const [rules, setRules] = useState("");
   const [amenities, setAmenities] = useState<string[]>([]);
   const [photos, setPhotos] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const progress = useMemo(() => `${Math.round((step / 3) * 100)}%`, [step]);
+
+  if (!user) return <HostSignInRequired />;
 
   function toggleAmenity(amenity: string) {
     setAmenities((current) => current.includes(amenity) ? current.filter((item) => item !== amenity) : [...current, amenity]);
@@ -45,11 +63,17 @@ export default function NewHostListingPage() {
     const result = await addHostListing({
       title: title.trim(),
       location: location.trim(),
+      neighborhood: neighborhood.trim(),
+      timezone,
       spaceType,
       hourlyPrice: Number(hourlyPrice),
+      minHours: Number(minHours),
       capacity: Number(capacity),
       description: description.trim(),
       amenities,
+      rules: rules.split("\n").map((rule) => rule.trim()).filter(Boolean),
+      latitude: Number(latitude),
+      longitude: Number(longitude),
       status: "draft",
     }, photos);
     setSaving(false);
@@ -104,12 +128,31 @@ export default function NewHostListingPage() {
                 <Field label="Location" hint="City and state are enough for now">
                   <input required value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Towson, MD" className="host-input" />
                 </Field>
+                <Field label="Neighborhood">
+                  <input required value={neighborhood} onChange={(event) => setNeighborhood(event.target.value)} maxLength={120} placeholder="Stoneleigh" className="host-input" />
+                </Field>
+                <Field label="Local timezone" hint="Booking hours are shown in the space's local time">
+                  <select required value={timezone} onChange={(event) => setTimezone(event.target.value)} className="host-input">
+                    {timezoneOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </Field>
                 <div className="grid gap-5 sm:grid-cols-2">
                   <Field label="Hourly price">
                     <div className="relative"><span className="absolute left-4 top-3.5 font-semibold">$</span><input required min="10" max="1000" type="number" value={hourlyPrice} onChange={(event) => setHourlyPrice(event.target.value)} className="host-input pl-8" /></div>
                   </Field>
                   <Field label="Guest capacity">
                     <input required min="1" max="200" type="number" value={capacity} onChange={(event) => setCapacity(event.target.value)} className="host-input" />
+                  </Field>
+                </div>
+                <div className="grid gap-5 sm:grid-cols-3">
+                  <Field label="Minimum hours">
+                    <input required min="1" max="14" type="number" value={minHours} onChange={(event) => setMinHours(event.target.value)} className="host-input" />
+                  </Field>
+                  <Field label="Approx. latitude" hint="Used for the public map">
+                    <input required min="-90" max="90" step="any" type="number" value={latitude} onChange={(event) => setLatitude(event.target.value)} placeholder="39.4015" className="host-input" />
+                  </Field>
+                  <Field label="Approx. longitude">
+                    <input required min="-180" max="180" step="any" type="number" value={longitude} onChange={(event) => setLongitude(event.target.value)} placeholder="-76.6019" className="host-input" />
                   </Field>
                 </div>
                 <Field label="Description" hint="Tell guests what makes the space special">
@@ -131,6 +174,9 @@ export default function NewHostListingPage() {
                   </button>
                 ))}
               </div>
+              <Field label="Space rules" hint="Put one rule on each line">
+                <textarea required value={rules} onChange={(event) => setRules(event.target.value)} rows={5} maxLength={1000} placeholder={"No smoking\nQuiet hours after 9 PM\nNo glass near the pool"} className="host-input mt-2 resize-none" />
+              </Field>
               <div className="mt-8 rounded-2xl bg-surface-soft p-5">
                 <p className="font-semibold">Your listing will be saved as a draft</p>
                 <p className="mt-1 text-sm leading-6 text-muted">Next, add photos, availability, arrival instructions, and house rules before you publish.</p>

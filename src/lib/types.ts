@@ -12,9 +12,11 @@ export type SpaceType =
 
 export interface Space {
   id: string;
+  hostId: string;
   title: string;
   location: string; // "City, ST"
   neighborhood: string;
+  timezone: string;
   spaceType: SpaceType;
   hourlyPrice: number; // USD per hour
   dayPrice: number; // USD flat full-day rate
@@ -46,6 +48,7 @@ export interface Booking {
   fullDay: boolean;
   guests: number;
   total: number;
+  status: "pending" | "confirmed" | "completed" | "cancelled";
   createdAt: string;
 }
 
@@ -61,11 +64,18 @@ export interface HostListing {
   id: string;
   title: string;
   location: string;
+  neighborhood: string;
+  timezone: string;
   spaceType: SpaceType;
   hourlyPrice: number;
+  minHours: number;
   capacity: number;
   description: string;
   amenities: string[];
+  rules: string[];
+  latitude: number | null;
+  longitude: number | null;
+  images: string[];
   image: string;
   status: HostListingStatus;
   createdAt: string;
@@ -84,4 +94,23 @@ export interface HostReservation {
   guests: number;
   payout: number;
   status: HostReservationStatus;
+}
+
+export interface ConversationMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface Conversation {
+  id: string;
+  listingId: string;
+  listingTitle: string;
+  listingImage: string;
+  guestId: string;
+  hostId: string;
+  updatedAt: string;
+  messages: ConversationMessage[];
 }

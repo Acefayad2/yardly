@@ -11,6 +11,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import { Space } from "@/lib/types";
+import { spaceHref } from "@/lib/spaces";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 function priceIcon(price: number, active: boolean) {
@@ -35,6 +36,20 @@ function FitBounds({ spaces }: { spaces: Space[] }) {
       animate: true,
     });
   }, [spaces, map]);
+
+  return null;
+}
+
+function FocusSpace({ space }: { space?: Space }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!space) return;
+    map.flyTo([space.lat, space.lng], Math.max(map.getZoom(), 14), {
+      animate: true,
+      duration: 0.85,
+    });
+  }, [map, space]);
 
   return null;
 }
@@ -123,11 +138,13 @@ function MapControls({
 export default function MapView({
   spaces,
   activeId,
+  focusId,
   onActiveChange,
   onVisibleChange,
 }: {
   spaces: Space[];
   activeId?: string;
+  focusId?: string;
   onActiveChange?: (id?: string) => void;
   onVisibleChange?: (ids: string[]) => void;
 }) {
@@ -141,6 +158,11 @@ export default function MapView({
   const selectedSpace = useMemo(
     () => spaces.find((space) => space.id === effectiveSelectedId),
     [effectiveSelectedId, spaces],
+  );
+
+  const focusedSpace = useMemo(
+    () => spaces.find((space) => space.id === focusId),
+    [focusId, spaces],
   );
 
   function selectSpace(id?: string) {
@@ -168,6 +190,7 @@ export default function MapView({
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         />
         <FitBounds spaces={spaces} />
+        <FocusSpace space={focusedSpace} />
         <MapInteraction onBackgroundClick={() => selectSpace(undefined)} />
         <ViewportReporter spaces={spaces} onVisibleChange={reportVisible} />
         <MapControls
@@ -219,13 +242,13 @@ export default function MapView({
               <path d="m6 6 12 12M18 6 6 18" />
             </svg>
           </button>
-          <Link href={`/spaces/${selectedSpace.id}`} className="yardly-map-preview__link">
+          <Link href={spaceHref(selectedSpace.id)} className="yardly-map-preview__link">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={selectedSpace.images[0]} alt={selectedSpace.title} />
             <div>
               <div className="yardly-map-preview__eyebrow">
                 <span>{selectedSpace.neighborhood}</span>
-                <span aria-label={`${selectedSpace.rating} out of 5 stars`}>★ {selectedSpace.rating}</span>
+                <span aria-label={selectedSpace.reviews ? `${selectedSpace.rating} out of 5 stars` : "New listing"}>{selectedSpace.reviews ? `★ ${selectedSpace.rating.toFixed(2)}` : "New"}</span>
               </div>
               <h3>{selectedSpace.title}</h3>
               <p>
