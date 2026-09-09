@@ -7,8 +7,12 @@ import { Suspense } from "react";
 import HostNav from "@/components/HostNav";
 import HostSignInRequired from "@/components/HostSignInRequired";
 import { useStore } from "@/lib/store";
-import { HostListingStatus } from "@/lib/types";
+import { HostListing, HostListingStatus } from "@/lib/types";
 import { spaceHref } from "@/lib/spaces";
+
+function isReadyToPublish(listing: HostListing) {
+  return listing.images.length > 0 && listing.latitude !== null && listing.longitude !== null;
+}
 
 export default function HostListingsPage() {
   return <Suspense fallback={<div className="p-12 text-center text-muted">Loading listings…</div>}><ListingsContent /></Suspense>;
@@ -24,8 +28,9 @@ function ListingsContent() {
     <div className="min-h-screen bg-[#f7f8f5]">
       <HostNav />
       <div className="mx-auto max-w-6xl px-5 py-8 sm:px-6 sm:py-12">
-        {searchParams.get("created") === "1" && <div className="mb-6 rounded-xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-medium text-brand-dark">Your listing draft is ready. Complete the remaining details when you are ready to publish.</div>}
-        {searchParams.get("photoWarning") === "1" && <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">Your draft was saved, but one or more photos could not be uploaded. You can add them again when editing the listing.</div>}
+        {searchParams.get("created") === "1" && <div className="mb-6 rounded-xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-medium text-brand-dark">Your listing draft is ready. Use Edit to finish the remaining details when you are ready to publish.</div>}
+        {searchParams.get("updated") === "1" && <div className="mb-6 rounded-xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-medium text-brand-dark">Your changes were saved.</div>}
+        {searchParams.get("photoWarning") === "1" && <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">The listing was saved, but one or more photos could not be uploaded. You can add them again when editing the listing.</div>}
         <div className="flex items-end justify-between gap-5">
           <div><p className="text-sm font-semibold text-brand-dark">Your portfolio</p><h1 className="mt-1 text-3xl font-semibold tracking-[-0.04em]">Listings</h1></div>
           <Link href="/host/listings/new" className="rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white">Add a space</Link>
@@ -46,6 +51,9 @@ function ListingsContent() {
                   <p className="mt-1 text-sm text-muted">{listing.location} · ${listing.hourlyPrice}/hour · Up to {listing.capacity} guests</p>
                 </div>
                 <div className="flex flex-wrap gap-2 sm:flex-col">
+                  <Link href={`/host/listings/edit/?id=${encodeURIComponent(listing.id)}`} className="rounded-lg border border-border-soft px-3 py-2 text-center text-xs font-semibold transition hover:bg-surface-soft">
+                    {isReadyToPublish(listing) ? "Edit" : "Finish setup"}
+                  </Link>
                   {listing.status !== "published" && <ActionButton onClick={() => setHostListingStatus(listing.id, "published")}>Publish</ActionButton>}
                   {listing.status === "published" && <ActionButton onClick={() => setHostListingStatus(listing.id, "paused")}>Pause</ActionButton>}
                   {listing.status === "paused" && <ActionButton onClick={() => setHostListingStatus(listing.id, "draft")}>Move to draft</ActionButton>}
