@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { SpaceType } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import CategoryBar from "./CategoryBar";
+import PricePromiseModal from "./PricePromiseModal";
 import SpaceCard from "./SpaceCard";
 
 const MapView = dynamic(() => import("./MapView"), {
@@ -34,6 +35,7 @@ export default function Explore() {
   const [activeSpaceId, setActiveSpaceId] = useState<string>();
   const [hoveredSpaceId, setHoveredSpaceId] = useState<string>();
   const [visibleMapState, setVisibleMapState] = useState<{ scope: string; ids: string[] }>();
+  const showingDemoListings = marketplaceSpaces.length > 0 && marketplaceSpaces.every((space) => space.isDemo);
 
   const spaces = useMemo(() => {
     return marketplaceSpaces.filter((s) => {
@@ -70,30 +72,7 @@ export default function Explore() {
 
   return (
     <div>
-      {!showMap && (
-        <section className="hero-shell">
-          <div className="hero-content">
-            <p className="hero-eyebrow">Room for the good stuff</p>
-            <h1>Private outdoor spaces, booked by the hour.</h1>
-            <p className="hero-copy">
-              Find a backyard, pool, garden, or rooftop for celebrations, shoots, dinners, and days that deserve more space.
-            </p>
-
-            <TripSearch
-              key={`${rawQuery}|${requestedDate}|${requestedGuests}`}
-              initialLocation={rawQuery}
-              initialDate={requestedDate}
-              initialGuests={requestedGuests}
-            />
-
-            <div className="hero-assurances" aria-label="Yardly booking benefits">
-              <span>Clear hourly pricing</span>
-              <span>Rules before you book</span>
-              <span>Exact address stays private</span>
-            </div>
-          </div>
-        </section>
-      )}
+      <PricePromiseModal />
 
       <div id="discover" className="sticky top-[65px] z-30 scroll-mt-24 border-b border-border-soft bg-background/95 backdrop-blur sm:top-[73px] lg:top-[169px] lg:scroll-mt-48">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
@@ -112,6 +91,14 @@ export default function Explore() {
           <button type="button" onClick={clearSearch} className="font-semibold text-brand-dark underline underline-offset-4">
             Clear search
           </button>
+        </div>
+      )}
+
+      {showingDemoListings && (
+        <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <strong>Preview inventory:</strong> These demo listings show how Yardly works while hosts add live spaces. They cannot be reserved or messaged.
+          </div>
         </div>
       )}
 
@@ -209,57 +196,5 @@ export default function Explore() {
         </button>
       )}
     </div>
-  );
-}
-
-function TripSearch({
-  initialLocation,
-  initialDate,
-  initialGuests,
-}: {
-  initialLocation: string;
-  initialDate: string;
-  initialGuests: number;
-}) {
-  const router = useRouter();
-  const [location, setLocation] = useState(initialLocation);
-  const [date, setDate] = useState(initialDate);
-  const [guests, setGuests] = useState(initialGuests);
-
-  function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const next = new URLSearchParams();
-    if (location.trim()) next.set("q", location.trim());
-    if (date) next.set("date", date);
-    if (guests > 1) next.set("guests", String(guests));
-    router.push(next.size ? `/?${next.toString()}#discover` : "/#discover");
-  }
-
-  return (
-    <form className="trip-search" onSubmit={submit} aria-label="Plan your Yardly search">
-      <label className="trip-search__field trip-search__field--location">
-        <span>Where</span>
-        <input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="City or neighborhood" />
-      </label>
-      <label className="trip-search__field">
-        <span>When</span>
-        <input type="date" value={date} onChange={(event) => setDate(event.target.value)} aria-label="Booking date" />
-      </label>
-      <label className="trip-search__field">
-        <span>Guests</span>
-        <select value={guests} onChange={(event) => setGuests(Number(event.target.value))}>
-          {Array.from({ length: 60 }, (_, index) => index + 1).map((count) => (
-            <option key={count} value={count}>{count} {count === 1 ? "guest" : "guests"}</option>
-          ))}
-        </select>
-      </label>
-      <button type="submit" className="trip-search__submit">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="11" cy="11" r="7" />
-          <path d="m20 20-3-3" />
-        </svg>
-        <span>Search spaces</span>
-      </button>
-    </form>
   );
 }

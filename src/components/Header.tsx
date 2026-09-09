@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import { useStore } from "@/lib/store";
@@ -11,11 +11,38 @@ export default function Header() {
   const { user, logout, setAuthOpen } = useStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [date, setDate] = useState("");
   const [guests, setGuests] = useState("");
+  const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const isHost = pathname.startsWith("/host");
   const isExplore = pathname === "/";
+
+  useEffect(() => {
+    if (!isExplore) return;
+
+    let frame = 0;
+    function updateHeader() {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        setHeaderCollapsed(window.scrollY > 96);
+      });
+    }
+
+    updateHeader();
+    window.addEventListener("scroll", updateHeader, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", updateHeader);
+      window.cancelAnimationFrame(frame);
+    };
+  }, [isExplore]);
+
+  const compactDate = useMemo(() => {
+    if (!date) return "Anytime";
+    return new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }, [date]);
 
   function search(e: React.FormEvent) {
     e.preventDefault();
@@ -38,7 +65,7 @@ export default function Header() {
   ];
 
   return (
-    <header className={`site-header sticky top-0 z-40 border-b border-border-soft bg-background/95 backdrop-blur${pathname.startsWith("/trips") ? " site-header--trips" : ""}${isHost ? " site-header--host" : ""}${!isExplore ? " site-header--compact" : ""}`}>
+    <header className={`site-header sticky top-0 z-40 border-b border-border-soft bg-background/95 backdrop-blur${pathname.startsWith("/trips") ? " site-header--trips" : ""}${isHost ? " site-header--host" : ""}${!isExplore ? " site-header--compact" : ""}${isExplore && headerCollapsed ? " site-header--scrolled" : ""}`}>
       <div className="header-shell mx-auto max-w-[90rem] px-4 sm:px-6">
         <div className="header-primary-row">
           <Link href={isHost ? "/host/dashboard" : "/"} className="header-logo flex shrink-0 items-center gap-2 text-brand" aria-label="Yardly home">
@@ -60,6 +87,25 @@ export default function Header() {
               </Link>
             ))}
           </nav>}
+          {isExplore && (
+            <button
+              type="button"
+              className="compact-header-search"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              aria-label="Open the full Yardly search"
+              aria-hidden={!headerCollapsed}
+              tabIndex={headerCollapsed ? 0 : -1}
+            >
+              <span className="compact-header-search__segment">{query.trim() || "Anywhere"}</span>
+              <span className="compact-header-search__segment">{compactDate}</span>
+              <span className="compact-header-search__segment compact-header-search__segment--guests">
+                {guests ? `${guests} ${guests === "1" ? "guest" : "guests"}` : "Add guests"}
+              </span>
+              <span className="compact-header-search__submit" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m20 20-3-3" /></svg>
+              </span>
+            </button>
+          )}
           {isHost && <span className="hidden rounded-full bg-brand/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-brand-dark sm:inline-flex">Hosting</span>}
 
           <div className="header-actions flex min-w-0 items-center justify-end gap-2">
@@ -157,6 +203,8 @@ export default function Header() {
           onSubmit={search}
           className="header-search mx-auto hidden min-w-0 lg:grid"
           aria-label="Search Yardly spaces"
+          aria-hidden={headerCollapsed}
+          inert={headerCollapsed ? true : undefined}
         >
           <label className="header-search__field header-search__field--where">
             <span>Where</span>
@@ -173,6 +221,8 @@ export default function Header() {
             <input
               type="date"
               name="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
               aria-label="When"
             />
           </label>
