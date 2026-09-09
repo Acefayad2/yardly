@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { SpaceType } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import CategoryBar from "./CategoryBar";
+import PricePromiseModal from "./PricePromiseModal";
 import SpaceCard from "./SpaceCard";
 
 const MapView = dynamic(() => import("./MapView"), {
@@ -70,6 +71,8 @@ export default function Explore() {
 
   return (
     <div>
+      <PricePromiseModal />
+
       {!showMap && (
         <section className="hero-shell">
           <div className="hero-content">
