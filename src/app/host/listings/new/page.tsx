@@ -138,7 +138,7 @@ export default function NewHostListingPage() {
                 </Field>
                 <div className="grid gap-5 sm:grid-cols-2">
                   <Field label="Hourly price">
-                    <div className="relative"><span className="absolute left-4 top-3.5 font-semibold">$</span><input required min="10" max="1000" type="number" value={hourlyPrice} onChange={(event) => setHourlyPrice(event.target.value)} className="host-input pl-8" /></div>
+                    <div className="relative"><span className="pointer-events-none absolute inset-y-0 left-4 flex items-center font-semibold text-muted">$</span><input required min="10" max="1000" type="number" value={hourlyPrice} onChange={(event) => setHourlyPrice(event.target.value)} className="host-input pl-9" /></div>
                   </Field>
                   <Field label="Guest capacity">
                     <input required min="1" max="200" type="number" value={capacity} onChange={(event) => setCapacity(event.target.value)} className="host-input" />
