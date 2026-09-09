@@ -57,10 +57,12 @@ export default function SpaceCard({
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            if (space.isDemo) return;
             toggleFavorite(space.id);
           }}
-          className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-full bg-black/15 transition hover:scale-105 hover:bg-black/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:right-3 sm:top-3 sm:h-10 sm:w-10"
-          aria-label={isFav ? "Remove from saved spaces" : "Save this space"}
+          disabled={space.isDemo}
+          className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-full bg-black/15 transition hover:scale-105 hover:bg-black/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-60 sm:right-3 sm:top-3 sm:h-10 sm:w-10"
+          aria-label={space.isDemo ? "Demo listing cannot be saved" : isFav ? "Remove from saved spaces" : "Save this space"}
         >
           <svg
             viewBox="0 0 24 24"
@@ -72,7 +74,7 @@ export default function SpaceCard({
         </button>
 
         <span className="pointer-events-none absolute left-2 top-2 z-10 max-w-[70%] truncate rounded-lg bg-background/95 px-2 py-1 text-[10px] font-semibold shadow sm:left-3 sm:top-3 sm:px-2.5 sm:text-xs">
-          {space.topHost ? "★ Top host" : space.spaceType}
+          {space.isDemo ? "Demo listing" : space.topHost ? "★ Top host" : space.spaceType}
         </span>
 
         {space.images.length > 1 && (

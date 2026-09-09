@@ -13,6 +13,7 @@ export type SpaceType =
 export interface Space {
   id: string;
   hostId: string;
+  isDemo?: boolean;
   title: string;
   location: string; // "City, ST"
   neighborhood: string;

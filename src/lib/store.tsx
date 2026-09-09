@@ -12,6 +12,7 @@ import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
 import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { getSupabase } from "./supabase";
+import { DEMO_SPACES } from "./demo-spaces";
 import type {
   Booking,
   Conversation,
@@ -98,10 +99,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         .eq("status", "published")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      setSpaces((data ?? []).flatMap((row) => {
+      const publishedSpaces = (data ?? []).flatMap((row) => {
         const mapped = mapSpace(row);
         return mapped ? [mapped] : [];
-      }));
+      });
+      setSpaces(publishedSpaces.length ? publishedSpaces : DEMO_SPACES);
     } catch (error) {
       setMarketplaceError(errorMessage(error));
     } finally {
@@ -307,6 +309,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const addBooking = useCallback(async (booking: NewBooking): Promise<ActionResult> => {
     if (!user) return { error: "Sign in before reserving a space." };
+    if (spaces.some((space) => space.id === booking.spaceId && space.isDemo)) {
+      return { error: "Demo listings are for preview only and cannot be reserved." };
+    }
     try {
       const { data, error } = await getSupabase().rpc("create_reservation", {
         p_listing_id: booking.spaceId,
@@ -321,7 +326,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       return { error: errorMessage(error) };
     }
-  }, [loadGuestBookings, loadHostData, user]);
+  }, [loadGuestBookings, loadHostData, spaces, user]);
 
   const cancelBooking = useCallback(async (id: string): Promise<ActionResult> => {
     if (!user) return { error: "Sign in before cancelling a reservation." };
@@ -428,6 +433,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!user) return { error: "Sign in to message this host." };
     const space = spaces.find((item) => item.id === listingId);
     if (!space) return { error: "This listing is not available." };
+    if (space.isDemo) return { error: "Demo listings do not have a live host to message." };
     if (space.hostId === user.id) return { error: "This is your listing." };
     try {
       const supabase = getSupabase();

@@ -35,6 +35,7 @@ export default function Explore() {
   const [activeSpaceId, setActiveSpaceId] = useState<string>();
   const [hoveredSpaceId, setHoveredSpaceId] = useState<string>();
   const [visibleMapState, setVisibleMapState] = useState<{ scope: string; ids: string[] }>();
+  const showingDemoListings = marketplaceSpaces.length > 0 && marketplaceSpaces.every((space) => space.isDemo);
 
   const spaces = useMemo(() => {
     return marketplaceSpaces.filter((s) => {
@@ -90,6 +91,14 @@ export default function Explore() {
           <button type="button" onClick={clearSearch} className="font-semibold text-brand-dark underline underline-offset-4">
             Clear search
           </button>
+        </div>
+      )}
+
+      {showingDemoListings && (
+        <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <strong>Preview inventory:</strong> These demo listings show how Yardly works while hosts add live spaces. They cannot be reserved or messaged.
+          </div>
         </div>
       )}
 
