@@ -2,8 +2,10 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import AddressMapPicker from "@/components/AddressMapPicker";
 import HostNav from "@/components/HostNav";
 import HostSignInRequired from "@/components/HostSignInRequired";
+import type { AddressSuggestion } from "@/lib/geocoding";
 import { useStore } from "@/lib/store";
 import { SpaceType } from "@/lib/types";
 
@@ -25,14 +27,12 @@ export default function NewHostListingPage() {
   const [step, setStep] = useState(1);
   const [spaceType, setSpaceType] = useState<SpaceType>("Backyards");
   const [title, setTitle] = useState("");
-  const [location, setLocation] = useState("");
-  const [neighborhood, setNeighborhood] = useState("");
+  const [address, setAddress] = useState<AddressSuggestion | null>(null);
+  const [addressError, setAddressError] = useState("");
   const [description, setDescription] = useState("");
   const [hourlyPrice, setHourlyPrice] = useState("45");
   const [minHours, setMinHours] = useState("2");
   const [capacity, setCapacity] = useState("12");
-  const [latitude, setLatitude] = useState("");
-  const [longitude, setLongitude] = useState("");
   const [timezone, setTimezone] = useState("America/New_York");
   const [rules, setRules] = useState("");
   const [amenities, setAmenities] = useState<string[]>([]);
@@ -53,6 +53,11 @@ export default function NewHostListingPage() {
       setAuthOpen(true);
       return;
     }
+    if (step === 2 && !address) {
+      setAddressError("Choose a matching address from the suggestions before continuing.");
+      document.getElementById("listing-address")?.focus();
+      return;
+    }
     if (step < 3) {
       setStep((current) => current + 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -62,8 +67,8 @@ export default function NewHostListingPage() {
     setSaveError("");
     const result = await addHostListing({
       title: title.trim(),
-      location: location.trim(),
-      neighborhood: neighborhood.trim(),
+      location: address?.publicLocation ?? "",
+      neighborhood: address?.neighborhood ?? "",
       timezone,
       spaceType,
       hourlyPrice: Number(hourlyPrice),
@@ -72,8 +77,8 @@ export default function NewHostListingPage() {
       description: description.trim(),
       amenities,
       rules: rules.split("\n").map((rule) => rule.trim()).filter(Boolean),
-      latitude: Number(latitude),
-      longitude: Number(longitude),
+      latitude: address ? approximateCoordinate(address.latitude) : 0,
+      longitude: address ? approximateCoordinate(address.longitude) : 0,
       status: "draft",
     }, photos);
     setSaving(false);
@@ -88,11 +93,11 @@ export default function NewHostListingPage() {
     <div className="min-h-screen bg-white">
       <HostNav />
       <div className="sticky top-[73px] z-20 h-1 bg-surface-soft"><div className="h-full bg-brand transition-all" style={{ width: progress }} /></div>
-      <form onSubmit={submit} className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-3xl flex-col px-6 py-10 sm:py-14">
+      <form onSubmit={submit} className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-6xl flex-col px-4 py-8 sm:px-6 sm:py-14">
         <div className="flex-1">
           <p className="text-sm font-semibold text-brand-dark">Step {step} of 3</p>
           {step === 1 && (
-            <section className="animate-fade-in">
+            <section className="mx-auto max-w-3xl animate-fade-in">
               <h1 className="mt-2 text-4xl font-semibold tracking-[-0.045em]">What kind of space will you share?</h1>
               <p className="mt-3 text-muted">Choose the option that best describes the main experience guests will book.</p>
               <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -120,17 +125,12 @@ export default function NewHostListingPage() {
           {step === 2 && (
             <section className="animate-fade-in">
               <h1 className="text-4xl font-semibold tracking-[-0.045em]">Give guests the essentials</h1>
-              <p className="mt-3 text-muted">You can add photos, detailed rules, and availability before publishing.</p>
+              <p className="mt-3 text-muted">Add the basics and place your space on the map—no coordinates needed.</p>
               <div className="mt-8 space-y-5">
                 <Field label="Listing title" hint="Make it clear and memorable">
                   <input required value={title} onChange={(event) => setTitle(event.target.value)} maxLength={70} placeholder="Sunny garden with dining patio" className="host-input" />
                 </Field>
-                <Field label="Location" hint="City and state are enough for now">
-                  <input required value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Towson, MD" className="host-input" />
-                </Field>
-                <Field label="Neighborhood">
-                  <input required value={neighborhood} onChange={(event) => setNeighborhood(event.target.value)} maxLength={120} placeholder="Stoneleigh" className="host-input" />
-                </Field>
+                <AddressMapPicker selected={address} onSelect={(next) => { setAddress(next); setAddressError(""); }} error={addressError} />
                 <Field label="Local timezone" hint="Booking hours are shown in the space's local time">
                   <select required value={timezone} onChange={(event) => setTimezone(event.target.value)} className="host-input">
                     {timezoneOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -144,15 +144,9 @@ export default function NewHostListingPage() {
                     <input required min="1" max="200" type="number" value={capacity} onChange={(event) => setCapacity(event.target.value)} className="host-input" />
                   </Field>
                 </div>
-                <div className="grid gap-5 sm:grid-cols-3">
+                <div className="grid gap-5 sm:grid-cols-2">
                   <Field label="Minimum hours">
                     <input required min="1" max="14" type="number" value={minHours} onChange={(event) => setMinHours(event.target.value)} className="host-input" />
-                  </Field>
-                  <Field label="Approx. latitude" hint="Used for the public map">
-                    <input required min="-90" max="90" step="any" type="number" value={latitude} onChange={(event) => setLatitude(event.target.value)} placeholder="39.4015" className="host-input" />
-                  </Field>
-                  <Field label="Approx. longitude">
-                    <input required min="-180" max="180" step="any" type="number" value={longitude} onChange={(event) => setLongitude(event.target.value)} placeholder="-76.6019" className="host-input" />
                   </Field>
                 </div>
                 <Field label="Description" hint="Tell guests what makes the space special">
@@ -163,7 +157,7 @@ export default function NewHostListingPage() {
           )}
 
           {step === 3 && (
-            <section className="animate-fade-in">
+            <section className="mx-auto max-w-3xl animate-fade-in">
               <h1 className="text-4xl font-semibold tracking-[-0.045em]">What does your space offer?</h1>
               <p className="mt-3 text-muted">Select everything guests can use. You can update this later.</p>
               <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -204,4 +198,8 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 function iconForType(type: SpaceType) {
   const icons: Record<SpaceType, string> = { Backyards: "🏡", Pools: "💧", "Outdoor kitchens": "🍽️", "Patios & decks": "☀️", Gardens: "🌿", "Fire pits": "🔥", Rooftops: "🌇", "Sport courts": "🏀", "Event yards": "🎉", "Hot tubs": "♨️" };
   return icons[type];
+}
+
+function approximateCoordinate(coordinate: number) {
+  return Math.round(coordinate * 100) / 100;
 }
