@@ -352,11 +352,8 @@ body {
   height: 1.2rem;
   flex: 0 0 auto;
   place-items: center;
-}
-
-.category-filter__icon svg {
-  width: 100%;
-  height: 100%;
+  font-size: 1.15rem;
+  line-height: 1;
 }
 
 @media (min-width: 768px) {
@@ -402,6 +399,7 @@ body {
   .category-filter__icon {
     width: 1.55rem;
     height: 1.55rem;
+    font-size: 1.5rem;
   }
 }
 
