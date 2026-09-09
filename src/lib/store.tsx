@@ -52,6 +52,7 @@ interface Store {
   cancelBooking: (id: string) => Promise<ActionResult>;
   toggleFavorite: (listingId: string) => void;
   addHostListing: (listing: NewHostListing, photos: File[]) => Promise<ActionResult>;
+  updateHostListing: (id: string, listing: NewHostListing, photos: File[]) => Promise<ActionResult>;
   setHostListingStatus: (id: string, status: HostListingStatus) => Promise<void>;
   startConversation: (listingId: string) => Promise<ActionResult>;
   sendMessage: (conversationId: string, body: string) => Promise<ActionResult>;
@@ -405,6 +406,56 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
+  const updateHostListing = useCallback(async (id: string, listing: NewHostListing, photos: File[]): Promise<ActionResult> => {
+    if (!user) return { error: "Sign in before editing a listing." };
+    setHostDataError(null);
+    try {
+      const supabase = getSupabase();
+      const existing = hostListings.find((item) => item.id === id);
+      const images: string[] = [...(existing?.images ?? [])];
+      let photoFailures = 0;
+
+      for (const photo of photos.slice(0, 8)) {
+        const safeName = photo.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
+        const path = `${user.id}/${id}/${crypto.randomUUID()}-${safeName}`;
+        const { error } = await supabase.storage.from("listing-images").upload(path, photo, {
+          cacheControl: "3600",
+          contentType: photo.type,
+          upsert: false,
+        });
+        if (error) {
+          photoFailures += 1;
+          continue;
+        }
+        images.push(supabase.storage.from("listing-images").getPublicUrl(path).data.publicUrl);
+      }
+
+      const { data, error } = await supabase.from("listings").update({
+        title: listing.title,
+        location: listing.location,
+        neighborhood: listing.neighborhood,
+        timezone: listing.timezone,
+        space_type: listing.spaceType,
+        hourly_price: listing.hourlyPrice,
+        min_hours: listing.minHours,
+        capacity: listing.capacity,
+        description: listing.description,
+        amenities: listing.amenities,
+        rules: listing.rules,
+        latitude: listing.latitude,
+        longitude: listing.longitude,
+        images,
+      }).eq("id", id).eq("host_id", user.id).select(LISTING_SELECT).single();
+
+      if (error) throw error;
+      setHostListings((previous) => previous.map((item) => (item.id === id ? mapListing(data) : item)));
+      if (String(data.status) === "published") await refreshMarketplace();
+      return photoFailures ? { message: "Your changes were saved, but one or more photos could not be uploaded." } : {};
+    } catch (error) {
+      return { error: errorMessage(error) };
+    }
+  }, [hostListings, refreshMarketplace, user]);
+
   const setHostListingStatus = useCallback(async (id: string, status: HostListingStatus) => {
     if (!user) return;
     const listing = hostListings.find((item) => item.id === id);
@@ -497,6 +548,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       cancelBooking,
       toggleFavorite,
       addHostListing,
+      updateHostListing,
       setHostListingStatus,
       startConversation,
       sendMessage,
