@@ -1,13 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
 import MobileSearch from "./MobileSearch";
+import DestinationSearch from "./DestinationSearch";
 
 export default function Header() {
+  return <Suspense><HeaderContent /></Suspense>;
+}
+
+function HeaderContent() {
+  const params = useSearchParams();
+  const [today] = useState(() => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10));
   const { user, logout, setAuthOpen } = useStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -18,6 +25,19 @@ export default function Header() {
   const pathname = usePathname();
   const isHost = pathname.startsWith("/host");
   const isExplore = pathname === "/";
+  useEffect(() => {
+    queueMicrotask(() => {
+      setQuery(params.get("q") ?? "");
+      setDate(params.get("date") ?? "");
+      setGuests(params.get("guests") ?? "");
+      setMenuOpen(false);
+    });
+  }, [params, pathname]);
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setMenuOpen(false); };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, []);
 
   useEffect(() => {
     if (!isExplore) return;
@@ -80,7 +100,7 @@ export default function Header() {
               <Link
                 key={category.label}
                 href={category.href}
-                className={`desktop-header-tab${index === 0 ? " desktop-header-tab--active" : ""}`}
+                className={`desktop-header-tab${(index === 0 ? !params.get("q") : params.get("q") === (category.label === "Events" ? "Event yards" : category.label)) ? " desktop-header-tab--active" : ""}`}
               >
                 <span className="desktop-header-tab__icon" aria-hidden="true">{category.icon}</span>
                 <span>{category.label}</span>
@@ -119,17 +139,6 @@ export default function Header() {
 
             <div className="relative">
               <div className="flex items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setMenuOpen(true)}
-                  className="header-utility-button header-language-button"
-                  aria-label="Language and region: English"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M3 12h18M12 3c2.4 2.5 3.6 5.5 3.6 9S14.4 18.5 12 21c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3Z" />
-                  </svg>
-                </button>
                 <button
                   type="button"
                   onClick={() => setMenuOpen((v) => !v)}
@@ -185,10 +194,7 @@ export default function Header() {
                           <span>It&apos;s easy to start hosting and earn extra income.</span>
                         </Link>
                         <div className="account-menu__divider" />
-                        <button type="button" className="account-menu__link" onClick={() => { setAuthOpen(true); setMenuOpen(false); }}>Refer a host</button>
-                        <button type="button" className="account-menu__link" onClick={() => { setAuthOpen(true); setMenuOpen(false); }}>Find a co-host</button>
-                        <button type="button" className="account-menu__link" onClick={() => { setAuthOpen(true); setMenuOpen(false); }}>Gift cards</button>
-                        <div className="account-menu__divider" />
+                        <MenuLink href="/trust/#booking-policies" onClick={() => setMenuOpen(false)}>Booking policies</MenuLink>
                         <button type="button" className="account-menu__link" onClick={() => { setAuthOpen(true); setMenuOpen(false); }}>Log in or sign up</button>
                       </>
                     )}
@@ -206,20 +212,15 @@ export default function Header() {
           aria-hidden={headerCollapsed}
           inert={headerCollapsed ? true : undefined}
         >
-          <label className="header-search__field header-search__field--where">
+          <div className="header-search__field header-search__field--where">
             <span>Where</span>
-            <input
-              value={query}
-              name="q"
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search destinations"
-              aria-label="Where"
-            />
-          </label>
+            <DestinationSearch value={query} onChange={setQuery} />
+          </div>
           <label className="header-search__field">
             <span>When</span>
             <input
               type="date"
+              min={today}
               name="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}

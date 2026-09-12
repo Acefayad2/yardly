@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { SpaceType } from "@/lib/types";
@@ -51,6 +51,10 @@ export default function Explore() {
   }, [marketplaceSpaces, spaceType, query, requestedGuests]);
 
   const spaceScope = spaces.map((space) => space.id).join("|");
+  const updateVisibleSpaces = useCallback((ids: string[]) => {
+    setVisibleMapState((current) => current?.scope === spaceScope && current.ids.join("|") === ids.join("|")
+      ? current : { scope: spaceScope, ids });
+  }, [spaceScope]);
   const visibleMapIds = visibleMapState?.scope === spaceScope ? visibleMapState.ids : undefined;
 
   const mapListSpaces = visibleMapIds
@@ -111,7 +115,7 @@ export default function Explore() {
                   <p>Places to make your own</p>
                   <h2>{mapListSpaces.length} spaces in this map area</h2>
                 </div>
-                <span>Updated today</span>
+                <span>Explore the area</span>
               </div>
               <div className="grid grid-cols-1 gap-x-5 gap-y-8 px-1 pb-8 xl:grid-cols-2">
                 {mapListSpaces.map((space) => (
@@ -137,7 +141,7 @@ export default function Explore() {
                 activeId={hoveredSpaceId ?? activeSpaceId}
                 focusId={activeSpaceId}
                 onActiveChange={setActiveSpaceId}
-                onVisibleChange={(ids) => setVisibleMapState({ scope: spaceScope, ids })}
+                onVisibleChange={updateVisibleSpaces}
               />
             </section>
           </div>
@@ -145,9 +149,8 @@ export default function Explore() {
       ) : (
         <div className="mx-auto max-w-7xl px-3 py-4 min-[375px]:px-4 sm:px-6 sm:py-8">
           {marketplaceLoading ? (
-            <div className="rounded-3xl bg-surface-soft px-6 py-20 text-center" role="status">
-              <p className="text-lg font-semibold">Finding available spaces…</p>
-              <p className="mt-1 text-muted">Loading current Yardly listings.</p>
+            <div className="listing-skeletons" role="status" aria-label="Loading available spaces">
+              {Array.from({ length: 8 }, (_, index) => <div className="listing-skeleton" key={index} aria-hidden="true"><div /><span /><span /></div>)}
             </div>
           ) : marketplaceError ? (
             <div className="rounded-3xl border border-red-200 bg-red-50 px-6 py-20 text-center" role="alert">
@@ -165,9 +168,9 @@ export default function Explore() {
             </div>
           ) : (
             <>
-              <div className="mobile-discovery-heading md:hidden">
-                <h2>Popular outdoor spaces near you</h2>
-                <span aria-hidden="true">→</span>
+              <div className="discovery-heading">
+                <div><p>Make room for a good day</p><h1>{query ? `Spaces matching “${rawQuery}”` : spaceType === "All" ? "Find your kind of outside" : `${spaceType} for your next gathering`}</h1></div>
+                <span>{spaces.length} {spaces.length === 1 ? "space" : "spaces"} · Book by the hour</span>
               </div>
               <div className="grid grid-cols-2 gap-x-2.5 gap-y-6 min-[375px]:gap-x-3 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-3 xl:grid-cols-4">
                 {spaces.map((s) => (

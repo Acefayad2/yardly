@@ -1,0 +1,51 @@
+.destination-search { min-width: 0; }
+.destination-search > input { width: 100%; min-width: 0; }
+.destination-popover { position: absolute; top: calc(100% + 14px); left: 0; width: min(480px, 100%); max-height: min(540px, 65dvh); overflow-y: auto; padding: 22px 14px 14px; background: #fff; color: #25382d; border: 1px solid #e7ece8; border-radius: 26px; box-shadow: 0 16px 48px #25382d20; animation: destination-enter 180ms ease-out; }
+.destination-popover__eyebrow { padding: 0 12px 14px; font-size: 12px; font-weight: 650; letter-spacing: .015em; color: #6a746d; }
+.destination-option { display: flex; align-items: center; gap: 16px; padding: 12px; width: 100%; border-radius: 16px; text-align: left; transition: background 160ms ease; }
+.destination-option:hover, .destination-option[aria-selected="true"] { background: #f4f7f4; }
+.destination-option:focus-visible { outline: 2px solid #12915a; outline-offset: -2px; }
+.destination-option__icon { display: grid; place-items: center; width: 54px; height: 54px; flex-shrink: 0; border-radius: 16px; background: #edf4ef; color: #31835a; font-size: 28px; font-weight: 400; }
+.destination-option__icon--1 { background: #f7f1e7; color: #a47a34; }
+.destination-option__icon--2 { background: #eef3f8; color: #587f9c; }
+.destination-option > span:nth-child(2) { flex: 1; min-width: 0; }
+.destination-option strong { display: block; font-size: 15px; font-weight: 650; line-height: 1.5; }
+.destination-option small { display: block; font-size: 13px; color: #737b76; line-height: 1.6; }
+.destination-option__arrow { color: #89958c; }
+.destination-popover__note { padding: 12px; font-size: 13px; color: #737b76; }
+.header-search__field:focus-within { background: #f5f8f5; border-radius: 999px; }
+.header-search__field--where { padding-block: .65rem; }
+.header-search__field .destination-popover span { font-weight: inherit; line-height: inherit; }
+.header-search__field .destination-option__icon { font-size: 28px; }
+.header-search__field input:focus-visible, .header-search__field select:focus-visible { outline: 2px solid #12915a; outline-offset: 3px; border-radius: 4px; }
+.discovery-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin: 0 0 26px; }
+.discovery-heading p { font-size: 12px; font-weight: 600; color: #617168; margin-bottom: 6px; }
+.discovery-heading h1 { font-size: clamp(23px, 2.4vw, 32px); font-weight: 650; letter-spacing: -.04em; line-height: 1.2; text-wrap: balance; }
+.discovery-heading > span { font-size: 13px; color: #6c766f; flex-shrink: 0; padding-bottom: 3px; }
+.listing-skeletons { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px 24px; }
+.listing-skeleton > div { aspect-ratio: 4/3; border-radius: 18px; background: #edf1ed; }
+.listing-skeleton > span { display: block; height: 12px; width: 75%; margin-top: 14px; border-radius: 4px; background: #edf1ed; }
+.listing-skeleton > span:last-child { width: 48%; }
+.listing-skeleton { animation: skeleton-breathe 1.6s ease-in-out infinite alternate; }
+.search-sheet-title { font-size: 16px; font-weight: 650; letter-spacing: -.02em; }
+@keyframes destination-enter { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes skeleton-breathe { to { opacity: .5; } }
+@media (max-width: 1023px) {
+  .mobile-search-card .destination-search > input { min-height: 54px; margin-top: 20px; border: 1px solid #b6c5bb; border-radius: 14px; padding: 12px 14px; font-size: 16px; outline-color: #12915a; }
+  .mobile-search-card .destination-popover { position: static; width: 100%; max-height: none; box-shadow: none; border: 0; padding: 24px 0 0; border-radius: 0; }
+  .mobile-search-card .destination-option { padding: 10px 0; gap: 12px; }
+  .mobile-search-card .destination-option__icon { width: 46px; height: 46px; border-radius: 13px; }
+  .listing-skeletons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .auth-glass-field > input, .auth-glass-password input { font-size: 16px; }
+}
+@media (max-width: 640px) {
+  .discovery-heading { display: block; margin-bottom: 20px; }
+  .discovery-heading > span { display: block; margin-top: 8px; font-size: 12px; }
+  .destination-option strong { font-size: 14px; }
+  .destination-option small { font-size: 12px; }
+  .listing-skeletons { gap: 24px 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .destination-popover, .listing-skeleton { animation: none; }
+  .site-header *, .header-shell { transition: none !important; }
+}

@@ -109,10 +109,10 @@ export default function SpaceCard({
               {space.location}
             </Link>
           </h3>
-          <span className="flex shrink-0 items-center gap-1 text-xs sm:text-sm" aria-label={`${space.rating.toFixed(2)} out of 5 from ${space.reviews} reviews`}>
+          {space.reviews > 0 ? <span className="flex shrink-0 items-center gap-1 text-xs sm:text-sm" aria-label={`${space.rating.toFixed(2)} out of 5 from ${space.reviews} reviews`}>
             <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current"><path d="M12 2l2.9 6.3 6.9.6-5.2 4.6 1.6 6.8L12 17.3 5.8 20.9l1.6-6.8L2.2 8.9l6.9-.6z" /></svg>
             {space.rating.toFixed(2)} <span className="hidden text-xs text-muted sm:inline">({space.reviews})</span>
-          </span>
+          </span> : <span className="text-xs text-muted">New</span>}
         </div>
         <p className="truncate text-xs text-muted min-[375px]:text-sm">{space.neighborhood} · {space.spaceType}</p>
         <p className="truncate text-xs text-muted min-[375px]:text-sm">{space.title}</p>
