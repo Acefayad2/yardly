@@ -17,6 +17,11 @@ export default function MobileSearch() {
   const [query, setQuery] = useState("");
   const [date, setDate] = useState("");
   const [guests, setGuests] = useState(1);
+  useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(() => dialog.current?.querySelector<HTMLElement>(".mobile-search-card input, .mobile-search-card button:not([disabled])")?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [open, step]);
 
   useEffect(() => {
     if (!open) return;

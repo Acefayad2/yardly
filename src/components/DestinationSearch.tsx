@@ -48,7 +48,7 @@ export default function DestinationSearch({ value, onChange, onChoose, autoFocus
             event.preventDefault(); setOpen(true);
             setActive((index) => (index + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length);
           }
-          if (event.key === "Enter" && open && active >= 0) { event.preventDefault(); choose(options[active].value); }
+          if (event.key === "Enter" && open && options[active]) { event.preventDefault(); choose(options[active].value); }
         }} />
       {open && <div className="destination-popover">
         <p className="destination-popover__eyebrow">{value ? "Matching destinations" : "Find your kind of outside"}</p>

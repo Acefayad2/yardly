@@ -158,7 +158,7 @@ export default function AuthModal() {
           <p className="auth-glass-switch">{mode === "login" ? "New to Yardly?" : "Already have an account?"}<button type="button" onClick={() => changeMode(mode === "login" ? "signup" : "login")}>{mode === "login" ? "Create an account" : "Log in instead"}</button></p>
         </form>
 
-        <footer className="auth-glass-footer"><span><i aria-hidden="true" /> Secure authentication</span><span>Powered by Supabase</span></footer>
+        <footer className="auth-glass-footer"><span><i aria-hidden="true" /> One Yardly account</span><span>Book spaces. Host your own.</span></footer>
       </section>
     </div>
   );

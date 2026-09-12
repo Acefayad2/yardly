@@ -113,7 +113,7 @@ export default function Explore() {
               <div className="map-results-heading">
                 <div>
                   <p>Places to make your own</p>
-                  <h2>{mapListSpaces.length} spaces in this map area</h2>
+                  <h2>{mapListSpaces.length} {mapListSpaces.length === 1 ? "space" : "spaces"} in this map area</h2>
                 </div>
                 <span>Explore the area</span>
               </div>
