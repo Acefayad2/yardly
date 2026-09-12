@@ -11,6 +11,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import { Space } from "@/lib/types";
+import { MAP_TILE_ATTRIBUTION, MAP_TILE_SUBDOMAINS, MAP_TILE_URL } from "@/lib/maps";
 import { spaceHref } from "@/lib/spaces";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -186,8 +187,9 @@ export default function MapView({
         className="h-full w-full"
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          attribution={MAP_TILE_ATTRIBUTION}
+          subdomains={MAP_TILE_SUBDOMAINS}
+          url={MAP_TILE_URL}
         />
         <FitBounds spaces={spaces} />
         <FocusSpace space={focusedSpace} />

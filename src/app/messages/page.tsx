@@ -42,7 +42,7 @@ function MessagesContent() {
 
   if (!user) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-10 text-center animate-fade-in">
+      <div className="mx-auto max-w-3xl px-6 py-10 text-center animate-fade-in">
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-brand-dark">Inbox</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em]">Messages</h1>
         <div className="mt-10 rounded-2xl bg-surface-soft px-6 py-12">
@@ -50,12 +50,12 @@ function MessagesContent() {
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">Keep questions and reservation details private and connected to the right space.</p>
           <button type="button" onClick={() => setAuthOpen(true)} className="mt-6 rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white">Sign in</button>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10 animate-fade-in">
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10 animate-fade-in">
       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-brand-dark">Inbox</p>
       <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em]">Messages</h1>
 
@@ -123,7 +123,7 @@ function MessagesContent() {
           )}
         </div>
       )}
-    </main>
+    </div>
   );
 }
 

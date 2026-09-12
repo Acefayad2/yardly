@@ -3,6 +3,8 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import HostNav from "@/components/HostNav";
+import AddressMapPicker from "@/components/AddressMapPicker";
+import type { AddressSuggestion } from "@/lib/geocoding";
 import { SpaceType } from "@/lib/types";
 
 const spaceTypes: SpaceType[] = ["Backyards", "Pools", "Outdoor kitchens", "Patios & decks", "Gardens", "Fire pits", "Rooftops", "Sport courts", "Event yards", "Hot tubs"];
@@ -74,6 +76,11 @@ export default function HostListingForm({ mode, initialValues, existingImages = 
   const [capacity, setCapacity] = useState(base.capacity);
   const [latitude, setLatitude] = useState(base.latitude);
   const [longitude, setLongitude] = useState(base.longitude);
+  const [address, setAddress] = useState<AddressSuggestion | null>(base.latitude && base.longitude ? {
+    id: "existing", label: [base.neighborhood, base.location].filter(Boolean).join(", "),
+    publicLocation: base.location, neighborhood: base.neighborhood,
+    latitude: Number(base.latitude), longitude: Number(base.longitude),
+  } : null);
   const [timezone, setTimezone] = useState(base.timezone);
   const [rules, setRules] = useState(base.rules);
   const [amenities, setAmenities] = useState<string[]>(base.amenities);
@@ -88,6 +95,11 @@ export default function HostListingForm({ mode, initialValues, existingImages = 
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (step === 2 && !address) {
+      setSaveError("Choose an address from the suggestions to place your space on the map.");
+      document.getElementById("listing-address")?.focus();
+      return;
+    }
     if (step < 3) {
       setStep((current) => current + 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -163,12 +175,14 @@ export default function HostListingForm({ mode, initialValues, existingImages = 
                 <Field label="Listing title" hint="Make it clear and memorable">
                   <input required value={title} onChange={(event) => setTitle(event.target.value)} maxLength={70} placeholder="Sunny garden with dining patio" className="host-input" />
                 </Field>
-                <Field label="Location" hint="City and state are enough for now">
-                  <input required value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Towson, MD" className="host-input" />
-                </Field>
-                <Field label="Neighborhood">
-                  <input required value={neighborhood} onChange={(event) => setNeighborhood(event.target.value)} maxLength={120} placeholder="Stoneleigh" className="host-input" />
-                </Field>
+                <AddressMapPicker selected={address} onSelect={(next) => {
+                  setAddress(next);
+                  setSaveError("");
+                  setLocation(next?.publicLocation ?? "");
+                  setNeighborhood(next?.neighborhood ?? "");
+                  setLatitude(next ? String(Math.round(next.latitude * 100) / 100) : "");
+                  setLongitude(next ? String(Math.round(next.longitude * 100) / 100) : "");
+                }} />
                 <Field label="Local timezone" hint="Booking hours are shown in the space's local time">
                   <select required value={timezone} onChange={(event) => setTimezone(event.target.value)} className="host-input">
                     {timezoneOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -185,12 +199,6 @@ export default function HostListingForm({ mode, initialValues, existingImages = 
                 <div className="grid gap-5 sm:grid-cols-3">
                   <Field label="Minimum hours">
                     <input required min="1" max="14" type="number" value={minHours} onChange={(event) => setMinHours(event.target.value)} className="host-input" />
-                  </Field>
-                  <Field label="Approx. latitude" hint="Used for the public map">
-                    <input required min="-90" max="90" step="any" type="number" value={latitude} onChange={(event) => setLatitude(event.target.value)} placeholder="39.4015" className="host-input" />
-                  </Field>
-                  <Field label="Approx. longitude">
-                    <input required min="-180" max="180" step="any" type="number" value={longitude} onChange={(event) => setLongitude(event.target.value)} placeholder="-76.6019" className="host-input" />
                   </Field>
                 </div>
                 <Field label="Description" hint="Tell guests what makes the space special">

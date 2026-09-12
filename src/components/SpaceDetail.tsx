@@ -36,16 +36,22 @@ export default function SpaceDetail({ space }: { space: Space }) {
   return (
     <div className="mx-auto max-w-6xl px-6 pb-28 pt-6 lg:pb-12">
       <div className="flex items-start justify-between gap-4">
-        <h1 className="max-w-3xl text-balance text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">{space.title}</h1>
+        <div>
+          {space.isDemo && <span className="mb-2 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">Demo listing</span>}
+          <h1 className="max-w-3xl text-balance text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">{space.title}</h1>
+        </div>
         <button
           type="button"
-          onClick={() => toggleFavorite(space.id)}
-          className="flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium underline hover:bg-border-soft"
+          onClick={() => {
+            if (!space.isDemo) toggleFavorite(space.id);
+          }}
+          disabled={space.isDemo}
+          className="flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium underline hover:bg-border-soft disabled:cursor-not-allowed disabled:opacity-50"
         >
           <svg viewBox="0 0 24 24" className={`h-4 w-4 ${isFav ? "fill-brand stroke-brand" : "fill-none stroke-current"}`} strokeWidth={2}>
             <path d="M12 21s-7.5-4.6-10-9.2C.5 8.3 2 5 5.2 5c2 0 3.3 1.2 4.3 2.6l1.5 2 1.5-2C13.5 6.2 14.8 5 16.8 5 20 5 21.5 8.3 22 11.8 19.5 16.4 12 21 12 21z" />
           </svg>
-          {isFav ? "Saved" : "Save"}
+          {space.isDemo ? "Preview" : isFav ? "Saved" : "Save"}
         </button>
       </div>
       <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm">
@@ -85,8 +91,8 @@ export default function SpaceDetail({ space }: { space: Space }) {
               <p className="mt-1 text-sm text-muted">
                 {space.topHost ? "Top host · " : ""}Hosting since {space.host.since} · {space.host.responseRate}% response rate
               </p>
-              <button type="button" onClick={() => void messageHost()} disabled={openingConversation} className="mt-3 text-sm font-semibold text-brand-dark underline underline-offset-4 disabled:cursor-wait disabled:opacity-60">
-                {openingConversation ? "Opening conversation…" : "Message host"}
+              <button type="button" onClick={() => void messageHost()} disabled={openingConversation || space.isDemo} className="mt-3 text-sm font-semibold text-brand-dark underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-50">
+                {space.isDemo ? "Demo host unavailable" : openingConversation ? "Opening conversation…" : "Message host"}
               </button>
               {messageError && <p role="alert" className="mt-2 text-sm text-red-700">{messageError}</p>}
             </div>
@@ -157,7 +163,7 @@ export default function SpaceDetail({ space }: { space: Space }) {
             <p className="text-xs text-muted">{space.minHours} hr minimum · {space.reviews ? `${space.rating.toFixed(2)} rating` : "New listing"}</p>
           </div>
           <a href="#booking" className="rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white transition active:scale-[0.98]">
-            Choose a time
+            {space.isDemo ? "View details" : "Choose a time"}
           </a>
         </div>
       </div>

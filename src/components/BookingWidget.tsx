@@ -77,6 +77,11 @@ export default function BookingWidget({ space }: { space: Space }) {
 
   return (
     <div id="booking" className="scroll-mt-28 rounded-2xl border border-border bg-background p-6 shadow-xl shadow-foreground/10">
+      {space.isDemo && (
+        <p className="mb-4 rounded-xl bg-amber-50 px-3 py-2.5 text-xs font-semibold text-amber-900">
+          Preview listing — reservations are unavailable.
+        </p>
+      )}
       <div className="flex items-baseline justify-between">
         <p>
           <span className="text-2xl font-semibold">${space.hourlyPrice}</span>
@@ -154,10 +159,10 @@ export default function BookingWidget({ space }: { space: Space }) {
       <button
         type="button"
         onClick={() => void reserve()}
-        disabled={submitting}
+        disabled={submitting || space.isDemo}
         className="mt-4 w-full rounded-xl bg-brand py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-brand-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-wait disabled:opacity-60"
       >
-        {submitting ? "Checking availability…" : "Reserve"}
+        {space.isDemo ? "Preview only" : submitting ? "Checking availability…" : "Reserve"}
       </button>
 
       <div className="mt-5 space-y-3 text-sm">

@@ -40,10 +40,10 @@ function SpaceContent() {
 
 function SpaceStatus({ title, body, children }: { title: string; body: string; children?: React.ReactNode }) {
   return (
-    <main className="mx-auto max-w-xl px-6 py-24 text-center" role="status">
+    <div className="mx-auto max-w-xl px-6 py-24 text-center" role="status">
       <h1 className="text-3xl font-semibold tracking-[-0.04em]">{title}</h1>
       <p className="mt-3 text-muted">{body}</p>
       {children && <div className="mt-7">{children}</div>}
-    </main>
+    </div>
   );
 }
