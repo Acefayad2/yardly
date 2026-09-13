@@ -37,7 +37,7 @@ export default function ResetPasswordPage() {
     finally { setBusy(false); }
   }
 
-  return <main className="mx-auto max-w-lg px-6 py-12">
+  return <section className="mx-auto max-w-lg px-6 py-12">
     <Link href="/profile/" className="text-sm font-semibold text-brand">← Back to profile</Link>
     <h1 className="mt-6 text-3xl font-semibold tracking-tight">{user ? "Choose a new password" : "Reset your password"}</h1>
     <p className="mt-3 text-sm leading-6 text-muted">{user ? "Use a unique password with at least 8 characters." : "Enter your account email and we’ll send you a reset link. If your previous link expired, request a new one here."}</p>
@@ -50,5 +50,5 @@ export default function ResetPasswordPage() {
       {message && <p role="status" className="text-sm text-brand-dark">{message}</p>}
       <button disabled={busy} type="submit" className="w-full rounded-xl bg-brand px-5 py-3 font-semibold text-white disabled:opacity-60">{busy ? "Please wait…" : user ? "Update password" : "Send reset link"}</button>
     </form>}
-  </main>;
+  </section>;
 }

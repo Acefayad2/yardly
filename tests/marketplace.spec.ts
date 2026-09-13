@@ -48,6 +48,29 @@ test("password recovery sends a reset request and shows confirmation", async ({ 
   await expect(page.getByRole("status").filter({ hasText: "reset link is on its way" })).toBeVisible();
 });
 
+test("authenticated profile saves contact details and rejects oversized photos", async ({ page }) => {
+  const user = { id: "00000000-0000-4000-8000-000000000001", aud: "authenticated", role: "authenticated", email: "qa@example.com", user_metadata: { full_name: "QA Tester", phone_number: "+12025550123", date_of_birth: "1990-01-01" }, app_metadata: { provider: "email" } };
+  const jwt = `${Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url")}.${Buffer.from(JSON.stringify({ sub: user.id, exp: Math.floor(Date.now() / 1000) + 3600 })).toString("base64url")}.test-signature`;
+  await page.route("**/auth/v1/**", async (route) => {
+    if (route.request().url().includes("/token")) await route.fulfill({ json: { access_token: jwt, refresh_token: "qa-refresh", token_type: "bearer", expires_in: 3600, user } });
+    else await route.fulfill({ json: user });
+  });
+  await page.goto("/profile/");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByLabel("Email address").fill("qa@example.com");
+  await page.getByLabel("Password", { exact: true }).fill("qa-test-password");
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Personal details" })).toBeVisible();
+  await page.getByLabel("Full name").fill("QA Updated");
+  const update = page.waitForRequest((request) => request.method() === "PUT" && request.url().includes("/auth/v1/user"));
+  await page.getByRole("button", { name: "Save details" }).click();
+  expect((await update).postDataJSON().data.full_name).toBe("QA Updated");
+  await expect(page.getByRole("status").filter({ hasText: "profile details have been saved" })).toBeVisible();
+  await page.goto("/host/listings/new/");
+  await page.locator('input[type="file"]').setInputFiles({ name: "oversized.jpg", mimeType: "image/jpeg", buffer: Buffer.alloc(10 * 1024 * 1024 + 1) });
+  await expect(page.getByText("Choose JPG, PNG, WebP, or HEIC photos no larger than 10 MB each.")).toBeVisible();
+});
+
 test("calendar and guests submit one date without overflow", async ({ page, isMobile }) => {
   await page.goto("/");
   const announcement = page.getByRole("button", { name: "Got it", exact: true });
@@ -59,7 +82,6 @@ test("calendar and guests submit one date without overflow", async ({ page, isMo
   const day = calendar.locator('.search-calendar__month').first().locator('button:not([disabled])').last();
   await day.click();
   await expect(day).toHaveAttribute("aria-pressed", "true");
-  console.log(await page.locator(".search-booking-panel").evaluateAll((panels) => panels.map((panel) => ({ rect: panel.getBoundingClientRect().toJSON(), height: panel.scrollHeight, overflow: getComputedStyle(panel).overflowY, scroll: window.scrollY, viewport: innerHeight }))));
   await page.getByRole("button", { name: /Next: guests/ }).click();
   await page.getByRole("button", { name: "Add guest", exact: true }).click();
   await page.getByRole("button", { name: "Add guest", exact: true }).click();
