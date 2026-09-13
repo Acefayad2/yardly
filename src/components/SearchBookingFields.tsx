@@ -13,7 +13,7 @@ export default function SearchBookingFields({ date, guests, onDate, onGuests }: 
   function close() { (open === "when" ? when : who).current?.focus(); setOpen(null); }
   useEffect(() => {
     const outside = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node)) setOpen(null); };
-    const scroll = () => setOpen(null);
+    const scroll = () => { if (window.scrollY > 96) setOpen(null); };
     document.addEventListener("pointerdown", outside);
     window.addEventListener("scroll", scroll, { passive: true });
     return () => { document.removeEventListener("pointerdown", outside); window.removeEventListener("scroll", scroll); };

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
+import { bookingQuote, bookingStartHour, listingToday } from "@/lib/booking";
 import { Space } from "@/lib/types";
 import { useStore } from "@/lib/store";
 
@@ -19,13 +19,13 @@ export default function BookingWidget({ space }: { space: Space }) {
   const { user, setAuthOpen, addBooking } = useStore();
   const router = useRouter();
   const [date, setDate] = useState("");
-  const [startHour, setStartHour] = useState(14); // 2 PM default
+  const [startHour, setStartHour] = useState(() => bookingStartHour(space.minHours));
   const [hours, setHours] = useState(space.minHours);
   const [guests, setGuests] = useState(1);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = listingToday(space.timezone);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -48,9 +48,7 @@ export default function BookingWidget({ space }: { space: Space }) {
   const effectiveHours = Math.min(hours, maxHours);
   const endHour = startHour + effectiveHours;
 
-  const subtotal = space.hourlyPrice * effectiveHours;
-  const serviceFee = Math.round(subtotal * 0.12);
-  const total = subtotal + serviceFee;
+  const { subtotal, serviceFee, total } = bookingQuote(space.hourlyPrice, effectiveHours);
 
   async function reserve() {
     setError("");
@@ -94,7 +92,7 @@ export default function BookingWidget({ space }: { space: Space }) {
       </div>
 
       <p className="mt-4 rounded-xl bg-surface-soft px-3 py-2.5 text-xs font-medium text-muted">
-        Hourly bookings are for one date and must end by {label(CLOSE_HOUR)}.
+        Hourly bookings are for one date and must end by {label(CLOSE_HOUR)}. Times are in {space.timezone.replaceAll("_", " ")}.
       </p>
 
       <div className="mt-3 overflow-hidden rounded-xl border border-border">
@@ -169,11 +167,11 @@ export default function BookingWidget({ space }: { space: Space }) {
         <p className="text-center text-muted">You won&apos;t be charged yet</p>
         <Row
           label={`$${space.hourlyPrice} × ${effectiveHours} hours`}
-          value={`$${subtotal}`}
+          value={`$${subtotal.toFixed(2)}`}
         />
-        <Row label="Yardly service fee" value={`$${serviceFee}`} />
+        <Row label="Yardly service fee" value={`$${serviceFee.toFixed(2)}`} />
         <div className="border-t border-border-soft pt-3">
-          <Row label="Total" value={`$${total}`} bold />
+          <Row label="Total" value={`$${total.toFixed(2)}`} bold />
         </div>
       </div>
     </div>

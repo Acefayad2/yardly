@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useStore } from "@/lib/store";
+import ProfileEditor from "@/components/ProfileEditor";
 
 export default function ProfilePage() {
   const { user, bookings, favorites, logout, setAuthOpen } = useStore();
@@ -38,6 +39,8 @@ export default function ProfilePage() {
             </div>
             <span className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-xl" aria-hidden="true">→</span>
           </Link>
+          <ProfileEditor key={user.id} />
+          <Link href="/reset-password/" className="mt-6 block text-sm font-semibold underline underline-offset-4">Change password</Link>
           <button type="button" onClick={logout} className="mt-8 text-sm font-semibold underline underline-offset-4">Log out</button>
         </div>
       ) : (

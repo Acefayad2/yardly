@@ -29,3 +29,42 @@ jobs:
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_build_check
       - run: npm run quality
       - run: npm audit --omit=dev --audit-level=high
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-test-results
+          path: test-results/
+  verify-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: isolated_ci_only
+          POSTGRES_DB: yardly_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: isolated_ci_only
+      PGDATABASE: yardly_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bootstrap isolated database
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/ci-bootstrap.sql
+      - name: Replay versioned migrations
+        run: |
+          for migration in supabase/migrations/*.sql; do
+            psql -v ON_ERROR_STOP=1 -f "$migration"
+          done
+      - name: Verify marketplace permissions and bookings
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/marketplace-rollback.sql
