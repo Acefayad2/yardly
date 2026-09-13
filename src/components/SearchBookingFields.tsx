@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef } from "react";
 import SearchCalendar from "./SearchCalendar";
 
-export default function SearchBookingFields({ date, guests, onDate, onGuests }: { date: string; guests: string; onDate: (value: string) => void; onGuests: (value: string) => void }) {
-  const [open, setOpen] = useState<"when" | "who" | null>(null);
+export default function SearchBookingFields({ date, guests, onDate, onGuests, open, setOpen }: { date: string; guests: string; onDate: (value: string) => void; onGuests: (value: string) => void; open: "when" | "who" | null; setOpen: (value: "when" | "who" | null) => void }) {
   const root = useRef<HTMLDivElement>(null);
   const when = useRef<HTMLButtonElement>(null);
   const who = useRef<HTMLButtonElement>(null);
@@ -13,11 +12,9 @@ export default function SearchBookingFields({ date, guests, onDate, onGuests }: 
   function close() { (open === "when" ? when : who).current?.focus(); setOpen(null); }
   useEffect(() => {
     const outside = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node)) setOpen(null); };
-    const scroll = () => setOpen(null);
     document.addEventListener("pointerdown", outside);
-    window.addEventListener("scroll", scroll, { passive: true });
-    return () => { document.removeEventListener("pointerdown", outside); window.removeEventListener("scroll", scroll); };
-  }, []);
+    return () => { document.removeEventListener("pointerdown", outside); };
+  }, [setOpen]);
   return <div className="search-booking-fields" ref={root} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(null); }} onKeyDown={(event) => { if (event.key === "Escape" && open) { event.preventDefault(); event.stopPropagation(); close(); } }}>
     <input type="hidden" name="date" value={date} /><input type="hidden" name="guests" value={guests} />
     <button ref={when} type="button" className="header-search__field search-field-trigger" aria-expanded={open === "when"} aria-controls={`${id}-when`} onClick={() => setOpen(open === "when" ? null : "when")}><span>When</span><p>{date ? new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "Add a date"}</p></button>

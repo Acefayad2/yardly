@@ -20,6 +20,7 @@ function HeaderContent() {
   const [query, setQuery] = useState("");
   const [date, setDate] = useState("");
   const [guests, setGuests] = useState("");
+  const [bookingPanel, setBookingPanel] = useState<"when" | "who" | null>(null);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
@@ -31,6 +32,7 @@ function HeaderContent() {
       setDate(params.get("date") ?? "");
       setGuests(params.get("guests") ?? "");
       setMenuOpen(false);
+      setBookingPanel(null);
     });
   }, [params, pathname]);
   useEffect(() => {
@@ -47,7 +49,8 @@ function HeaderContent() {
       if (frame) return;
       frame = window.requestAnimationFrame(() => {
         frame = 0;
-        setHeaderCollapsed(window.scrollY > 96);
+        const searchHasFocus = document.activeElement?.closest(".header-search");
+        setHeaderCollapsed(window.scrollY > 96 && !bookingPanel && !searchHasFocus);
       });
     }
 
@@ -57,7 +60,7 @@ function HeaderContent() {
       window.removeEventListener("scroll", updateHeader);
       window.cancelAnimationFrame(frame);
     };
-  }, [isExplore]);
+  }, [isExplore, bookingPanel]);
 
   const compactDate = useMemo(() => {
     if (!date) return "Anytime";
@@ -216,7 +219,7 @@ function HeaderContent() {
             <span>Where</span>
             <DestinationSearch value={query} onChange={setQuery} />
           </div>
-          <SearchBookingFields date={date} guests={guests} onDate={setDate} onGuests={setGuests} />
+          <SearchBookingFields date={date} guests={guests} onDate={setDate} onGuests={setGuests} open={bookingPanel} setOpen={setBookingPanel} />
           <button
             type="submit"
             className="header-search__submit"

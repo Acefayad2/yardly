@@ -149,6 +149,7 @@ export default function AuthModal() {
             </div>
           </div>
 
+          {mode === "login" && <Link href="/reset-password/" onClick={close} className="text-sm font-semibold text-brand underline">Forgot your password?</Link>}
           {feedback && <p role={feedback.type === "error" ? "alert" : "status"} className={`auth-glass-feedback auth-glass-feedback--${feedback.type}`}>{feedback.text}</p>}
 
           <button type="submit" disabled={submitting} className="auth-glass-submit"><span>{submitting ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}</span>{!submitting && <span aria-hidden="true">→</span>}</button>

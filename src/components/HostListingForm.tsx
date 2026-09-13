@@ -159,7 +159,14 @@ export default function HostListingForm({ mode, initialValues, existingImages = 
                   type="file"
                   accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
                   multiple
-                  onChange={(event) => setPhotos(Array.from(event.target.files ?? []).slice(0, 8))}
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files ?? []);
+                    if (files.length + existingImages.length > 8) { setSaveError("A listing can have up to 8 photos. Choose fewer files."); event.target.value = ""; setPhotos([]); return; }
+                    if (files.some((file) => file.size > 10 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"].includes(file.type))) {
+                      setSaveError("Choose JPG, PNG, WebP, or HEIC photos no larger than 10 MB each."); event.target.value = ""; setPhotos([]); return;
+                    }
+                    setSaveError(""); setPhotos(files);
+                  }}
                   className="mt-4 block w-full text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-brand file:px-4 file:py-2 file:font-semibold file:text-white"
                 />
                 {photos.length > 0 && <span className="mt-2 block text-xs font-medium text-brand-dark">{photos.length} photo{photos.length === 1 ? "" : "s"} selected</span>}

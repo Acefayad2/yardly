@@ -11,6 +11,7 @@ import {
 import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
 import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
+import { useRouter } from "next/navigation";
 import { getSupabase } from "./supabase";
 import { DEMO_SPACES } from "./demo-spaces";
 import type {
@@ -72,6 +73,7 @@ const GUEST_RESERVATION_SELECT = "id,listing_id,listing_title,listing_location,l
 const HOST_RESERVATION_SELECT = `${GUEST_RESERVATION_SELECT},listings!inner(host_id)`;
 
 export function StoreProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [spaces, setSpaces] = useState<Space[]>([]);
@@ -209,7 +211,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (storedFavorites.length) {
       const { error } = await supabase.from("saved_listings").upsert(
         storedFavorites.map((listingKey) => ({ user_id: nextUser.id, listing_key: listingKey })),
-        { onConflict: "user_id,listing_key" },
+        { onConflict: "user_id,listing_key", ignoreDuplicates: true },
       );
       if (!error) localStorage.removeItem(FAVS_KEY);
     }
@@ -240,7 +242,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     void supabase.auth.getSession()
       .then(({ data }) => applySession(data.session))
       .finally(() => setAuthLoading(false));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" && !window.location.pathname.startsWith("/reset-password")) {
+        queueMicrotask(() => router.push("/reset-password/"));
+      }
       queueMicrotask(() => void applySession(session).finally(() => setAuthLoading(false)));
     });
 
@@ -259,7 +264,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       listener.subscription.unsubscribe();
       void removeAppUrlListener?.();
     };
-  }, [applySession]);
+  }, [applySession, router]);
 
   useEffect(() => {
     if (!user) return;
