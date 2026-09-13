@@ -22,7 +22,7 @@ export default function HostAvailabilityEditor({ listing, userId }: { listing: H
     async function load() {
       try {
         const { data, error } = await getSupabase().from("listings").select("weekly_hours,blocked_dates")
-          .eq("id", listing.id).eq("host_id", userId).single();
+          .eq("id", listing.id).eq("host_id", userId).abortSignal(AbortSignal.timeout(10000)).single();
         if (error) throw error;
         if (!cancelled) { setHours(data.weekly_hours); setBlockedDates(data.blocked_dates); setLoaded(true); setLoading(false); }
       } catch {

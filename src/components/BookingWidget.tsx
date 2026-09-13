@@ -37,7 +37,7 @@ export default function BookingWidget({ space }: { space: Space }) {
     if (!date || space.isDemo) return;
     async function load() {
       try {
-        const { data, error } = await getSupabase().rpc("get_booking_slots", { p_listing_id: space.id, p_booking_date: date });
+        const { data, error } = await getSupabase().rpc("get_booking_slots", { p_listing_id: space.id, p_booking_date: date }).abortSignal(AbortSignal.timeout(10000));
         if (error) throw error;
         if (!cancelled) setAvailability({ date, slots: data ?? [], error: "" });
       } catch {

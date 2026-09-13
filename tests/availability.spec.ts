@@ -64,7 +64,7 @@ test("host saves weekly hours and blocked dates and restores them", async ({ pag
 
 test("host cannot overwrite schedule after a load failure", async ({ page }) => {
   await page.route("**/rest/v1/listings?**", (route) => route.request().url().includes("weekly_hours")
-    ? route.fulfill({ status: 503, json: { message: "Unavailable" } }) : route.fulfill({ json: [yard] }));
+    ? route.fulfill({ status: 400, json: { message: "Unavailable" } }) : route.fulfill({ json: [yard] }));
   await signIn(page);
   await page.goto(`/host/listings/availability/?id=${yardId}`);
   await expect(page.getByRole("alert").filter({ hasText: "couldn’t load" })).toBeVisible();
@@ -75,15 +75,15 @@ test("host cannot overwrite schedule after a load failure", async ({ page }) => 
 test("guest selects only available slots and fails closed on errors", async ({ page }, testInfo) => {
   let state = "available";
   await page.route("**/rest/v1/rpc/get_booking_slots", (route) => state === "error"
-    ? route.fulfill({ status: 503, json: { message: "Unavailable" } })
+    ? route.fulfill({ status: 400, json: { message: "Unavailable" } })
     : route.fulfill({ json: state === "closed" ? [] : [{ start_hour: 10, end_hour: 12 }, { start_hour: 14, end_hour: 16 }, { start_hour: 14, end_hour: 17 }] }));
   await page.goto(`/spaces/?id=${yardId}`);
   const widget = page.locator("#booking");
   await widget.getByLabel("Date", { exact: true }).fill(futureDate());
   await expect(widget.getByRole("button", { name: "Reserve", exact: true })).toBeEnabled();
-  expect(await widget.getByLabel("Start", { exact: true }).locator("option").allTextContents()).toEqual(["10:00 AM", "2:00 PM"]);
+  await expect(widget.getByRole("combobox", { name: "Start", exact: true }).locator("option")).toHaveText(["10:00 AM", "2:00 PM"]);
   await widget.getByLabel("Start", { exact: true }).selectOption("14");
-  expect(await widget.getByLabel("Duration").locator("option").allTextContents()).toEqual(["2 hours", "3 hours"]);
+  await expect(widget.getByRole("combobox", { name: "Duration", exact: true }).locator("option")).toHaveText(["2 hours", "3 hours"]);
   await widget.getByLabel("Duration").selectOption("3");
   await expect(widget.getByText("$67.20", { exact: true })).toBeVisible();
   await widget.scrollIntoViewIfNeeded();
