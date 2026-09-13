@@ -51,6 +51,7 @@ function ListingsContent() {
                   <p className="mt-1 text-sm text-muted">{listing.location} · ${listing.hourlyPrice}/hour · Up to {listing.capacity} guests</p>
                 </div>
                 <div className="flex flex-wrap gap-2 sm:flex-col">
+                  <Link href={`/host/listings/availability/?id=${encodeURIComponent(listing.id)}`} className="rounded-lg border border-border-soft px-3 py-2 text-center text-xs font-semibold transition hover:bg-surface-soft">Availability</Link>
                   <Link href={`/host/listings/edit/?id=${encodeURIComponent(listing.id)}`} className="rounded-lg border border-border-soft px-3 py-2 text-center text-xs font-semibold transition hover:bg-surface-soft">
                     {isReadyToPublish(listing) ? "Edit" : "Finish setup"}
                   </Link>

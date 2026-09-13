@@ -1,29 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { bookingQuote, bookingStartHour, listingToday } from "@/lib/booking";
+import { bookingQuote, listingToday } from "@/lib/booking";
+import { hourLabel as label, type BookingSlot } from "@/lib/availability";
+import { getSupabase } from "@/lib/supabase";
 import { Space } from "@/lib/types";
 import { useStore } from "@/lib/store";
-
-const OPEN_HOUR = 8; // 8:00 AM
-const CLOSE_HOUR = 22; // 10:00 PM
-
-function label(hour: number) {
-  const suffix = hour >= 12 ? "PM" : "AM";
-  const h = hour % 12 === 0 ? 12 : hour % 12;
-  return `${h}:00 ${suffix}`;
-}
 
 export default function BookingWidget({ space }: { space: Space }) {
   const { user, setAuthOpen, addBooking } = useStore();
   const router = useRouter();
   const [date, setDate] = useState("");
-  const [startHour, setStartHour] = useState(() => bookingStartHour(space.minHours));
+  const [startHour, setStartHour] = useState(8);
   const [hours, setHours] = useState(space.minHours);
   const [guests, setGuests] = useState(1);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [availability, setAvailability] = useState<{ date: string; slots: BookingSlot[]; error: string } | null>(null);
+  const [refresh, setRefresh] = useState(0);
 
   const today = listingToday(space.timezone);
 
@@ -37,22 +32,40 @@ export default function BookingWidget({ space }: { space: Space }) {
     });
   }, [space.capacity]);
 
-  // keep duration within opening hours
-  const maxHours = Math.max(space.minHours, CLOSE_HOUR - startHour);
-  const durationOptions = useMemo(() => {
-    const opts: number[] = [];
-    for (let h = space.minHours; h <= maxHours; h++) opts.push(h);
-    return opts;
-  }, [space.minHours, maxHours]);
+  useEffect(() => {
+    let cancelled = false;
+    if (!date || space.isDemo) return;
+    async function load() {
+      try {
+        const { data, error } = await getSupabase().rpc("get_booking_slots", { p_listing_id: space.id, p_booking_date: date }).abortSignal(AbortSignal.timeout(10000));
+        if (error) throw error;
+        if (!cancelled) setAvailability({ date, slots: data ?? [], error: "" });
+      } catch {
+        if (!cancelled) setAvailability({ date, slots: [], error: "We couldn’t check availability. Please try again." });
+      }
+    }
+    void load();
+    return () => { cancelled = true; };
+  }, [date, space.id, space.isDemo, refresh]);
 
-  const effectiveHours = Math.min(hours, maxHours);
-  const endHour = startHour + effectiveHours;
+  const loadingSlots = !!date && !space.isDemo && availability?.date !== date;
+  const slots = availability?.date === date ? availability.slots : [];
+  const slotError = availability?.date === date ? availability.error : "";
+  const startOptions = [...new Set(slots.map((slot) => slot.start_hour))];
+  const effectiveStart = startOptions.includes(startHour) ? startHour : startOptions[0] ?? 8;
+  const durationOptions = slots.filter((slot) => slot.start_hour === effectiveStart).map((slot) => slot.end_hour - effectiveStart);
+  const effectiveHours = durationOptions.includes(hours) ? hours : durationOptions[0] ?? space.minHours;
+  const endHour = effectiveStart + effectiveHours;
+  const canReserve = !!date && slots.length > 0 && !loadingSlots && !slotError && date >= today;
+
+  function refreshSlots() { setAvailability(null); setRefresh((value) => value + 1); }
 
   const { subtotal, serviceFee, total } = bookingQuote(space.hourlyPrice, effectiveHours);
 
   async function reserve() {
     setError("");
     if (!date) return setError("Pick a date for your booking.");
+    if (!canReserve) return setError("Choose an available time before reserving.");
     if (!user) {
       setAuthOpen(true);
       return;
@@ -61,13 +74,14 @@ export default function BookingWidget({ space }: { space: Space }) {
     const result = await addBooking({
       spaceId: space.id,
       date,
-      startTime: `${String(startHour).padStart(2, "0")}:00`,
+      startTime: `${String(effectiveStart).padStart(2, "0")}:00`,
       endTime: `${String(endHour).padStart(2, "0")}:00`,
       guests,
     });
     setSubmitting(false);
     if (result.error) {
       setError(result.error);
+      refreshSlots();
       return;
     }
     router.push("/bookings?booked=1");
@@ -92,7 +106,7 @@ export default function BookingWidget({ space }: { space: Space }) {
       </div>
 
       <p className="mt-4 rounded-xl bg-surface-soft px-3 py-2.5 text-xs font-medium text-muted">
-        Hourly bookings are for one date and must end by {label(CLOSE_HOUR)}. Times are in {space.timezone.replaceAll("_", " ")}.
+        Book by the hour on one date. Times are in {space.timezone.replaceAll("_", " ")}. Choose a date to see the host’s available hours.
       </p>
 
       <div className="mt-3 overflow-hidden rounded-xl border border-border">
@@ -102,7 +116,7 @@ export default function BookingWidget({ space }: { space: Space }) {
             type="date"
             min={today}
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={(e) => { setDate(e.target.value); setError(""); setAvailability(null); }}
             className="w-full bg-transparent text-sm outline-none"
           />
         </label>
@@ -111,11 +125,13 @@ export default function BookingWidget({ space }: { space: Space }) {
             <label className="border-r border-border px-3 py-2.5">
               <span className="block text-[10px] font-bold uppercase tracking-wide">Start</span>
               <select
-                value={startHour}
+                value={slots.length ? effectiveStart : ""}
+                disabled={!canReserve}
                 onChange={(e) => setStartHour(Number(e.target.value))}
                 className="w-full bg-transparent text-sm outline-none"
               >
-                {Array.from({ length: CLOSE_HOUR - OPEN_HOUR - space.minHours + 1 }, (_, i) => OPEN_HOUR + i).map((h) => (
+                {!slots.length && <option value="">Choose a date</option>}
+                {startOptions.map((h) => (
                   <option key={h} value={h}>{label(h)}</option>
                 ))}
               </select>
@@ -123,10 +139,12 @@ export default function BookingWidget({ space }: { space: Space }) {
             <label className="px-3 py-2.5">
               <span className="block text-[10px] font-bold uppercase tracking-wide">Duration</span>
               <select
-                value={effectiveHours}
+                value={slots.length ? effectiveHours : ""}
+                disabled={!canReserve}
                 onChange={(e) => setHours(Number(e.target.value))}
                 className="w-full bg-transparent text-sm outline-none"
               >
+                {!slots.length && <option value="">—</option>}
                 {durationOptions.map((h) => (
                   <option key={h} value={h}>{h} hours</option>
                 ))}
@@ -148,22 +166,23 @@ export default function BookingWidget({ space }: { space: Space }) {
         </label>
       </div>
 
-      <p className="mt-2 text-center text-xs text-muted">
-        {label(startHour)} – {label(endHour)} · {space.minHours} hr minimum
-      </p>
+      {loadingSlots && <p role="status" className="mt-3 text-sm text-muted">Checking available hours…</p>}
+      {slotError && <p role="alert" className="mt-3 text-sm text-red-700">{slotError} <button type="button" onClick={refreshSlots} className="font-semibold underline">Retry availability</button></p>}
+      {date && !loadingSlots && !slotError && !slots.length && !space.isDemo && <p role="status" className="mt-3 rounded-xl bg-surface-soft p-3 text-sm text-muted">No available times on this date. The host may be closed, booked, or the hours have passed. Try another date.</p>}
+      {canReserve && <p className="mt-2 text-center text-xs text-muted">{label(effectiveStart)} – {label(endHour)} · {space.minHours} hr minimum</p>}
 
       {error && <p className="mt-3 text-sm font-medium text-brand" role="alert">{error}</p>}
 
       <button
         type="button"
         onClick={() => void reserve()}
-        disabled={submitting || space.isDemo}
+        disabled={submitting || space.isDemo || !canReserve}
         className="mt-4 w-full rounded-xl bg-brand py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-brand-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-wait disabled:opacity-60"
       >
         {space.isDemo ? "Preview only" : submitting ? "Checking availability…" : "Reserve"}
       </button>
 
-      <div className="mt-5 space-y-3 text-sm">
+      {canReserve && <div className="mt-5 space-y-3 text-sm">
         <p className="text-center text-muted">You won&apos;t be charged yet</p>
         <Row
           label={`$${space.hourlyPrice} × ${effectiveHours} hours`}
@@ -173,7 +192,7 @@ export default function BookingWidget({ space }: { space: Space }) {
         <div className="border-t border-border-soft pt-3">
           <Row label="Total" value={`$${total.toFixed(2)}`} bold />
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

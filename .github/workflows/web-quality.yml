@@ -68,3 +68,5 @@ jobs:
           done
       - name: Verify marketplace permissions and bookings
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/marketplace-rollback.sql
+      - name: Verify host availability and guest slots
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/availability-rollback.sql

@@ -6,7 +6,7 @@ import { Space } from "@/lib/types";
 import BookingWidget from "./BookingWidget";
 import { useStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const MapView = dynamic(() => import("./MapView"), { ssr: false });
 
@@ -15,7 +15,16 @@ export default function SpaceDetail({ space }: { space: Space }) {
   const router = useRouter();
   const [messageError, setMessageError] = useState("");
   const [openingConversation, setOpeningConversation] = useState(false);
+  const [bookingVisible, setBookingVisible] = useState(false);
   const isFav = favorites.includes(space.id);
+
+  useEffect(() => {
+    const booking = document.getElementById("booking");
+    if (!booking) return;
+    const observer = new IntersectionObserver(([entry]) => setBookingVisible(entry.isIntersecting), { rootMargin: "-100px 0px -120px 0px" });
+    observer.observe(booking);
+    return () => observer.disconnect();
+  }, [space.id]);
 
   async function messageHost() {
     if (!user) {
@@ -147,7 +156,7 @@ export default function SpaceDetail({ space }: { space: Space }) {
 
         <div className="lg:w-[42%]">
           <div className="sticky top-24">
-            <BookingWidget space={space} />
+            <BookingWidget key={space.id} space={space} />
           </div>
         </div>
       </div>
@@ -156,7 +165,7 @@ export default function SpaceDetail({ space }: { space: Space }) {
         <Link href="/" className="text-sm font-semibold underline">← Back to all spaces</Link>
       </div>
 
-      <div className="mobile-booking-bar fixed inset-x-0 z-30 border-t border-border bg-background/96 px-4 py-3 shadow-[0_-14px_34px_rgba(30,42,34,0.12)] backdrop-blur lg:hidden">
+      <div hidden={bookingVisible} className="mobile-booking-bar fixed inset-x-0 z-30 border-t border-border bg-background/96 px-4 py-3 shadow-[0_-14px_34px_rgba(30,42,34,0.12)] backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-lg items-center justify-between gap-4">
           <div>
             <p className="text-lg font-semibold tabular-nums">${space.hourlyPrice} <span className="text-sm font-normal text-muted">/ hour</span></p>
