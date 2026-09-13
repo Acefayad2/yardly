@@ -74,7 +74,8 @@ test("authenticated profile saves contact details and rejects oversized photos",
 test("calendar and guests submit one date without overflow", async ({ page, isMobile }) => {
   await page.goto("/");
   const announcement = page.getByRole("button", { name: "Got it", exact: true });
-  if (await announcement.isVisible()) await announcement.click();
+  await expect(announcement).toBeVisible();
+  await announcement.click();
   if (isMobile) await page.getByRole("button", { name: "Start your search" }).click();
   await page.getByRole("button", { name: /^When / }).click();
   const calendar = page.locator(".search-calendar").filter({ visible: true });
