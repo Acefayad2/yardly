@@ -14,11 +14,18 @@
 - Production build, lint, quality audit and production dependency audit pass locally. Production dependency audit: zero vulnerabilities.
 - Synced configured web assets into Capacitor and built for the simulator. Bundle ID remains `com.acefayad.yardly`.
 
+## Host availability release — 2026-09-13
+
+- Hosts now manage weekly opening hours, closed weekdays and whole blocked dates from Listings → Availability. Hours are in the listing timezone, within the existing 08:00–22:00 single-day booking policy.
+- Guests load bookable start/duration pairs from the database; occupied, closed, blocked and past slots are excluded. Loading and failed requests disable Reserve, with a retry path. A conflict at submission refreshes the slots.
+- Server triggers enforce host availability even for direct inserts. Existing reservations remain intact after schedule changes. A private function filters other guests’ reservations without exposing their identities or booking rows.
+- Availability migration and rollback suite passed against isolated PostgreSQL 17 and the live Yardly database. Tests cover ownership, invalid schedules, anonymous/draft privacy, blocked days, closed weekdays, direct writes, overlaps, cancellation and unchanged existing reservations.
+- Desktop/mobile UI tests cover host save/reload/unblock, load failures, guest slot selection, unavailable dates, request failures, and stale-slot submission recovery. These browser tests use mocked APIs; they complement the real database regression tests, not a full live upload/email walkthrough.
+
 ## Still required — do not describe these as complete
 
 - Verify recovery email delivery, callback allowlisting, expired-link handling and an actual password-change/login round trip with a dedicated test inbox. No existing account password was changed.
 - Verify real photo upload and a complete host/guest UI booking flow using isolated test accounts/inventory. Database policy tests are not a substitute for this walkthrough.
-- Build host-controlled opening hours/blocked dates and the matching guest availability display. Current bookings use fixed 08:00–22:00 limits plus database conflict rejection, not a full host availability calendar.
 - Add notifications, agreed cancellation-policy enforcement and payment/payout/refund integration once the client decisions/setup are supplied. The current reservation RPC does not collect payment.
 - Review private address exposure: precise listing coordinates are currently readable with published listings. The business must approve an approximate public location/exact-address-after-booking policy before launch.
 - Supabase advisor reports leaked-password protection disabled; confirm plan support and enable before launch. See https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection.

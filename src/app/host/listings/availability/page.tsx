@@ -20,12 +20,12 @@ function AvailabilityContent() {
   const listing = hostListings.find((item) => item.id === id);
   return <div className="min-h-screen bg-surface-soft">
     <HostNav />
-    <main className="mx-auto max-w-3xl px-5 py-8 sm:px-6 sm:py-12">
+    <div className="mx-auto max-w-3xl px-5 py-8 sm:px-6 sm:py-12">
       <Link href="/host/listings/" className="text-sm font-semibold text-brand-dark">← Back to listings</Link>
       {hostDataLoading ? <p className="mt-8" role="status">Loading your listing…</p>
         : hostDataError ? <p className="mt-8" role="alert">{hostDataError}</p>
         : listing ? <HostAvailabilityEditor key={listing.id} listing={listing} userId={user.id} />
         : <p className="mt-8">Listing not found, or it belongs to another account.</p>}
-    </main>
+    </div>
   </div>;
 }

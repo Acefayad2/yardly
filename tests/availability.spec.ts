@@ -87,6 +87,7 @@ test("guest selects only available slots and fails closed on errors", async ({ p
   await widget.getByRole("combobox", { name: "Duration", exact: true }).selectOption("3");
   await expect(widget.getByText("$67.20", { exact: true })).toBeVisible();
   await widget.scrollIntoViewIfNeeded();
+  await expect(page.locator(".mobile-booking-bar")).toBeHidden();
   await page.screenshot({ path: testInfo.outputPath("guest-availability.png") });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   state = "closed";
@@ -100,4 +101,26 @@ test("guest selects only available slots and fails closed on errors", async ({ p
   state = "available";
   await widget.getByRole("button", { name: "Retry availability" }).click();
   await expect(widget.getByRole("button", { name: "Reserve", exact: true })).toBeEnabled();
+});
+
+test("reservation rechecks stale availability and submits the new slot", async ({ page }) => {
+  let conflict = true;
+  let requested: Record<string, unknown> = {};
+  await page.route("**/rest/v1/listings?**", (route) => route.fulfill({ json: [{ ...yard, host_id: "00000000-0000-4000-8000-000000000002" }] }));
+  await page.route("**/rest/v1/rpc/get_booking_slots", (route) => route.fulfill({ json: conflict ? [{ start_hour: 10, end_hour: 12 }] : [{ start_hour: 14, end_hour: 16 }] }));
+  await page.route("**/rest/v1/rpc/create_reservation", (route) => {
+    requested = route.request().postDataJSON();
+    if (conflict) { conflict = false; return route.fulfill({ status: 409, json: { code: "23P01", message: "That time is no longer available. Choose another time." } }); }
+    return route.fulfill({ json: { id: "00000000-0000-4000-8000-000000000099" } });
+  });
+  await signIn(page);
+  await page.goto(`/spaces/?id=${yardId}`);
+  const widget = page.locator("#booking");
+  await widget.getByLabel("Date", { exact: true }).fill(futureDate());
+  await widget.getByRole("button", { name: "Reserve", exact: true }).click();
+  await expect(widget.getByRole("alert").filter({ hasText: "no longer available" })).toBeVisible();
+  await expect(widget.getByRole("combobox", { name: "Start", exact: true })).toHaveValue("14");
+  await widget.getByRole("button", { name: "Reserve", exact: true }).click();
+  await expect(page).toHaveURL(/\/bookings\/?\?booked=1/);
+  expect(requested).toEqual({ p_listing_id: yardId, p_booking_date: futureDate(), p_start_time: "14:00", p_end_time: "16:00", p_guests: 1 });
 });
