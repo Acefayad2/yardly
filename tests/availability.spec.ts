@@ -17,7 +17,7 @@ async function signIn(page: Page) {
   const user = { id: userId, aud: "authenticated", role: "authenticated", email: "qa@example.com", user_metadata: { full_name: "QA Host" }, app_metadata: { provider: "email" } };
   const jwt = `${Buffer.from('{"alg":"HS256","typ":"JWT"}').toString("base64url")}.${Buffer.from(JSON.stringify({ sub: userId, exp: Math.floor(Date.now() / 1000) + 3600 })).toString("base64url")}.test-signature`;
   await page.route("**/auth/v1/**", (route) => route.fulfill({ json: route.request().url().includes("/token") ? { access_token: jwt, refresh_token: "qa-refresh", token_type: "bearer", expires_in: 3600, user } : user }));
-  await page.goto("/profile/");
+  await page.goto("/profile/", { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByLabel("Email address").fill("qa@example.com");
   await page.getByLabel("Password", { exact: true }).fill("qa-test-password");
@@ -40,7 +40,7 @@ test("host saves weekly hours and blocked dates and restores them", async ({ pag
     return route.fulfill({ json: [yard] });
   });
   await signIn(page);
-  await page.goto(`/host/listings/availability/?id=${yardId}`);
+  await page.goto(`/host/listings/availability/?id=${yardId}`, { waitUntil: "domcontentloaded" });
   await page.getByLabel("Monday opens", { exact: true }).selectOption("10");
   await page.getByLabel("Monday closes", { exact: true }).selectOption("18");
   await page.getByRole("checkbox", { name: "Sunday", exact: true }).uncheck();
@@ -51,7 +51,7 @@ test("host saves weekly hours and blocked dates and restores them", async ({ pag
   expect(saved.weekly_hours[0]).toBeNull();
   expect(saved.weekly_hours[1]).toEqual([10, 18]);
   expect(saved.blocked_dates).toEqual([futureDate()]);
-  await page.reload();
+  await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.getByLabel("Monday opens", { exact: true })).toHaveValue("10");
   await expect(page.getByRole("checkbox", { name: "Sunday", exact: true })).not.toBeChecked();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -66,7 +66,7 @@ test("host cannot overwrite schedule after a load failure", async ({ page }) => 
   await page.route("**/rest/v1/listings?**", (route) => route.request().url().includes("weekly_hours")
     ? route.fulfill({ status: 400, json: { message: "Unavailable" } }) : route.fulfill({ json: [yard] }));
   await signIn(page);
-  await page.goto(`/host/listings/availability/?id=${yardId}`);
+  await page.goto(`/host/listings/availability/?id=${yardId}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("alert").filter({ hasText: "couldn’t load" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save availability" })).toBeDisabled();
   await expect(page.getByRole("checkbox", { name: "Sunday", exact: true })).toBeDisabled();
@@ -77,7 +77,7 @@ test("guest selects only available slots and fails closed on errors", async ({ p
   await page.route("**/rest/v1/rpc/get_booking_slots", (route) => state === "error"
     ? route.fulfill({ status: 400, json: { message: "Unavailable" } })
     : route.fulfill({ json: state === "closed" ? [] : [{ start_hour: 10, end_hour: 12 }, { start_hour: 14, end_hour: 16 }, { start_hour: 14, end_hour: 17 }] }));
-  await page.goto(`/spaces/?id=${yardId}`);
+  await page.goto(`/spaces/?id=${yardId}`, { waitUntil: "domcontentloaded" });
   const widget = page.locator("#booking");
   await widget.getByLabel("Date", { exact: true }).fill(futureDate());
   await expect(widget.getByRole("button", { name: "Reserve", exact: true })).toBeEnabled();
@@ -114,7 +114,7 @@ test("reservation rechecks stale availability and submits the new slot", async (
     return route.fulfill({ json: { id: "00000000-0000-4000-8000-000000000099" } });
   });
   await signIn(page);
-  await page.goto(`/spaces/?id=${yardId}`);
+  await page.goto(`/spaces/?id=${yardId}`, { waitUntil: "domcontentloaded" });
   const widget = page.locator("#booking");
   await widget.getByLabel("Date", { exact: true }).fill(futureDate());
   await widget.getByRole("button", { name: "Reserve", exact: true }).click();

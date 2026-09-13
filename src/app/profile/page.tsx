@@ -5,7 +5,7 @@ import { useStore } from "@/lib/store";
 import ProfileEditor from "@/components/ProfileEditor";
 
 export default function ProfilePage() {
-  const { user, bookings, favorites, logout, setAuthOpen } = useStore();
+  const { user, authLoading, bookings, favorites, logout, setAuthOpen } = useStore();
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10 animate-fade-in">
@@ -48,7 +48,7 @@ export default function ProfilePage() {
           <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-brand/10 text-xl font-semibold text-brand-dark" aria-hidden="true">Y</span>
           <h2 className="mt-5 text-xl font-semibold">Sign in to your Yardly</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted">Manage bookings, saved spaces, and conversations with hosts.</p>
-          <button type="button" onClick={() => setAuthOpen(true)} className="mt-6 rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white">Sign in</button>
+          <button type="button" disabled={authLoading} onClick={() => setAuthOpen(true)} className="mt-6 rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">Sign in</button>
         </div>
       )}
     </div>

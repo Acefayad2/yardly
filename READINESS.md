@@ -21,6 +21,7 @@
 - Server triggers enforce host availability even for direct inserts. Existing reservations remain intact after schedule changes. A private function filters other guests’ reservations without exposing their identities or booking rows.
 - Availability migration and rollback suite passed against isolated PostgreSQL 17 and the live Yardly database. Tests cover ownership, invalid schedules, anonymous/draft privacy, blocked days, closed weekdays, direct writes, overlaps, cancellation and unchanged existing reservations.
 - Desktop/mobile UI tests cover host save/reload/unblock, load failures, guest slot selection, unavailable dates, request failures, and stale-slot submission recovery. These browser tests use mocked APIs; they complement the real database regression tests, not a full live upload/email walkthrough.
+- A real test-account login, availability load and unchanged-schedule save succeeded on the deployed host screen. The existing draft was not published, and no QA inventory remains in the database.
 
 ## Still required — do not describe these as complete
 
