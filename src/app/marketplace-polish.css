@@ -1,4 +1,11 @@
 .destination-search { min-width: 0; }
+.destination-option__icon svg { width: 28px; height: 28px; }
+.search-sliding-highlight { position: absolute; pointer-events: none; left: 0; top: .45rem; bottom: .45rem; width: 100px; border-radius: 999px; background: white; box-shadow: 0 3px 10px #213d2e18; transform-origin: left center; transition: transform 320ms cubic-bezier(.22,.8,.25,1), opacity 160ms ease; }
+.header-search:focus-within { background: #f1f3f0; }
+.header-search__field, .header-search__submit { isolation: isolate; }
+.header-search__field:focus-within { border-color: transparent; }
+.search-field-trigger:focus-visible { outline: 2px solid #12915a; outline-offset: -2px; }
+@media (prefers-reduced-motion: reduce) { .search-sliding-highlight { transition: none; } }
 .destination-search > input { width: 100%; min-width: 0; }
 .destination-popover { position: absolute; top: calc(100% + 14px); left: 0; width: min(480px, 100%); max-height: min(540px, 65dvh); overflow-y: auto; padding: 22px 14px 14px; background: #fff; color: #25382d; border: 1px solid #e7ece8; border-radius: 26px; box-shadow: 0 16px 48px #25382d20; animation: destination-enter 180ms ease-out; }
 .destination-popover__eyebrow { padding: 0 12px 14px; font-size: 12px; font-weight: 650; letter-spacing: .015em; color: #6a746d; }
@@ -55,7 +62,7 @@
 .search-field-trigger { text-align: left; cursor: pointer; border-radius: 999px; transition: background .2s, box-shadow .2s; }
 .search-field-trigger p { font-size: .9rem; color: #737a74; margin: 0; }
 .search-field-trigger:hover { background: #f3f5f2; }
-.search-field-trigger[aria-expanded="true"] { background: white; box-shadow: 0 0 0 2px #213d2e, 0 5px 18px #213d2e16; }
+.search-field-trigger[aria-expanded="true"] { background: transparent; }
 .header-search:has(.search-field-trigger[aria-expanded="true"]) { background: #f1f3f0; }
 .search-booking-panel { position: absolute; top: calc(100% + 14px); right: 0; z-index: 50; background: white; color: #25342a; border: 1px solid #e9ede7; border-radius: 28px; padding: 28px; box-shadow: 0 16px 50px #263b2826; max-height: calc(100dvh - 230px); overflow-y: auto; animation: search-panel-enter .2s ease-out; }
 .search-booking-panel--date { width: 100%; }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
@@ -21,6 +21,15 @@ function HeaderContent() {
   const [date, setDate] = useState("");
   const [guests, setGuests] = useState("");
   const [bookingPanel, setBookingPanel] = useState<"when" | "who" | null>(null);
+  const searchForm = useRef<HTMLFormElement>(null);
+  const [searchHighlight, setSearchHighlight] = useState({ x: 0, width: 1, visible: false });
+  function highlightField(target: EventTarget | null) {
+    const field = (target as HTMLElement | null)?.closest<HTMLElement>(".header-search__field");
+    const form = searchForm.current;
+    if (!field || !form) return;
+    const bounds = field.getBoundingClientRect(), parent = form.getBoundingClientRect();
+    setSearchHighlight({ x: bounds.left - parent.left - form.clientLeft, width: bounds.width, visible: true });
+  }
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
@@ -209,12 +218,17 @@ function HeaderContent() {
         </div>
 
         {isExplore && <form
+          ref={searchForm}
+          onFocusCapture={(event) => highlightField(event.target)}
+          onClickCapture={(event) => highlightField(event.target)}
+          onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setSearchHighlight((current) => ({ ...current, visible: false })); }}
           onSubmit={search}
           className="header-search mx-auto hidden min-w-0 lg:grid"
           aria-label="Search Yardly spaces"
           aria-hidden={headerCollapsed}
           inert={headerCollapsed ? true : undefined}
         >
+          <div aria-hidden="true" className="search-sliding-highlight" style={{ transform: `translateX(${searchHighlight.x}px) scaleX(${searchHighlight.width / 100})`, opacity: searchHighlight.visible ? 1 : 0 }} />
           <div className="header-search__field header-search__field--where">
             <span>Where</span>
             <DestinationSearch value={query} onChange={setQuery} />
