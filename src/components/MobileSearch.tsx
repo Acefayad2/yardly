@@ -139,7 +139,7 @@ export default function MobileSearch() {
 
 function CollapsedSection({ label, value, onClick }: { label: string; value: string; onClick: () => void }) {
   return (
-    <button type="button" className="mobile-search-collapsed" onClick={onClick}>
+    <button type="button" className="mobile-search-collapsed" onMouseDown={(event) => event.preventDefault()} onClick={onClick}>
       <span>{label}</span>
       <strong>{value}</strong>
     </button>
