@@ -7,6 +7,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
 import MobileSearch from "./MobileSearch";
 import DestinationSearch from "./DestinationSearch";
+import SearchBookingFields from "./SearchBookingFields";
 
 export default function Header() {
   return <Suspense><HeaderContent /></Suspense>;
@@ -14,7 +15,6 @@ export default function Header() {
 
 function HeaderContent() {
   const params = useSearchParams();
-  const [today] = useState(() => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10));
   const { user, logout, setAuthOpen } = useStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -216,26 +216,7 @@ function HeaderContent() {
             <span>Where</span>
             <DestinationSearch value={query} onChange={setQuery} />
           </div>
-          <label className="header-search__field">
-            <span>When</span>
-            <input
-              type="date"
-              min={today}
-              name="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              aria-label="When"
-            />
-          </label>
-          <label className="header-search__field">
-            <span>Who</span>
-            <select name="guests" value={guests} onChange={(e) => setGuests(e.target.value)} aria-label="Who">
-              <option value="">Add guests</option>
-              {Array.from({ length: 60 }, (_, index) => index + 1).map((count) => (
-                <option key={count} value={count}>{count} {count === 1 ? "guest" : "guests"}</option>
-              ))}
-            </select>
-          </label>
+          <SearchBookingFields date={date} guests={guests} onDate={setDate} onGuests={setGuests} />
           <button
             type="submit"
             className="header-search__submit"
