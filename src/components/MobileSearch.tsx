@@ -4,13 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import DestinationSearch from "./DestinationSearch";
+import SearchCalendar from "./SearchCalendar";
 
 type SearchStep = "where" | "when" | "who";
 
 export default function MobileSearch() {
   const dialog = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
-  const [today] = useState(() => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10));
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<SearchStep>("where");
@@ -62,12 +62,6 @@ export default function MobileSearch() {
     router.push(params.size ? `/?${params.toString()}#discover` : "/#discover");
   }
 
-  function continueToGuests(event: React.MouseEvent<HTMLButtonElement>) {
-    const dateInput = event.currentTarget.form?.querySelector<HTMLInputElement>(".mobile-search-date input");
-    if (dateInput?.value) setDate(dateInput.value);
-    setStep("who");
-  }
-
   const overlay = open ? (
     <div ref={dialog} className="mobile-search-overlay lg:hidden" role="dialog" aria-modal="true" aria-label="Search Yardly">
       <form className="mobile-search-sheet" onSubmit={submitSearch}>
@@ -91,11 +85,8 @@ export default function MobileSearch() {
           {step === "when" ? (
             <section className="mobile-search-card mobile-search-card--compact" aria-labelledby="mobile-search-when">
               <h2 id="mobile-search-when">When?</h2>
-              <label className="mobile-search-date">
-                <span>Choose a date</span>
-                <input type="date" min={today} value={date} onChange={(event) => setDate(event.target.value)} aria-label="Booking date" />
-              </label>
-              <button type="button" className="mobile-search-next" onClick={continueToGuests}>Next: guests</button>
+              <SearchCalendar value={date} onChange={setDate} />
+              <button type="button" className="mobile-search-next" onClick={() => setStep("who")}>Next: guests</button>
             </section>
           ) : (
             <CollapsedSection label="When" value={date ? new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "Add a date"} onClick={() => setStep("when")} />

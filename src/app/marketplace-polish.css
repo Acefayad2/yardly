@@ -50,3 +50,50 @@
   .destination-popover, .listing-skeleton { animation: none; }
   .site-header *, .header-shell { transition: none !important; }
 }
+/* Single-day search and guest popovers. */
+.search-booking-fields { display: contents; }
+.search-field-trigger { text-align: left; cursor: pointer; border-radius: 999px; transition: background .2s, box-shadow .2s; }
+.search-field-trigger p { font-size: .9rem; color: #737a74; margin: 0; }
+.search-field-trigger:hover { background: #f3f5f2; }
+.search-field-trigger[aria-expanded="true"] { background: white; box-shadow: 0 0 0 2px #213d2e, 0 5px 18px #213d2e16; }
+.header-search:has(.search-field-trigger[aria-expanded="true"]) { background: #f1f3f0; }
+.search-booking-panel { position: absolute; top: calc(100% + 14px); right: 0; z-index: 50; background: white; color: #25342a; border: 1px solid #e9ede7; border-radius: 28px; padding: 28px; box-shadow: 0 16px 50px #263b2826; max-height: calc(100dvh - 230px); overflow-y: auto; animation: search-panel-enter .2s ease-out; }
+.search-booking-panel--date { width: 100%; }
+.search-booking-panel--guests { width: min(460px, 100%); }
+.search-booking-panel h2 { font-size: 1.4rem; font-weight: 650; letter-spacing: -.035em; }
+.search-booking-panel__hint, .search-calendar__intro p { color: #737a74; font-size: .875rem; margin-top: 5px; }
+.search-booking-panel__footer { display: flex; justify-content: flex-end; margin-top: 20px; }
+.search-booking-panel__footer button { background: #148754; color: white; border-radius: 999px; padding: 12px 22px; font-size: .875rem; font-weight: 650; transition: background .2s; }
+.search-booking-panel__footer button:hover { background: #106a43; }
+.search-calendar { position: relative; }
+.search-calendar__intro strong { font-size: 1.25rem; font-weight: 650; letter-spacing: -.025em; }
+.search-calendar__months { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; margin-top: 26px; }
+.search-calendar__month h3 { text-align: center; font-size: 1rem; font-weight: 650; margin: 0 32px 18px; line-height: 36px; }
+.search-calendar__navigation { position: absolute; top: 80px; left: 0; right: 0; display: flex; justify-content: space-between; pointer-events: none; }
+.search-calendar__navigation button { pointer-events: auto; border-radius: 50%; width: 36px; height: 36px; font-size: 26px; line-height: 1; }
+.search-calendar__days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.search-calendar__days small { text-align: center; font-size: .75rem; color: #737a74; padding-bottom: 10px; }
+.search-calendar__days button { aspect-ratio: 1; width: 100%; border-radius: 50%; font-size: .875rem; font-variant-numeric: tabular-nums; transition: background .15s, color .15s; }
+.search-calendar button:hover:not(:disabled) { background: #eef3ed; }
+.search-calendar__days button[aria-current="date"] { text-decoration: underline; text-underline-offset: 5px; }
+.search-calendar__days button[aria-pressed="true"], .search-calendar__days button[aria-pressed="true"]:hover { background: #148754; color: white; }
+.search-calendar button:disabled, .search-guest-stepper button:disabled { color: #bac1ba; cursor: not-allowed; }
+.search-calendar__selection { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #e9ede7; margin-top: 20px; padding-top: 16px; font-size: .875rem; }
+.search-calendar__selection button { padding: 8px; border-radius: 8px; text-decoration: underline; }
+.search-guest-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 26px 0; margin-top: 10px; border-bottom: 1px solid #e9ede7; }
+.search-guest-row strong { font-weight: 600; }
+.search-guest-row p, .search-booking-panel__note { font-size: .8rem; color: #737a74; margin-top: 6px; }
+.search-booking-panel__note { margin-top: 18px; line-height: 1.6; }
+.search-guest-stepper { display: flex; align-items: center; gap: 12px; }
+.search-guest-stepper button { border: 1px solid #d9dfd7; border-radius: 50%; width: 38px; height: 38px; font-size: 23px; transition: background .15s; }
+.search-guest-stepper button:hover:not(:disabled) { background: #eef3ed; border-color: #25342a; }
+.search-guest-stepper output { min-width: 22px; text-align: center; font-variant-numeric: tabular-nums; }
+@keyframes search-panel-enter { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 1023px) {
+  .search-calendar__months { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .search-calendar__month:nth-child(2) { display: none; }
+  .search-calendar__intro { display: none; }
+  .search-calendar__navigation { top: 0; }
+  .search-calendar__days button { min-height: 36px; }
+}
+@media (prefers-reduced-motion: reduce) { .search-booking-panel { animation: none; } }
