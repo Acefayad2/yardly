@@ -8,6 +8,8 @@ import { useStore } from "@/lib/store";
 import CategoryBar from "./CategoryBar";
 import PricePromiseModal from "./PricePromiseModal";
 import SpaceCard from "./SpaceCard";
+import { parseFlex, searchDateLabel, validSearchDate } from "@/lib/search-dates";
+import { useSearchAvailability } from "@/lib/use-search-availability";
 
 const MapView = dynamic(() => import("./MapView"), {
   ssr: false,
@@ -28,7 +30,9 @@ export default function Explore() {
   const router = useRouter();
   const rawQuery = params.get("q") ?? "";
   const query = rawQuery.toLowerCase();
-  const requestedDate = params.get("date") ?? "";
+  const rawDate = params.get("date") ?? "";
+  const requestedDate = validSearchDate(rawDate) ? rawDate : "";
+  const flexibility = parseFlex(params.get("flex"));
   const requestedGuests = Math.max(1, Number(params.get("guests") ?? "1") || 1);
   const [spaceType, setSpaceType] = useState<SpaceType | "All">("All");
   const [showMap, setShowMap] = useState(false);
@@ -37,7 +41,7 @@ export default function Explore() {
   const [visibleMapState, setVisibleMapState] = useState<{ scope: string; ids: string[] }>();
   const showingDemoListings = marketplaceSpaces.length > 0 && marketplaceSpaces.every((space) => space.isDemo);
 
-  const spaces = useMemo(() => {
+  const candidates = useMemo(() => {
     return marketplaceSpaces.filter((s) => {
       const matchType = spaceType === "All" || s.spaceType === spaceType;
       const matchQuery =
@@ -49,6 +53,8 @@ export default function Explore() {
       return matchType && matchQuery && s.capacity >= requestedGuests;
     });
   }, [marketplaceSpaces, spaceType, query, requestedGuests]);
+  const availability = useSearchAvailability(candidates, requestedDate, flexibility);
+  const spaces = requestedDate ? candidates.filter((space) => space.isDemo || availability.dates[space.id]) : candidates;
 
   const spaceScope = spaces.map((space) => space.id).join("|");
   const updateVisibleSpaces = useCallback((ids: string[]) => {
@@ -61,13 +67,13 @@ export default function Explore() {
     ? spaces.filter((space) => visibleMapIds.includes(space.id))
     : spaces;
 
-  const bookingQuery = useMemo(() => {
+  function bookingQuery(id: string) {
     const next = new URLSearchParams();
-    if (requestedDate) next.set("date", requestedDate);
+    if (availability.dates[id] || requestedDate) next.set("date", availability.dates[id] || requestedDate);
     if (requestedGuests > 1) next.set("guests", String(requestedGuests));
     const value = next.toString();
     return value ? `?${value}` : "";
-  }, [requestedDate, requestedGuests]);
+  }
 
   function clearSearch() {
     setSpaceType("All");
@@ -90,7 +96,7 @@ export default function Explore() {
             <strong className="text-foreground">{spaces.length} {spaces.length === 1 ? "space" : "spaces"}</strong>
             {query ? <> near “{rawQuery}”</> : null}
             {requestedGuests > 1 ? <> for {requestedGuests} guests</> : null}
-            {requestedDate ? <> on {new Date(`${requestedDate}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</> : null}
+            {requestedDate ? <> · {searchDateLabel(requestedDate, flexibility)}{showingDemoListings ? " (demo dates not verified)" : ""}</> : null}
           </p>
           <button type="button" onClick={clearSearch} className="font-semibold text-brand-dark underline underline-offset-4">
             Clear search
@@ -106,7 +112,7 @@ export default function Explore() {
         </div>
       )}
 
-      {showMap ? (
+      {availability.loading ? <p role="status" className="mx-auto max-w-7xl px-6 py-16 text-center">Checking available days…</p> : availability.error ? <div role="alert" className="mx-auto max-w-7xl px-6 py-16 text-center"><p>We couldn’t check available days. Please try again.</p><button type="button" onClick={availability.retry} className="mt-4 font-semibold underline">Retry availability</button></div> : showMap ? (
         <div className="mx-auto h-[calc(100dvh-166px)] max-w-[1440px] px-0 lg:h-[calc(100vh-150px)] lg:px-6 lg:py-5">
           <div className="map-mode-layout h-full">
             <section className="no-scrollbar hidden overflow-y-auto lg:block" aria-label="Spaces in map view">
@@ -128,7 +134,7 @@ export default function Explore() {
                   >
                     <SpaceCard
                       space={space}
-                      bookingQuery={bookingQuery}
+                      bookingQuery={bookingQuery(space.id)}
                       onSelect={() => setActiveSpaceId(space.id)}
                     />
                   </div>
@@ -137,6 +143,7 @@ export default function Explore() {
             </section>
             <section className="map-canvas-frame" aria-label="Map of available spaces">
               <MapView
+                bookingQueries={Object.fromEntries(spaces.map((space) => [space.id, bookingQuery(space.id)]))}
                 spaces={spaces}
                 activeId={hoveredSpaceId ?? activeSpaceId}
                 focusId={activeSpaceId}
@@ -174,7 +181,7 @@ export default function Explore() {
               </div>
               <div className="grid grid-cols-2 gap-x-2.5 gap-y-6 min-[375px]:gap-x-3 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-3 xl:grid-cols-4">
                 {spaces.map((s) => (
-                  <SpaceCard key={s.id} space={s} bookingQuery={bookingQuery} />
+                  <SpaceCard key={s.id} space={s} bookingQuery={bookingQuery(s.id)} />
                 ))}
               </div>
             </>

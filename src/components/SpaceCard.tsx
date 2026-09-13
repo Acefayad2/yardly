@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Space } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { spaceHref } from "@/lib/spaces";
+import { searchDateLabel } from "@/lib/search-dates";
 
 export default function SpaceCard({
   space,
@@ -26,6 +27,7 @@ export default function SpaceCard({
   };
 
   const href = spaceHref(space.id, bookingQuery);
+  const matchedDate = new URLSearchParams(bookingQuery).get("date");
 
   const select = (event: React.MouseEvent<HTMLAnchorElement>) => {
     if (!onSelect) return;
@@ -116,6 +118,7 @@ export default function SpaceCard({
         </div>
         <p className="truncate text-xs text-muted min-[375px]:text-sm">{space.neighborhood} · {space.spaceType}</p>
         <p className="truncate text-xs text-muted min-[375px]:text-sm">{space.title}</p>
+        {!space.isDemo && matchedDate && <p className="mt-1 text-xs font-semibold text-brand-dark">Available {searchDateLabel(matchedDate)}</p>}
         <p className="hidden truncate text-sm text-muted sm:block">Up to {space.capacity} guests · {space.minHours} hr minimum</p>
         <p className="mt-1 text-xs min-[375px]:text-sm">
           <span className="font-semibold text-foreground">${space.hourlyPrice}</span>

@@ -137,6 +137,7 @@ function MapControls({
 }
 
 export default function MapView({
+  bookingQueries = {},
   spaces,
   activeId,
   focusId,
@@ -148,6 +149,7 @@ export default function MapView({
   focusId?: string;
   onActiveChange?: (id?: string) => void;
   onVisibleChange?: (ids: string[]) => void;
+  bookingQueries?: Record<string, string>;
 }) {
   const [selectedId, setSelectedId] = useState<string | undefined>(activeId);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
@@ -244,7 +246,7 @@ export default function MapView({
               <path d="m6 6 12 12M18 6 6 18" />
             </svg>
           </button>
-          <Link href={spaceHref(selectedSpace.id)} className="yardly-map-preview__link">
+          <Link href={spaceHref(selectedSpace.id, bookingQueries[selectedSpace.id])} className="yardly-map-preview__link">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={selectedSpace.images[0]} alt={selectedSpace.title} />
             <div>

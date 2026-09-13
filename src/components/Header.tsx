@@ -8,6 +8,7 @@ import { useStore } from "@/lib/store";
 import MobileSearch from "./MobileSearch";
 import DestinationSearch from "./DestinationSearch";
 import SearchBookingFields from "./SearchBookingFields";
+import { parseFlex, searchDateLabel } from "@/lib/search-dates";
 
 export default function Header() {
   return <Suspense><HeaderContent /></Suspense>;
@@ -19,6 +20,7 @@ function HeaderContent() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [date, setDate] = useState("");
+  const [flexibility, setFlexibility] = useState(0);
   const [guests, setGuests] = useState("");
   const [bookingPanel, setBookingPanel] = useState<"when" | "who" | null>(null);
   const searchForm = useRef<HTMLFormElement>(null);
@@ -39,6 +41,7 @@ function HeaderContent() {
     queueMicrotask(() => {
       setQuery(params.get("q") ?? "");
       setDate(params.get("date") ?? "");
+      setFlexibility(parseFlex(params.get("flex")));
       setGuests(params.get("guests") ?? "");
       setMenuOpen(false);
       setBookingPanel(null);
@@ -73,8 +76,8 @@ function HeaderContent() {
 
   const compactDate = useMemo(() => {
     if (!date) return "Anytime";
-    return new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  }, [date]);
+    return searchDateLabel(date, flexibility);
+  }, [date, flexibility]);
 
   function search(e: React.FormEvent) {
     e.preventDefault();
@@ -85,6 +88,7 @@ function HeaderContent() {
     const params = new URLSearchParams();
     if (location) params.set("q", location);
     if (selectedDate) params.set("date", selectedDate);
+    if (selectedDate && flexibility) params.set("flex", String(flexibility));
     if (guestCount) params.set("guests", guestCount);
     router.push(params.size ? `/?${params.toString()}#discover` : "/#discover");
   }
@@ -233,7 +237,7 @@ function HeaderContent() {
             <span>Where</span>
             <DestinationSearch value={query} onChange={setQuery} />
           </div>
-          <SearchBookingFields date={date} guests={guests} onDate={setDate} onGuests={setGuests} open={bookingPanel} setOpen={setBookingPanel} />
+          <SearchBookingFields date={date} flexibility={flexibility} onFlexibility={setFlexibility} guests={guests} onDate={setDate} onGuests={setGuests} open={bookingPanel} setOpen={setBookingPanel} />
           <button
             type="submit"
             className="header-search__submit"

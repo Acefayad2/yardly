@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import DestinationSearch from "./DestinationSearch";
 import SearchCalendar from "./SearchCalendar";
+import { parseFlex, searchDateLabel } from "@/lib/search-dates";
 
 type SearchStep = "where" | "when" | "who";
 
@@ -16,6 +17,7 @@ export default function MobileSearch() {
   const [step, setStep] = useState<SearchStep>("where");
   const [query, setQuery] = useState("");
   const [date, setDate] = useState("");
+  const [flexibility, setFlexibility] = useState(0);
   const [guests, setGuests] = useState(1);
   useEffect(() => {
     if (!open) return;
@@ -48,6 +50,7 @@ export default function MobileSearch() {
   function clearAll() {
     setQuery("");
     setDate("");
+    setFlexibility(0);
     setGuests(1);
     setStep("where");
   }
@@ -57,6 +60,7 @@ export default function MobileSearch() {
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
     if (date) params.set("date", date);
+    if (date && flexibility) params.set("flex", String(flexibility));
     if (guests > 1) params.set("guests", String(guests));
     setOpen(false);
     router.push(params.size ? `/?${params.toString()}#discover` : "/#discover");
@@ -85,11 +89,11 @@ export default function MobileSearch() {
           {step === "when" ? (
             <section className="mobile-search-card mobile-search-card--compact" aria-labelledby="mobile-search-when">
               <h2 id="mobile-search-when">When?</h2>
-              <SearchCalendar value={date} onChange={setDate} />
+              <SearchCalendar value={date} onChange={setDate} flexibility={flexibility} onFlexibility={setFlexibility} />
               <button type="button" className="mobile-search-next" onClick={() => setStep("who")}>Next: guests</button>
             </section>
           ) : (
-            <CollapsedSection label="When" value={date ? new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "Add a date"} onClick={() => setStep("when")} />
+            <CollapsedSection label="When" value={searchDateLabel(date, flexibility)} onClick={() => setStep("when")} />
           )}
 
           {step === "who" ? (
@@ -126,6 +130,7 @@ export default function MobileSearch() {
         const params = new URLSearchParams(window.location.search);
         setQuery(params.get("q") ?? "");
         setDate(params.get("date") ?? "");
+        setFlexibility(parseFlex(params.get("flex")));
         setGuests(Math.min(60, Math.max(1, Number(params.get("guests")) || 1)));
         setStep("where"); setOpen(true);
       }}>
