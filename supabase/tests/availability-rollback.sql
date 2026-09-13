@@ -9,9 +9,9 @@ begin
   insert into auth.users(id) values(host), (guest), (outsider);
   perform set_config('request.jwt.claim.sub', host::text, true);
   execute 'set local role authenticated';
-  insert into public.listings(id,host_id,title,location,space_type,hourly_price,min_hours,capacity,timezone,images,latitude,longitude,status,description)
-  values(yard,host,'QA availability yard','Test city','Backyards',20,2,5,'America/Los_Angeles',array['https://example.com/test.jpg'],34,-118,'published','Temporary rollback fixture, never committed.'),
-    (draft,host,'QA availability draft','Test city','Backyards',20,2,5,'America/Los_Angeles','{}',null,null,'draft','Temporary rollback fixture, never committed.');
+  insert into public.listings(id,host_id,title,location,space_type,hourly_price,min_hours,capacity,timezone,images,latitude,longitude,status,description,neighborhood)
+  values(yard,host,'QA availability yard','Test city','Backyards',20,2,5,'America/Los_Angeles',array['https://example.com/test.jpg'],34,-118,'published','Temporary rollback fixture, never committed.','Test area'),
+    (draft,host,'QA availability draft','Test city','Backyards',20,2,5,'America/Los_Angeles','{}',null,null,'draft','Temporary rollback fixture, never committed.','Test area');
   update public.listings set weekly_hours = '[[10,18],[10,18],[10,18],[10,18],[10,18],[10,18],[10,18]]', blocked_dates = array[day+1] where id = yard;
   rejected := false;
   begin update public.listings set weekly_hours = '[null]' where id = yard;

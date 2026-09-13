@@ -82,9 +82,9 @@ test("guest selects only available slots and fails closed on errors", async ({ p
   await widget.getByLabel("Date", { exact: true }).fill(futureDate());
   await expect(widget.getByRole("button", { name: "Reserve", exact: true })).toBeEnabled();
   await expect(widget.getByRole("combobox", { name: "Start", exact: true }).locator("option")).toHaveText(["10:00 AM", "2:00 PM"]);
-  await widget.getByLabel("Start", { exact: true }).selectOption("14");
+  await widget.getByRole("combobox", { name: "Start", exact: true }).selectOption("14");
   await expect(widget.getByRole("combobox", { name: "Duration", exact: true }).locator("option")).toHaveText(["2 hours", "3 hours"]);
-  await widget.getByLabel("Duration").selectOption("3");
+  await widget.getByRole("combobox", { name: "Duration", exact: true }).selectOption("3");
   await expect(widget.getByText("$67.20", { exact: true })).toBeVisible();
   await widget.scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath("guest-availability.png") });
