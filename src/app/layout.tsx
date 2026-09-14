@@ -5,6 +5,7 @@ import "./marketplace-polish.css";
 import { StoreProvider } from "@/lib/store";
 import Header from "@/components/Header";
 import AuthModal from "@/components/AuthModal";
+import AuthLinkNotice from "@/components/AuthLinkNotice";
 import Footer from "@/components/Footer";
 import BottomNav from "@/components/BottomNav";
 
@@ -44,7 +45,7 @@ export default function RootLayout({
         <a href="#main-content" className="skip-link">Skip to content</a>
         <StoreProvider>
           <Header />
-          <main id="main-content" className="flex-1">{children}</main>
+          <main id="main-content" className="flex-1"><AuthLinkNotice />{children}</main>
           <Footer />
           <AuthModal />
           <BottomNav />

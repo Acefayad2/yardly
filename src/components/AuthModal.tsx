@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
+import { getSupabase } from "@/lib/supabase";
+import { Capacitor } from "@capacitor/core";
 
 export default function AuthModal() {
   const { authOpen, setAuthOpen, login } = useStore();
@@ -19,6 +21,7 @@ export default function AuthModal() {
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [feedback, setFeedback] = useState<{ type: "error" | "message"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [resendUntil, setResendUntil] = useState(0);
 
   const close = useCallback(() => {
     setAuthOpen(false);
@@ -78,6 +81,19 @@ export default function AuthModal() {
       return;
     }
     reset();
+  }
+
+  async function resendConfirmation() {
+    if (!emailRef.current?.reportValidity() || submitting) return;
+    if (Date.now() < resendUntil) { setFeedback({ type: "message", text: "Please wait a minute before requesting another confirmation email." }); return; }
+    setSubmitting(true);
+    try {
+      const { error } = await getSupabase().auth.resend({ type: "signup", email: email.trim(), options: { emailRedirectTo: Capacitor.isNativePlatform() ? "com.acefayad.yardly://auth/callback" : window.location.origin } });
+      if (error) throw error;
+      setResendUntil(Date.now() + 60000);
+      setFeedback({ type: "message", text: "If this account needs confirmation, a new link is on its way. Check your inbox and spam folder." });
+    } catch { setFeedback({ type: "error", text: "We couldn’t resend the confirmation. Please wait a minute and try again." }); }
+    finally { setSubmitting(false); }
   }
 
   function reset() {
@@ -150,6 +166,7 @@ export default function AuthModal() {
           </div>
 
           {mode === "login" && <Link href="/reset-password/" onClick={close} className="text-sm font-semibold text-brand underline">Forgot your password?</Link>}
+          <button type="button" disabled={submitting} onClick={() => void resendConfirmation()} className="text-left text-sm font-semibold text-brand underline">Resend confirmation email</button>
           {feedback && <p role={feedback.type === "error" ? "alert" : "status"} className={`auth-glass-feedback auth-glass-feedback--${feedback.type}`}>{feedback.text}</p>}
 
           <button type="submit" disabled={submitting} className="auth-glass-submit"><span>{submitting ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}</span>{!submitting && <span aria-hidden="true">→</span>}</button>

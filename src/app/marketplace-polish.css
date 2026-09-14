@@ -118,3 +118,15 @@
   .search-calendar__days button { min-height: 36px; }
 }
 @media (prefers-reduced-motion: reduce) { .search-booking-panel { animation: none; } }
+.search-flexible { padding: 0 4px 12px; }
+.search-flexible h3 { margin: 24px 0 16px; text-align: center; font-weight: 650; font-size: 16px; }
+.search-flexible .search-date-tolerance { justify-content: center; }
+.search-flexible__months { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; max-height: 320px; overflow-y: auto; padding: 3px; }
+.search-flexible__months button { min-height: 132px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; border: 1px solid #dedfdd; border-radius: 18px; background: white; color: #59625b; transition: border-color 160ms, background 160ms; }
+.search-flexible__months button:hover { border-color: #12915a; background: #f7faf8; }
+.search-flexible__months button[aria-pressed="true"] { border-color: #12915a; box-shadow: inset 0 0 0 1px #12915a; background: #edf7f1; color: #176641; }
+.search-flexible__months button:focus-visible { outline: 2px solid #176641; outline-offset: 2px; }
+.search-flexible__months svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 1.5; margin-bottom: 5px; }
+.search-flexible__months strong { font-size: 13px; }
+.search-flexible__months span { font-size: 12px; }
+@media (max-width: 1023px) { .search-flexible__months { grid-template-columns: repeat(3, minmax(0, 1fr)); max-height: 290px; } .search-flexible__months button { min-height: 115px; } }

@@ -2,9 +2,9 @@
 
 import { useEffect, useId, useRef } from "react";
 import SearchCalendar from "./SearchCalendar";
-import { searchDateLabel } from "@/lib/search-dates";
+import { flexibleLabel, type FlexibleSearch, searchDateLabel } from "@/lib/search-dates";
 
-export default function SearchBookingFields({ date, flexibility, onFlexibility, guests, onDate, onGuests, open, setOpen }: { date: string; flexibility: number; onFlexibility: (value: number) => void; guests: string; onDate: (value: string) => void; onGuests: (value: string) => void; open: "when" | "who" | null; setOpen: (value: "when" | "who" | null) => void }) {
+export default function SearchBookingFields({ date, flexibility, onFlexibility, flexible, onFlexible, guests, onDate, onGuests, open, setOpen }: { date: string; flexibility: number; onFlexibility: (value: number) => void; flexible?: FlexibleSearch; onFlexible: (value: FlexibleSearch | undefined) => void; guests: string; onDate: (value: string) => void; onGuests: (value: string) => void; open: "when" | "who" | null; setOpen: (value: "when" | "who" | null) => void }) {
   const root = useRef<HTMLDivElement>(null);
   const when = useRef<HTMLButtonElement>(null);
   const who = useRef<HTMLButtonElement>(null);
@@ -18,8 +18,8 @@ export default function SearchBookingFields({ date, flexibility, onFlexibility, 
   }, [setOpen]);
   return <div className="search-booking-fields" ref={root} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(null); }} onKeyDown={(event) => { if (event.key === "Escape" && open) { event.preventDefault(); event.stopPropagation(); close(); } }}>
     <input type="hidden" name="date" value={date} /><input type="hidden" name="guests" value={guests} />
-    <button ref={when} type="button" className="header-search__field search-field-trigger" aria-expanded={open === "when"} aria-controls={`${id}-when`} onClick={() => setOpen(open === "when" ? null : "when")}><span>When</span><p>{searchDateLabel(date, flexibility)}</p></button>
-    {open === "when" && <section id={`${id}-when`} className="search-booking-panel search-booking-panel--date" aria-label="Choose a booking date"><SearchCalendar value={date} onChange={onDate} flexibility={flexibility} onFlexibility={onFlexibility} /><div className="search-booking-panel__footer"><button type="button" onClick={() => { setOpen("who"); who.current?.focus(); }}>Next: guests →</button></div></section>}
+    <button ref={when} type="button" className="header-search__field search-field-trigger" aria-expanded={open === "when"} aria-controls={`${id}-when`} onClick={() => setOpen(open === "when" ? null : "when")}><span>When</span><p>{flexible ? flexibleLabel(flexible) : searchDateLabel(date, flexibility)}</p></button>
+    {open === "when" && <section id={`${id}-when`} className="search-booking-panel search-booking-panel--date" aria-label="Choose a booking date"><SearchCalendar value={date} onChange={onDate} flexibility={flexibility} onFlexibility={onFlexibility} flexible={flexible} onFlexible={onFlexible} /><div className="search-booking-panel__footer"><button type="button" onClick={() => { setOpen("who"); who.current?.focus(); }}>Next: guests →</button></div></section>}
     <button ref={who} type="button" className="header-search__field search-field-trigger" aria-expanded={open === "who"} aria-controls={`${id}-who`} onClick={() => setOpen(open === "who" ? null : "who")}><span>Who</span><p>{count ? `${count} ${count === 1 ? "guest" : "guests"}` : "Add guests"}</p></button>
     {open === "who" && <section id={`${id}-who`} className="search-booking-panel search-booking-panel--guests" aria-label="Choose guests">
       <h2>Who’s coming?</h2><p className="search-booking-panel__hint">Bring your favorite people.</p>
