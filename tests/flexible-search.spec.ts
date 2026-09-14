@@ -15,7 +15,8 @@ test("month cards submit and restore flexible preferences on desktop and mobile"
   await page.route("**/auth/v1/**", route => route.fulfill({ status: 400, json: { message: "Signed out" } }));
   await page.goto("/");
   const got = page.getByRole("button", { name: "Got it", exact: true });
-  if (await got.isVisible()) await got.click();
+  await expect(got).toBeVisible();
+  await got.click();
   const mobile = testInfo.project.name === "mobile";
   if (mobile) {
     await page.getByRole("button", { name: "Start your search" }).click();
