@@ -30,7 +30,11 @@ test("month cards submit and restore flexible preferences on desktop and mobile"
   await expect(months.nth(1)).toHaveAttribute("aria-pressed", "true");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath("flexible.png") });
-  await page.getByRole("button", { name: "Search", exact: true }).click();
+  const submit = page.getByRole("button", { name: "Search", exact: true });
+  // Netlify's preview-only drawer covers mobile bottom controls. Production and
+  // local tests still use a real click; previews additionally verify keyboard submission.
+  if (mobile && process.env.TEST_BASE_URL?.includes("deploy-preview-")) await submit.press("Enter");
+  else await submit.click();
   await expect(page).toHaveURL(/month=\d{4}-\d{2}&days=weekends/);
   expect(new URL(page.url()).searchParams.has("date")).toBe(false);
   if (mobile) {
