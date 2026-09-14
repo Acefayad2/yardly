@@ -8,7 +8,7 @@ import { useStore } from "@/lib/store";
 import CategoryBar from "./CategoryBar";
 import PricePromiseModal from "./PricePromiseModal";
 import SpaceCard from "./SpaceCard";
-import { parseFlex, searchDateLabel, validSearchDate } from "@/lib/search-dates";
+import { parseFlex, parseFlexible, flexibleLabel, searchDateLabel, validSearchDate } from "@/lib/search-dates";
 import { useSearchAvailability } from "@/lib/use-search-availability";
 
 const MapView = dynamic(() => import("./MapView"), {
@@ -33,6 +33,8 @@ export default function Explore() {
   const rawDate = params.get("date") ?? "";
   const requestedDate = validSearchDate(rawDate) ? rawDate : "";
   const flexibility = parseFlex(params.get("flex"));
+  const flexible = parseFlexible(params.get("month"), params.get("days"));
+  const hasDateSearch = !!requestedDate || !!flexible;
   const requestedGuests = Math.max(1, Number(params.get("guests") ?? "1") || 1);
   const [spaceType, setSpaceType] = useState<SpaceType | "All">("All");
   const [showMap, setShowMap] = useState(false);
@@ -53,8 +55,8 @@ export default function Explore() {
       return matchType && matchQuery && s.capacity >= requestedGuests;
     });
   }, [marketplaceSpaces, spaceType, query, requestedGuests]);
-  const availability = useSearchAvailability(candidates, requestedDate, flexibility);
-  const spaces = requestedDate ? candidates.filter((space) => space.isDemo || availability.dates[space.id]) : candidates;
+  const availability = useSearchAvailability(candidates, requestedDate, flexibility, flexible);
+  const spaces = hasDateSearch ? candidates.filter((space) => space.isDemo || availability.dates[space.id]) : candidates;
 
   const spaceScope = spaces.map((space) => space.id).join("|");
   const updateVisibleSpaces = useCallback((ids: string[]) => {
@@ -90,13 +92,13 @@ export default function Explore() {
         </div>
       </div>
 
-      {(query || requestedDate || requestedGuests > 1) && (
+      {(query || hasDateSearch || requestedGuests > 1) && (
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-6 pt-6 text-sm">
           <p className="text-muted">
             <strong className="text-foreground">{spaces.length} {spaces.length === 1 ? "space" : "spaces"}</strong>
             {query ? <> near “{rawQuery}”</> : null}
             {requestedGuests > 1 ? <> for {requestedGuests} guests</> : null}
-            {requestedDate ? <> · {searchDateLabel(requestedDate, flexibility)}{showingDemoListings ? " (demo dates not verified)" : ""}</> : null}
+            {hasDateSearch ? <> · {flexible ? flexibleLabel(flexible) : searchDateLabel(requestedDate, flexibility)}{showingDemoListings ? " (demo dates not verified)" : ""}</> : null}
           </p>
           <button type="button" onClick={clearSearch} className="font-semibold text-brand-dark underline underline-offset-4">
             Clear search

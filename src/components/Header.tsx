@@ -8,7 +8,7 @@ import { useStore } from "@/lib/store";
 import MobileSearch from "./MobileSearch";
 import DestinationSearch from "./DestinationSearch";
 import SearchBookingFields from "./SearchBookingFields";
-import { parseFlex, searchDateLabel } from "@/lib/search-dates";
+import { parseFlex, parseFlexible, flexibleLabel, type FlexibleSearch, searchDateLabel } from "@/lib/search-dates";
 
 export default function Header() {
   return <Suspense><HeaderContent /></Suspense>;
@@ -21,6 +21,7 @@ function HeaderContent() {
   const [query, setQuery] = useState("");
   const [date, setDate] = useState("");
   const [flexibility, setFlexibility] = useState(0);
+  const [flexible, setFlexible] = useState<FlexibleSearch>();
   const [guests, setGuests] = useState("");
   const [bookingPanel, setBookingPanel] = useState<"when" | "who" | null>(null);
   const searchForm = useRef<HTMLFormElement>(null);
@@ -55,6 +56,7 @@ function HeaderContent() {
       setQuery(params.get("q") ?? "");
       setDate(params.get("date") ?? "");
       setFlexibility(parseFlex(params.get("flex")));
+      setFlexible(parseFlexible(params.get("month"), params.get("days")));
       setGuests(params.get("guests") ?? "");
       setMenuOpen(false);
       setBookingPanel(null);
@@ -88,9 +90,10 @@ function HeaderContent() {
   }, [isExplore, bookingPanel]);
 
   const compactDate = useMemo(() => {
+    if (flexible) return flexibleLabel(flexible);
     if (!date) return "Anytime";
     return searchDateLabel(date, flexibility);
-  }, [date, flexibility]);
+  }, [date, flexibility, flexible]);
 
   function search(e: React.FormEvent) {
     e.preventDefault();
@@ -100,8 +103,11 @@ function HeaderContent() {
     const guestCount = String(form.get("guests") ?? "");
     const params = new URLSearchParams();
     if (location) params.set("q", location);
-    if (selectedDate) params.set("date", selectedDate);
-    if (selectedDate && flexibility) params.set("flex", String(flexibility));
+    if (flexible) { params.set("month", flexible.month); params.set("days", flexible.days); }
+    else {
+      if (selectedDate) params.set("date", selectedDate);
+      if (selectedDate && flexibility) params.set("flex", String(flexibility));
+    }
     if (guestCount) params.set("guests", guestCount);
     router.push(params.size ? `/?${params.toString()}#discover` : "/#discover");
   }
@@ -249,7 +255,7 @@ function HeaderContent() {
             <span>Where</span>
             <DestinationSearch value={query} onChange={setQuery} />
           </div>
-          <SearchBookingFields date={date} flexibility={flexibility} onFlexibility={setFlexibility} guests={guests} onDate={setDate} onGuests={setGuests} open={bookingPanel} setOpen={setBookingPanel} />
+          <SearchBookingFields date={date} flexibility={flexibility} onFlexibility={setFlexibility} flexible={flexible} onFlexible={setFlexible} guests={guests} onDate={setDate} onGuests={setGuests} open={bookingPanel} setOpen={setBookingPanel} />
           <button
             type="submit"
             className="header-search__submit"
