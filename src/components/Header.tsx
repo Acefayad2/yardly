@@ -43,6 +43,7 @@ function HeaderContent() {
       if (field) setSearchHighlight((current) => ({ ...current, x: field.offsetLeft, width: field.offsetWidth, animate: false }));
     });
     observer.observe(form);
+    form.querySelectorAll(".header-search__field").forEach((field) => observer.observe(field));
     return () => observer.disconnect();
   }, [pathname]);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
