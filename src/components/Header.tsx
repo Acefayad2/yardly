@@ -24,17 +24,29 @@ function HeaderContent() {
   const [guests, setGuests] = useState("");
   const [bookingPanel, setBookingPanel] = useState<"when" | "who" | null>(null);
   const searchForm = useRef<HTMLFormElement>(null);
-  const [searchHighlight, setSearchHighlight] = useState({ x: 0, width: 1, visible: false });
+  const pathname = usePathname();
+  const activeSearchField = useRef<HTMLElement | null>(null);
+  const [searchHighlight, setSearchHighlight] = useState({ x: 0, width: 0, visible: false, animate: false });
   function highlightField(target: EventTarget | null) {
     const field = (target as HTMLElement | null)?.closest<HTMLElement>(".header-search__field");
     const form = searchForm.current;
     if (!field || !form) return;
-    const bounds = field.getBoundingClientRect(), parent = form.getBoundingClientRect();
-    setSearchHighlight({ x: bounds.left - parent.left - form.clientLeft, width: bounds.width, visible: true });
+    activeSearchField.current = field;
+    // Layout coordinates stay stable while the whole header expands or collapses.
+    setSearchHighlight((current) => ({ x: field.offsetLeft, width: field.offsetWidth, visible: true, animate: current.visible }));
   }
+  useEffect(() => {
+    const form = searchForm.current;
+    if (!form) return;
+    const observer = new ResizeObserver(() => {
+      const field = activeSearchField.current;
+      if (field) setSearchHighlight((current) => ({ ...current, x: field.offsetLeft, width: field.offsetWidth, animate: false }));
+    });
+    observer.observe(form);
+    return () => observer.disconnect();
+  }, [pathname]);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const router = useRouter();
-  const pathname = usePathname();
   const isHost = pathname.startsWith("/host");
   const isExplore = pathname === "/";
   useEffect(() => {
@@ -224,15 +236,14 @@ function HeaderContent() {
         {isExplore && <form
           ref={searchForm}
           onFocusCapture={(event) => highlightField(event.target)}
-          onClickCapture={(event) => highlightField(event.target)}
-          onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setSearchHighlight((current) => ({ ...current, visible: false })); }}
+          onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) { activeSearchField.current = null; setSearchHighlight((current) => ({ ...current, visible: false, animate: false })); } }}
           onSubmit={search}
           className="header-search mx-auto hidden min-w-0 lg:grid"
           aria-label="Search Yardly spaces"
           aria-hidden={headerCollapsed}
           inert={headerCollapsed ? true : undefined}
         >
-          <div aria-hidden="true" className="search-sliding-highlight" style={{ transform: `translateX(${searchHighlight.x}px) scaleX(${searchHighlight.width / 100})`, opacity: searchHighlight.visible ? 1 : 0 }} />
+          <div aria-hidden="true" className={`search-sliding-highlight${searchHighlight.animate ? " search-sliding-highlight--moving" : ""}`} style={{ transform: `translate3d(${searchHighlight.x}px, 0, 0)`, width: searchHighlight.width, opacity: searchHighlight.visible ? 1 : 0 }} />
           <div className="header-search__field header-search__field--where">
             <span>Where</span>
             <DestinationSearch value={query} onChange={setQuery} />
