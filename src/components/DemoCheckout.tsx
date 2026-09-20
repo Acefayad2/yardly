@@ -19,6 +19,21 @@ export default function DemoCheckout({ space }: { space: Space }) {
   const heading = useRef<HTMLHeadingElement>(null);
   const committed = useRef(false);
   useEffect(() => { if (step !== "details") heading.current?.focus(); }, [step]);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const plannedDate = params.get("date") ?? "";
+    const requestedGuests = Number(params.get("guests"));
+    const validDate = /^\d{4}-\d{2}-\d{2}$/.test(plannedDate)
+      && !Number.isNaN(Date.parse(plannedDate))
+      && new Date(plannedDate).toISOString().slice(0, 10) === plannedDate
+      && plannedDate >= listingToday(space.timezone);
+    queueMicrotask(() => {
+      if (validDate) setDate(plannedDate);
+      if (params.has("guests") && Number.isInteger(requestedGuests)) {
+        setGuests(Math.min(space.capacity, Math.max(1, requestedGuests)));
+      }
+    });
+  }, [space.capacity, space.timezone]);
   const today = listingToday(space.timezone);
   const quote = bookingQuote(space.hourlyPrice, hours);
   const control = "mt-1 w-full rounded-xl border border-border bg-background px-3 py-3 text-sm";
@@ -57,7 +72,7 @@ export default function DemoCheckout({ space }: { space: Space }) {
       <Link href="/trips#demo-bookings" className={`${primary} block text-center`}>View demo booking</Link>
       <button type="button" className="mt-4 w-full text-sm font-semibold underline" onClick={() => { setStep("details"); setAcknowledged(false); }}>Try another demo</button>
     </div> : <>
-      <h2 ref={heading} tabIndex={-1} className="text-2xl font-semibold">{step === "details" ? "Try a demo booking" : "Review and demo pay"}</h2>
+      <h2 ref={heading} tabIndex={-1} className="text-2xl font-semibold">{step === "details" ? "Try a demo booking" : "Review demo checkout"}</h2>
       <p className="mt-2 text-sm text-muted">{step === "details" ? "Sample hours only—not verified host availability. Choose one day, then review checkout." : "This test payment method demonstrates checkout without collecting card details."}</p>
       {step === "details" ? <form onSubmit={review} className="mt-5 space-y-4">
         <label className="block text-sm font-semibold">Demo date<input required type="date" min={today} value={date} onChange={e => setDate(e.target.value)} className={control} /></label>

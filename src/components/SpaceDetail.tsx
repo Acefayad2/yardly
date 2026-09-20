@@ -116,7 +116,7 @@ export default function SpaceDetail({ space }: { space: Space }) {
             <h3 id="booking-confidence" className="mb-4 text-lg font-semibold">Book with the important details up front</h3>
             <div className="grid gap-3 sm:grid-cols-3">
               <TrustItem title="Clear rules" body="Review host expectations before reserving." />
-              <TrustItem title="Private address" body="Exact location follows a confirmed booking." />
+              <TrustItem title={space.isDemo ? "Demo location" : "Private address"} body={space.isDemo ? "Illustrative map only. No address is delivered in demo mode." : "Exact location follows a confirmed booking."} />
               <TrustItem title="Up-front total" body="Hourly rate and service fee are shown together." />
             </div>
           </section>
@@ -151,7 +151,7 @@ export default function SpaceDetail({ space }: { space: Space }) {
             <div className="h-72 overflow-hidden rounded-2xl">
               <MapView spaces={[space]} activeId={space.id} />
             </div>
-            <p className="mt-3 text-xs text-muted">Exact address is shared after booking is confirmed.</p>
+            <p className="mt-3 text-xs text-muted">{space.isDemo ? "Illustrative location only. A demo booking does not provide access to this property." : "Exact address is shared after booking is confirmed."}</p>
           </div>
         </div>
 

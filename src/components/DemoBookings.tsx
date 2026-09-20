@@ -18,7 +18,7 @@ export default function DemoBookings() {
     return () => window.removeEventListener(DEMO_BOOKINGS_EVENT, load);
   }, []);
   if (!bookings.length) return null;
-  return <section id="demo-bookings" aria-label="Demo bookings" className="mt-6 space-y-4 rounded-2xl border border-amber-200 bg-amber-50/50 p-5">
+  return <section id="demo-bookings" aria-label="Demo bookings" className="mt-6 scroll-mt-28 space-y-4 rounded-2xl border border-amber-200 bg-amber-50/50 p-5">
     <h2 className="text-xl font-semibold">Your demo bookings</h2>
     <p className="text-sm text-muted">Simulated only · No charges, host notifications, or reserved availability. Saved in this tab’s session, not your account.</p>
     {bookings.map(booking => {
