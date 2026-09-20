@@ -1,6 +1,27 @@
 import { test, expect } from "@playwright/test";
 import { validDemoBooking } from "../src/lib/demo-bookings";
 
+test("demo checkout preserves search choices and never confirms when storage fails", async ({ page }) => {
+  await page.route("**/rest/v1/**", route => route.fulfill({ json: [] }));
+  await page.route("**/auth/v1/**", route => route.fulfill({ status: 400, json: { message: "Signed out" } }));
+  const date = new Date(); date.setDate(date.getDate() + 2);
+  const plannedDate = date.toISOString().slice(0, 10);
+  await page.goto(`/spaces/?id=sunlit-oasis-la&date=${plannedDate}&guests=4`);
+  const checkout = page.getByRole("region", { name: "Demo booking and checkout" });
+  await expect(checkout.getByLabel("Demo date", { exact: true })).toHaveValue(plannedDate);
+  await expect(checkout.getByLabel("Demo guests", { exact: true })).toHaveValue("4");
+  await checkout.getByRole("button", { name: "Continue to demo checkout" }).click();
+  await checkout.getByRole("checkbox").check();
+  await page.evaluate(() => { Storage.prototype.setItem = () => { throw new DOMException("Test quota", "QuotaExceededError"); }; });
+  await checkout.getByRole("button", { name: "Simulate payment & confirm" }).click();
+  await expect(checkout.getByRole("alert")).toContainText("Browser storage is unavailable");
+  await expect(checkout.getByRole("heading", { name: "Demo booking confirmed" })).toHaveCount(0);
+  await page.goto("/spaces/?id=sunlit-oasis-la&date=2027-02-31&guests=99");
+  await expect(checkout.getByLabel("Demo date", { exact: true })).toHaveValue("");
+  await expect(checkout.getByLabel("Demo guests", { exact: true })).toHaveValue("25");
+  await expect(page.getByText("Exact address is shared after booking is confirmed.")).toHaveCount(0);
+});
+
 test("demo validation rejects real listing ids and invalid schedules", () => {
   const booking = { id: "DEMO-00000000-0000-4000-8000-000000000001", spaceId: "sunlit-oasis-la", date: "2027-01-20", startHour: 10, hours: 2, guests: 2, status: "confirmed" };
   expect(validDemoBooking(booking)).toBe(true);
@@ -16,6 +37,8 @@ test("demo checkout confirms, persists and cancels without backend writes", asyn
     await page.route(/^https:\/\/app\.netlify\.com\/cdp\/?\?/, route => route.abort());
   }
   const writes: string[] = [];
+  const runtimeErrors: string[] = [];
+  page.on("pageerror", error => runtimeErrors.push(error.message));
   page.on("request", request => { if (!["GET", "HEAD", "OPTIONS"].includes(request.method())) writes.push(request.url()); });
   await page.route("**/rest/v1/**", route => route.fulfill({ json: [] }));
   await page.route("**/auth/v1/**", route => route.fulfill({ status: 400, json: { message: "Signed out" } }));
@@ -51,4 +74,5 @@ test("demo checkout confirms, persists and cancels without backend writes", asyn
   await expect(demos.getByText("Demo · Cancelled")).toBeVisible();
   await demos.screenshot({ path: testInfo.outputPath("demo-cancelled.png") });
   expect(writes).toEqual([]);
+  expect(runtimeErrors).toEqual([]);
 });
