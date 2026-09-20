@@ -30,7 +30,7 @@ export const DEMO_SPACES: Space[] = [
   {
     id: "sunlit-oasis-la",
     hostId: "yardly-demo-host",
-    timezone: "America/New_York",
+    timezone: "America/Los_Angeles",
     isDemo: true,
     title: "Sunlit backyard oasis with pool & cabana",
     location: "Los Angeles, CA",
@@ -56,7 +56,7 @@ export const DEMO_SPACES: Space[] = [
   {
     id: "desert-pool-phx",
     hostId: "yardly-demo-host",
-    timezone: "America/New_York",
+    timezone: "America/Phoenix",
     isDemo: true,
     title: "Desert pool retreat with misters",
     location: "Phoenix, AZ",
@@ -82,7 +82,7 @@ export const DEMO_SPACES: Space[] = [
   {
     id: "chef-patio-austin",
     hostId: "yardly-demo-host",
-    timezone: "America/New_York",
+    timezone: "America/Chicago",
     isDemo: true,
     title: "Chef's outdoor kitchen & dining deck",
     location: "Austin, TX",
@@ -134,7 +134,7 @@ export const DEMO_SPACES: Space[] = [
   {
     id: "firepit-lawn-nash",
     hostId: "yardly-demo-host",
-    timezone: "America/New_York",
+    timezone: "America/Chicago",
     isDemo: true,
     title: "Fire-pit lawn under the stars",
     location: "Nashville, TN",
@@ -186,7 +186,7 @@ export const DEMO_SPACES: Space[] = [
   {
     id: "modern-deck-denver",
     hostId: "yardly-demo-host",
-    timezone: "America/New_York",
+    timezone: "America/Denver",
     isDemo: true,
     title: "Modern patio & deck with mountain views",
     location: "Denver, CO",
@@ -212,7 +212,7 @@ export const DEMO_SPACES: Space[] = [
   {
     id: "rooftop-yard-chicago",
     hostId: "yardly-demo-host",
-    timezone: "America/New_York",
+    timezone: "America/Chicago",
     isDemo: true,
     title: "Rooftop garden yard in the city",
     location: "Chicago, IL",
@@ -238,7 +238,7 @@ export const DEMO_SPACES: Space[] = [
   {
     id: "sport-yard-dallas",
     hostId: "yardly-demo-host",
-    timezone: "America/New_York",
+    timezone: "America/Chicago",
     isDemo: true,
     title: "Backyard sport court & turf",
     location: "Dallas, TX",
@@ -264,7 +264,7 @@ export const DEMO_SPACES: Space[] = [
   {
     id: "event-yard-sd",
     hostId: "yardly-demo-host",
-    timezone: "America/New_York",
+    timezone: "America/Los_Angeles",
     isDemo: true,
     title: "Grand event yard with ocean breeze",
     location: "San Diego, CA",
@@ -290,7 +290,7 @@ export const DEMO_SPACES: Space[] = [
   {
     id: "cozy-hottub-seattle",
     hostId: "yardly-demo-host",
-    timezone: "America/New_York",
+    timezone: "America/Los_Angeles",
     isDemo: true,
     title: "Cedar hot tub & fern garden",
     location: "Seattle, WA",
@@ -316,7 +316,7 @@ export const DEMO_SPACES: Space[] = [
   {
     id: "poolside-kitchen-houston",
     hostId: "yardly-demo-host",
-    timezone: "America/New_York",
+    timezone: "America/Chicago",
     isDemo: true,
     title: "Poolside patio with outdoor kitchen",
     location: "Houston, TX",

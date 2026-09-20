@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { useStore } from "@/lib/store";
 import { spaceHref } from "@/lib/spaces";
 import { useState } from "react";
+import DemoBookings from "./DemoBookings";
 
 function timeLabel(t: string) {
   const hour = parseInt(t.split(":")[0], 10);
@@ -31,6 +32,7 @@ export default function Bookings() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-10 animate-fade-in">
       <h1 className="text-3xl font-semibold">Your bookings</h1>
+      <DemoBookings />
 
       {justBooked && (
         <div className="mt-5 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-emerald-800">

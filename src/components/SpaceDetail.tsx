@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Space } from "@/lib/types";
 import BookingWidget from "./BookingWidget";
+import DemoCheckout from "./DemoCheckout";
 import { useStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -156,7 +157,7 @@ export default function SpaceDetail({ space }: { space: Space }) {
 
         <div className="lg:w-[42%]">
           <div className="sticky top-24">
-            <BookingWidget key={space.id} space={space} />
+            {space.isDemo ? <DemoCheckout key={space.id} space={space} /> : <BookingWidget key={space.id} space={space} />}
           </div>
         </div>
       </div>
@@ -172,7 +173,7 @@ export default function SpaceDetail({ space }: { space: Space }) {
             <p className="text-xs text-muted">{space.minHours} hr minimum · {space.reviews ? `${space.rating.toFixed(2)} rating` : "New listing"}</p>
           </div>
           <a href="#booking" className="rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white transition active:scale-[0.98]">
-            {space.isDemo ? "View details" : "Choose a time"}
+            {space.isDemo ? "Try demo booking" : "Choose a time"}
           </a>
         </div>
       </div>

@@ -109,7 +109,7 @@ export default function Explore() {
       {showingDemoListings && (
         <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6">
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-            <strong>Preview inventory:</strong> These demo listings show how Yardly works while hosts add live spaces. They cannot be reserved or messaged.
+            <strong>Demo inventory:</strong> Try a simulated booking and checkout. No real charges or reservations; demo hosts cannot be messaged.
           </div>
         </div>
       )}
