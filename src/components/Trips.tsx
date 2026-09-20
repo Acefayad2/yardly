@@ -7,6 +7,7 @@ import { spaceHref } from "@/lib/spaces";
 import { useStore } from "@/lib/store";
 import type { Space } from "@/lib/types";
 import type { TripMapPoint } from "./TripsMap";
+import DemoBookings from "./DemoBookings";
 
 const TripsMap = dynamic(() => import("./TripsMap"), {
   ssr: false,
@@ -53,6 +54,7 @@ export default function Trips() {
       <section className="trips-sheet" aria-labelledby="trips-title">
         <div className="trips-sheet__handle" aria-hidden="true" />
         <h1 id="trips-title">Trips</h1>
+        <DemoBookings />
 
         {bookingsError && <p role="alert" className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{bookingsError}</p>}
 
