@@ -10,6 +10,11 @@ test("demo validation rejects real listing ids and invalid schedules", () => {
 });
 
 test("demo checkout confirms, persists and cancels without backend writes", async ({ page }, testInfo) => {
+  // Netlify's injected preview drawer sends its own analytics POSTs; it is not part of Yardly.
+  // Block only that external frame so the no-write assertion still covers all app requests.
+  if (process.env.TEST_BASE_URL?.includes("deploy-preview-")) {
+    await page.route(/^https:\/\/app\.netlify\.com\/cdp\/?\?/, route => route.abort());
+  }
   const writes: string[] = [];
   page.on("request", request => { if (!["GET", "HEAD", "OPTIONS"].includes(request.method())) writes.push(request.url()); });
   await page.route("**/rest/v1/**", route => route.fulfill({ json: [] }));
