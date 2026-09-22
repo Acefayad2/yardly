@@ -80,7 +80,7 @@ export default function SpaceDetail({ space }: { space: Space }) {
         <img src={space.images[0]} alt={space.title} className="h-64 w-full object-cover sm:h-80 md:hidden" />
         <div className="hidden grid-cols-4 grid-rows-2 gap-2 md:grid" style={{ height: 420 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={space.images[0]} alt={`${space.title}, main view`} className="col-span-2 row-span-2 h-full w-full object-cover" />
+          <img src={space.images[0]} alt={`${space.title}, main view`} className={`${space.images.length === 1 ? "col-span-4" : "col-span-2"} row-span-2 h-full w-full object-cover`} />
           {space.images.slice(1, 5).map((src, i) => (
             // eslint-disable-next-line @next/next/no-img-element
             <img key={i} src={src} alt={`${space.title}, view ${i + 2}`} className="h-full w-full object-cover" loading="lazy" />
@@ -96,14 +96,14 @@ export default function SpaceDetail({ space }: { space: Space }) {
                 {space.spaceType} hosted by {space.host.name}
               </h2>
               <p className="text-muted">
-                Up to {space.capacity} guests · {space.acres} acre yard · {space.minHours} hr minimum
+                Up to {space.capacity} guests{space.acres > 0 ? ` · ${space.acres} acre yard` : ""} · {space.minHours} hr minimum
               </p>
               <p className="mt-1 text-sm text-muted">
-                {space.topHost ? "Top host · " : ""}Hosting since {space.host.since} · {space.host.responseRate}% response rate
+                {space.topHost ? "Top host · " : ""}Hosting since {space.host.since}{space.isDemo ? ` · ${space.host.responseRate}% sample response rate` : ""}
               </p>
-              <button type="button" onClick={() => void messageHost()} disabled={openingConversation || space.isDemo} className="mt-3 text-sm font-semibold text-brand-dark underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-50">
+              {user?.id === space.hostId ? <Link href={`/host/listings/edit/?id=${encodeURIComponent(space.id)}`} className="mt-3 inline-block text-sm font-semibold text-brand-dark underline underline-offset-4">Manage your listing</Link> : <button type="button" onClick={() => void messageHost()} disabled={openingConversation || space.isDemo} className="mt-3 text-sm font-semibold text-brand-dark underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-50">
                 {space.isDemo ? "Demo host unavailable" : openingConversation ? "Opening conversation…" : "Message host"}
-              </button>
+              </button>}
               {messageError && <p role="alert" className="mt-2 text-sm text-red-700">{messageError}</p>}
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -116,7 +116,7 @@ export default function SpaceDetail({ space }: { space: Space }) {
             <h3 id="booking-confidence" className="mb-4 text-lg font-semibold">Book with the important details up front</h3>
             <div className="grid gap-3 sm:grid-cols-3">
               <TrustItem title="Clear rules" body="Review host expectations before reserving." />
-              <TrustItem title={space.isDemo ? "Demo location" : "Private address"} body={space.isDemo ? "Illustrative map only. No address is delivered in demo mode." : "Exact location follows a confirmed booking."} />
+              <TrustItem title={space.isDemo ? "Demo location" : "Location preview"} body={space.isDemo ? "Illustrative map only. No address is delivered in demo mode." : "Confirm arrival details directly with your host before visiting."} />
               <TrustItem title="Up-front total" body="Hourly rate and service fee are shown together." />
             </div>
           </section>
@@ -151,7 +151,7 @@ export default function SpaceDetail({ space }: { space: Space }) {
             <div className="h-72 overflow-hidden rounded-2xl">
               <MapView spaces={[space]} activeId={space.id} />
             </div>
-            <p className="mt-3 text-xs text-muted">{space.isDemo ? "Illustrative location only. A demo booking does not provide access to this property." : "Exact address is shared after booking is confirmed."}</p>
+            <p className="mt-3 text-xs text-muted">{space.isDemo ? "Illustrative location only. A demo booking does not provide access to this property." : "This map is a location preview, not arrival instructions. Confirm the address directly with your host before visiting."}</p>
           </div>
         </div>
 
