@@ -76,6 +76,7 @@ export interface HostListing {
   rules: string[];
   latitude: number | null;
   longitude: number | null;
+  streetAddress: string | null; // private; never included in the public marketplace feed
   images: string[];
   image: string;
   status: HostListingStatus;

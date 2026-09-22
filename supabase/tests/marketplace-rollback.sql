@@ -20,6 +20,9 @@ begin
   insert into public.listings (id, host_id, title, location, neighborhood, timezone, space_type, hourly_price, min_hours, capacity, description, images, latitude, longitude, status)
   values (yard, host, 'QA rollback yard', 'Test city', 'Test area', 'America/Los_Angeles', 'Backyards', 19.99, 2, 5, 'Temporary regression fixture, never committed.', array['https://example.com/test.jpg'], 34, -118, 'published'),
          (other_yard, host, 'QA rollback second yard', 'Test city', 'Test area', 'America/Los_Angeles', 'Backyards', 19.99, 2, 5, 'Temporary regression fixture, never committed.', array['https://example.com/test.jpg'], 34, -118, 'draft');
+  -- A published listing needs a private address on file (see the publish-guard trigger).
+  insert into public.listing_addresses(listing_id, street_address) values
+    (yard, '1 QA Fixture Way, Test City, TS 00000'), (other_yard, '2 QA Fixture Way, Test City, TS 00000');
 
   blocked := false;
   begin perform public.create_reservation(yard, booking_day, '14:00', '16:00', 2);

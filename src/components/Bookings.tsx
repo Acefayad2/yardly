@@ -37,7 +37,7 @@ export default function Bookings() {
       {justBooked && (
         <div className="mt-5 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-emerald-800">
           <svg viewBox="0 0 24 24" className="h-6 w-6 stroke-current" fill="none" strokeWidth={2}><path d="M5 12l4 4 10-11" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          <p className="font-medium">Booking confirmed! The host will share the exact address shortly.</p>
+          <p className="font-medium">Booking confirmed! The exact address is now shown on the listing and in your trips.</p>
         </div>
       )}
 

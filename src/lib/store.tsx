@@ -70,6 +70,8 @@ const IOS_AUTH_REDIRECT = "com.acefayad.yardly://auth/callback";
 const FALLBACK_LISTING_IMAGE = "https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&w=1200&q=85";
 
 const LISTING_SELECT = "id,host_id,title,location,neighborhood,timezone,space_type,hourly_price,day_price,min_hours,capacity,description,amenities,rules,images,latitude,longitude,status,host_display_name,host_avatar_url,created_at";
+// Host-only read: embeds the private address, which RLS only ever returns for the listing's own host.
+const HOST_LISTING_SELECT = `${LISTING_SELECT},listing_addresses(street_address)`;
 const GUEST_RESERVATION_SELECT = "id,listing_id,listing_title,listing_location,listing_image,listing_timezone,start_at,end_at,guests,total,host_payout,status,created_at";
 const HOST_RESERVATION_SELECT = `${GUEST_RESERVATION_SELECT},listings!inner(host_id)`;
 
@@ -121,7 +123,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     try {
       const supabase = getSupabase();
       const [listingsResult, reservationsResult] = await Promise.all([
-        supabase.from("listings").select(LISTING_SELECT).eq("host_id", hostId).order("created_at", { ascending: false }),
+        supabase.from("listings").select(HOST_LISTING_SELECT).eq("host_id", hostId).order("created_at", { ascending: false }),
         supabase.from("reservations").select(HOST_RESERVATION_SELECT).eq("listings.host_id", hostId).order("start_at", { ascending: true }),
       ]);
       if (listingsResult.error) throw listingsResult.error;
@@ -414,8 +416,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }).select(LISTING_SELECT).single();
 
       if (error) throw error;
-      setHostListings((previous) => [mapListing(data), ...previous]);
-      return photoFailures ? { message: "The draft was saved, but one or more photos could not be uploaded." } : {};
+      let addressFailed = false;
+      if (listing.streetAddress) {
+        const { error: addressError } = await supabase
+          .from("listing_addresses")
+          .upsert({ listing_id: listingId, street_address: listing.streetAddress });
+        addressFailed = Boolean(addressError);
+      }
+      setHostListings((previous) => [{ ...mapListing(data), streetAddress: addressFailed ? null : (listing.streetAddress || null) }, ...previous]);
+      const messages = [
+        photoFailures ? "one or more photos could not be uploaded" : null,
+        addressFailed ? "the private address could not be saved" : null,
+      ].filter(Boolean);
+      return messages.length ? { message: `The draft was saved, but ${messages.join(" and ")}.` } : {};
     } catch (error) {
       return { error: errorMessage(error) };
     }
@@ -463,9 +476,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }).eq("id", id).eq("host_id", user.id).select(LISTING_SELECT).single();
 
       if (error) throw error;
-      setHostListings((previous) => previous.map((item) => (item.id === id ? mapListing(data) : item)));
+      let addressFailed = false;
+      if (listing.streetAddress) {
+        const { error: addressError } = await supabase
+          .from("listing_addresses")
+          .upsert({ listing_id: id, street_address: listing.streetAddress });
+        addressFailed = Boolean(addressError);
+      }
+      setHostListings((previous) => previous.map((item) => (item.id === id ? { ...mapListing(data), streetAddress: addressFailed ? null : (listing.streetAddress || item.streetAddress) } : item)));
       if (String(data.status) === "published") await refreshMarketplace();
-      return photoFailures ? { message: "Your changes were saved, but one or more photos could not be uploaded." } : {};
+      const messages = [
+        photoFailures ? "one or more photos could not be uploaded" : null,
+        addressFailed ? "the private address could not be saved" : null,
+      ].filter(Boolean);
+      return messages.length ? { message: `Your changes were saved, but ${messages.join(" and ")}.` } : {};
     } catch (error) {
       return { error: errorMessage(error) };
     }
@@ -474,8 +498,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const setHostListingStatus = useCallback(async (id: string, status: HostListingStatus) => {
     if (!user) return;
     const listing = hostListings.find((item) => item.id === id);
-    if (status === "published" && listing && (!listing.images.length || listing.latitude === null || listing.longitude === null)) {
-      setHostDataError("Add at least one photo and map coordinates before publishing.");
+    if (status === "published" && listing && (!listing.images.length || listing.latitude === null || listing.longitude === null || !listing.streetAddress)) {
+      setHostDataError("Add at least one photo, a map location, and a private street address before publishing.");
       return;
     }
     const previous = hostListings;
@@ -645,11 +669,23 @@ function mapListing(row: Record<string, unknown>): HostListing {
     rules: stringArray(row.rules),
     latitude: nullableNumber(row.latitude),
     longitude: nullableNumber(row.longitude),
+    streetAddress: streetAddressFromEmbed(row.listing_addresses),
     images,
     image: images[0] || FALLBACK_LISTING_IMAGE,
     status: String(row.status) as HostListingStatus,
     createdAt: String(row.created_at),
   };
+}
+
+// PostgREST returns a to-one embed as an object when it can infer the unique
+// FK (listing_addresses.listing_id is its own primary key), but falls back to
+// an array in some query shapes — handle both. Absent entirely when the host
+// has never saved an address (RLS still returns the parent row).
+function streetAddressFromEmbed(value: unknown): string | null {
+  const record = Array.isArray(value) ? value[0] : value;
+  if (!record || typeof record !== "object") return null;
+  const address = (record as Record<string, unknown>).street_address;
+  return typeof address === "string" && address.trim() ? address : null;
 }
 
 function mapBooking(row: Record<string, unknown>): Booking {
