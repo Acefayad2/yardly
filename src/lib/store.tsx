@@ -50,6 +50,7 @@ interface Store {
   login: (mode: AuthMode, name: string, email: string, password: string, phone: string, dateOfBirth: string) => Promise<ActionResult>;
   logout: () => Promise<void>;
   refreshMarketplace: () => Promise<void>;
+  refreshHostData: () => Promise<void>;
   addBooking: (booking: NewBooking) => Promise<ActionResult>;
   cancelBooking: (id: string) => Promise<ActionResult>;
   toggleFavorite: (listingId: string) => void;
@@ -151,6 +152,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setBookingsLoading(false);
     }
   }, []);
+
+  const refreshHostData = useCallback(async () => {
+    if (user) await loadHostData(user.id);
+  }, [loadHostData, user]);
 
   const loadConversations = useCallback(async (userId: string) => {
     setConversationsLoading(true);
@@ -555,6 +560,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       refreshMarketplace,
+      refreshHostData,
       addBooking,
       cancelBooking,
       toggleFavorite,

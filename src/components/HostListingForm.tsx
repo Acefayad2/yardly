@@ -139,7 +139,7 @@ export default function HostListingForm({ mode, initialValues, existingImages = 
       <div className="sticky top-[73px] z-20 h-1 bg-surface-soft"><div className="h-full bg-brand transition-all" style={{ width: progress }} /></div>
       <form onSubmit={submit} className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-3xl flex-col px-6 py-10 sm:py-14">
         <div className="flex-1">
-          <p className="text-sm font-semibold text-brand-dark">{mode === "edit" ? "Editing draft" : ""} Step {step} of 3</p>
+          <p className="text-sm font-semibold text-brand-dark">{mode === "edit" ? "Editing listing" : ""} Step {step} of 3</p>
           {step === 1 && (
             <section className="animate-fade-in">
               <h1 className="mt-2 text-4xl font-semibold tracking-[-0.045em]">{mode === "edit" ? "Update the space basics" : "What kind of space will you share?"}</h1>
@@ -231,8 +231,8 @@ export default function HostListingForm({ mode, initialValues, existingImages = 
                 <textarea required value={rules} onChange={(event) => setRules(event.target.value)} rows={5} maxLength={1000} placeholder={"No smoking\nQuiet hours after 9 PM\nNo glass near the pool"} className="host-input mt-2 resize-none" />
               </Field>
               <div className="mt-8 rounded-2xl bg-surface-soft p-5">
-                <p className="font-semibold">{mode === "edit" ? "Changes are saved to your draft" : "Your listing will be saved as a draft"}</p>
-                <p className="mt-1 text-sm leading-6 text-muted">{mode === "edit" ? "Publish from the Listings page once photos and map coordinates are in place." : "Next, add photos, availability, arrival instructions, and house rules before you publish."}</p>
+                <p className="font-semibold">{mode === "edit" ? "Changes are saved to your listing" : "Your listing will be saved as a draft"}</p>
+                <p className="mt-1 text-sm leading-6 text-muted">{mode === "edit" ? "Your current publication status stays unchanged. Updates to a published listing are visible to guests." : "Review your photos and rules, then set availability from Listings before publishing."}</p>
               </div>
             </section>
           )}
