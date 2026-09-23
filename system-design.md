@@ -1,12 +1,13 @@
 # Yardly — System Design
 
 Living architecture document. Describes **the `dev` branch exactly as it stands**, not an aspirational
-merged state. Last audited 2026-09-23 against the 15 migrations, 7 files under `supabase/tests/`, and
+merged state. Last audited 2026-09-23 against the 16 migrations, 8 files under `supabase/tests/`, and
 the `src/` tree actually present on `dev`.
 
-Phase 0 (this document) and Phase 1 (foundation hardening: the three stacked PRs, an error taxonomy,
-a genuine concurrency test, an avatars bucket, CI running on `dev`) are both complete. See §25 and
-§30.
+Phase 0 (this document), Phase 1 (foundation hardening: the three stacked PRs, an error taxonomy, a
+genuine concurrency test, an avatars bucket, CI running on `dev`), and the master brief's own
+"Phase 2 — host/listing domain" (archived listings, a capacity-vs-reservation guard, real per-field
+publish validation, photo management, a guest-facing preview) are all complete. See §25 and §30.
 
 ## Status vocabulary
 
@@ -125,16 +126,28 @@ Seven tables on `dev`. All have RLS enabled.
 **Dead column:** `listings.day_price` exists and is constrained but is referenced by no pricing path.
 Either wire it up or drop it (§24, medium).
 
-## 7. Listing lifecycle — *partially implemented*
+## 7. Listing lifecycle — *implemented (core); moderation deferred*
 
-`draft → published ⇄ paused`. No `archived`, no moderation states.
+`draft ⇄ published ⇄ paused`, plus `draft`/`paused → archived → draft`. Archiving is reversible and
+re-enters the normal publish flow the same way `paused → draft` already did; offered from
+`draft`/`paused` only, consistent with the existing pause-before-draft rule. No RLS change was
+needed for the new value — `listings_anon_read_published` and `listings_authenticated_read` both use
+an exact-match `status = 'published'` predicate, so `archived` is automatically invisible to guests
+and other hosts, a claim the test suite verifies rather than assumes.
 
 Publishing is enforced by a **database trigger**, not client validation — a direct PostgREST call
-cannot publish an incomplete listing. Every status has real behavior (draft and paused are invisible
-to guests and unbookable), so there are no dead listing states.
+cannot publish an incomplete listing. The client's pre-publish check now mirrors the database
+constraint's five conditions exactly (images, lat/long, street address, description ≥20 chars,
+neighborhood), returning the specific failing reason instead of a generic fallback. Every status has
+real behavior, so there are no dead listing states.
 
-*Planned:* `archived` (so hosts can retire a listing without losing its reservation history).
-*Deferred:* moderation states (`pending_review`, `rejected`, `suspended`) until §17 exists.
+A capacity reduction that would leave an existing `pending`/`confirmed`, not-yet-ended reservation
+over the new limit is rejected by the same trigger that validates availability — direction-aware, so
+raising capacity or lowering it safely is unaffected.
+
+*Deferred:* moderation states (`pending_review`, `rejected`, `suspended`) until §17 exists. No
+listing-deletion path exists or is planned — `reservations.listing_id` is `ON DELETE RESTRICT`, and
+archiving covers the real product need without the sharp edges of true deletion.
 
 ## 8. Availability model — *implemented*
 
@@ -341,7 +354,7 @@ lists canonical metadata and social preview artwork as unmet launch requirements
 ## 23. Security architecture — *partially implemented*
 
 Strong where it has been worked: RLS on every table, narrowed grants, column-level update grant on
-reservations, schema-isolated `SECURITY DEFINER`, six rollback suites plus a genuine concurrency test.
+reservations, schema-isolated `SECURITY DEFINER`, seven rollback suites plus a genuine concurrency test.
 
 **Storage** — two buckets, `listing-images` and `avatars`: both `public: true`, same MIME allowlist
 (JPEG/PNG/WebP/HEIC/HEIF), write/update/delete confined to a top-level folder named for the
@@ -401,8 +414,8 @@ Ranked by severity. Critical items are launch blockers for the real-money path.
 |---|---|
 | Search loads all listings into the browser (§19) | Correct but unscalable |
 | `avatar_url` has a bucket but no upload path (§23) | Infrastructure landed; no UI or store wiring yet |
-| Orphaned listing images (§23) | Publicly readable indefinitely after listing deletion |
-| `listings.day_price` is dead (§6) | Wire up or drop |
+| Orphaned listing images (§23) | Not reachable through the app today — no listing-delete UI exists, and archiving deletes nothing. Only a direct DB delete on a listing with zero reservations could trigger it |
+| `listings.day_price` is dead (§6, §7) | Still untouched — wire up or drop is a pricing/business decision, not resolved by the host/listing domain pass |
 | 12% fee hardcoded in two places (§11) | Needs one source of truth |
 | No server-side rate limiting (§23) | Needs Edge Functions |
 
@@ -435,7 +448,13 @@ callback (`com.acefayad.yardly://auth/callback`) is likewise unverified on devic
 
 > An earlier draft of this document described #21/#25/#23 as implemented while they were still
 > unmerged — the defect that prompted this rewrite. All six PRs above are now genuinely on `dev`,
-> verified by replaying all 15 migrations and all 6 rollback suites against a clean local Postgres.
+> verified at the time by replaying all 15 migrations and all 6 rollback suites against a clean
+> local Postgres.
+
+Since then, two more PRs landed for the master brief's Phase 2 (host/listing domain, §7): **#29**
+(archived status, the capacity-vs-reservation guard, `listing-lifecycle-rollback.sql`) and **#30**
+(photo management, per-field publish validation, the guest-facing preview — client-only, no
+migration). Current counts: 16 migrations, 7 rollback suites plus the concurrency test.
 
 ## 26. System invariants
 
@@ -488,6 +507,10 @@ control works.
 - `avatar-storage-rollback.sql` — storage RLS as different roles: public read, owner-scoped
   write/update/delete, outsider denied. The first test in the repo to exercise storage policies at
   all; also exists for `listing-images`, untested since the first migration.
+- `listing-lifecycle-rollback.sql` — archive/restore transitions, archived-listing invisibility to
+  anon and to a different authenticated user, and the capacity-vs-reservation guard (rejects an
+  unsafe reduction, allows a safe one or any increase, allows the reduction once the conflicting
+  reservation is cancelled).
 - `ci-bootstrap.sql` — not a test; a stub of the Supabase surface so migrations can replay on bare
   Postgres.
 
@@ -499,7 +522,10 @@ rollback suites. Proves invariant 7 (§26).
 **Playwright** (`tests/*.spec.ts`) — mocks Supabase's REST/auth endpoints entirely. Proves UI
 behavior given a backend response; proves **nothing** about backend security. `tests/errors.spec.ts`
 is the one exception worth naming: it unit-tests `src/lib/errors.ts` directly rather than mocking a
-backend.
+backend. `host-listing-archive.spec.ts` and `host-listing-photos.spec.ts` cover the archive/restore
+flow and the full photo add/delete/reorder/upload-progress path respectively — the latter caught its
+own flake during development (an assertion racing an un-awaited click against a fixed timer) before
+landing, verified stable over 20 repeated runs afterward.
 
 > **Standing gotcha:** `scripts/serve-test-build.mjs` serves a prebuilt `out/` directory. Always run
 > `npm run build` before `npm run test:e2e`, or tests silently exercise stale code.
@@ -548,6 +574,13 @@ on the deployment decision.
 ## 30. Roadmap
 
 Reflecting §2. Per the brief's §45: stop and verify at each phase boundary.
+
+**Also complete, outside this numbered sequence:** the master brief's own "Phase 2 — host/listing
+domain" (archived status, the capacity-vs-reservation guard, real per-field pre-publish validation,
+photo delete/reorder/upload-progress, a guest-facing preview — see §7). This roadmap reprioritized
+away from the brief's phase numbers back in Phase 0, since an audit found most of the listing domain
+already built; what remained didn't correspond to a numbered slot below, so it's recorded here rather
+than forcing a renumber of Phases 2–13 and their several cross-references (§12's Phase 7 gate, etc.).
 
 | Phase | Work | Gate |
 |---|---|---|
