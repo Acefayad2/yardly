@@ -1,11 +1,12 @@
 # Yardly — System Design
 
 Living architecture document. Describes **the `dev` branch exactly as it stands**, not an aspirational
-merged state. Last audited 2026-09-23 against the 11 migrations, 3 SQL test suites, and the `src/`
+merged state. Last audited 2026-09-23 against the 14 migrations, 5 SQL test suites, and the `src/`
 tree actually present on `dev`.
 
-Three stacked pull requests (#21 → #22 → #23) are open and **not reflected in the "implemented"
-labels below**. See §25.
+The three previously-stacked pull requests (#21 → #25 → #23) have now merged, so private address
+disclosure, persistent host mode and signup profile provisioning are all live on `dev` and are
+labelled accordingly below. See §25.
 
 ## Status vocabulary
 
@@ -81,9 +82,13 @@ One identity per person: `auth.users` ⟷ `public.profiles` (1:1). There is no s
 - `profiles.account_type` (`'guest' | 'host' | 'both'`, default `'guest'`) is a **UX capability flag
   only**. It is referenced by **zero** RLS policies. It must never become an authorization boundary.
 - Authorization is purely relational: you are a host of a listing iff `listings.host_id = auth.uid()`.
-- **Known defect on `dev`:** `applySession` in `src/lib/store.tsx:206` hardcodes
-  `account_type: "both"` into every profile upsert, so the flag is meaningless in practice — every
-  user becomes `both` on first login. Fixed by PR #22 (§25).
+- The client **never writes `account_type`**. `applySession` omits the column entirely, relying on
+  PostgREST's `ON CONFLICT DO UPDATE` touching only keys present in the payload, so a login cannot
+  silently promote an account. `account-type-rollback.sql` fails loudly if this regresses.
+- The flag flips to `'both'` when a host creates their first listing, and never downgrades. A
+  one-shot backfill (`20260923120000`) demoted historical rows that were wrongly marked.
+- Hosting vs. traveling **mode** is remembered per user in `localStorage` and restored on explicit
+  login only, from safe entry points (`/`, `/host`) — never hijacking a deep link or a recovery screen.
 - No co-host role. *Deferred.*
 
 ## 5. Authorization model — *implemented*
@@ -103,11 +108,12 @@ Resource-ownership only, enforced by RLS plus deliberately narrowed grants. Nota
 
 ## 6. Data model — *implemented*
 
-Six tables on `dev`. All have RLS enabled.
+Seven tables on `dev`. All have RLS enabled.
 
 | Table | Purpose | Notable constraints |
 |---|---|---|
-| `profiles` | 1:1 extension of `auth.users` | `full_name` 1–100 chars; `phone_number` E.164 regex; `date_of_birth` bounded 1900-01-01…today |
+| `profiles` | 1:1 extension of `auth.users` | `full_name` 1–100 chars; `phone_number` E.164 regex; `date_of_birth` bounded 1900-01-01…today; row guaranteed by an `AFTER INSERT` trigger on `auth.users` |
+| `listing_addresses` | Private exact street address, 1:1 with a listing | Readable only by the listing's host or a guest holding a **confirmed** reservation on it. `anon` has **zero grant** — not merely an RLS filter |
 | `listings` | A rentable outdoor space | `status` draft/published/paused; `listings_published_complete` requires image + coordinates + ≥20-char description to publish; `weekly_hours` jsonb (7-element, Sunday-first, `null` = closed); `blocked_dates date[]` (≤730) |
 | `reservations` | A booking | `status` CHECK (see §9); `EXCLUDE USING gist` overlap constraint; ≤14-hour duration; price + listing + timezone snapshots |
 | `saved_listings` | Wishlist | PK `(user_id, listing_key)` |
@@ -409,19 +415,17 @@ password-change-then-login round trip have **never been tested against the real 
 with a real inbox** — only via mocked Playwright tests and code review. The iOS deep-link auth
 callback (`com.acefayad.yardly://auth/callback`) is likewise unverified on device.
 
-### In review — on `dev`? No.
+### Recently landed
 
-Three stacked PRs are open. **Nothing in them is reflected in the labels above.** Merge order is
-strict:
+| PR | Adds |
+|---|---|
+| **#21** | `listing_addresses`: exact street address, readable only by the host or a guest with a *confirmed* reservation; `anon` has zero grant. Adds `private-address-rollback.sql`. **Enforces invariant 6** |
+| **#25** | Stops the client writing `account_type` (§4); adds persistent hosting/traveling mode; backfill migration; `account-type-rollback.sql` *(supersedes #22, which GitHub auto-closed when its base branch was deleted on merge of #21)* |
+| **#23** | `AFTER INSERT` trigger on `auth.users` guaranteeing a `profiles` row survives an interrupted signup; `profile-provisioning-rollback.sql` |
 
-| PR | Branch → base | Adds |
-|---|---|---|
-| **#21** | `feature/private-address-disclosure` → `dev` | `listing_addresses` table: exact street address, readable only by the host or a guest with a *confirmed* reservation; `anon` has zero grant. Adds `private-address-rollback.sql` |
-| **#22** | `feature/host-mode` → #21 | Fixes the hardcoded `account_type: "both"` (§4); adds persistent hosting/traveling mode |
-| **#23** | `feature/profile-provisioning-trigger` → #22 | `AFTER INSERT` trigger on `auth.users` guaranteeing a `profiles` row survives an interrupted signup |
-
-> A previous draft of this document described all three as implemented. They are not. Invariant 6
-> (§26) depends on #21 and is currently **unenforced on `dev`**.
+> An earlier draft of this document described all three as implemented while they were still
+> unmerged — the defect that prompted this rewrite. They are now genuinely on `dev`, verified by
+> replaying all 14 migrations and all 5 rollback suites against a clean local Postgres.
 
 ## 26. System invariants
 
@@ -435,7 +439,7 @@ The properties that must hold regardless of how the UI changes. "Tested" means a
 | 3 | A guest cannot access another guest's reservation | `reservations` RLS | ✅ Implemented, tested |
 | 4 | A host cannot access unrelated reservations | RLS via listing ownership | ✅ Implemented, tested |
 | 5 | Unpublished listings cannot receive bookings | `create_reservation` + RLS | ✅ Implemented, tested |
-| 6 | Exact addresses are never publicly exposed | `listing_addresses` grants | ⚠️ **Unenforced on `dev`** — PR #21 |
+| 6 | Exact addresses are never publicly exposed | `listing_addresses` grants (no `anon` grant at all) | ✅ Implemented, tested |
 | 7 | Overlapping reservations cannot both be valid | `reservations_no_active_overlap` EXCLUDE gist | ✅ Implemented, tested — but serially, never concurrently |
 | 8 | Client-provided totals are never trusted | RPC takes no price args + RLS re-derives | ✅ Implemented, tested |
 | 9 | Payment success is determined by verified processing | — | ⛔ Planned (§12) |
@@ -465,6 +469,12 @@ control works.
   conversations, message authorization, cancellation.
 - `availability-rollback.sql` — schedule validation, slot computation, blocked dates, direct-REST
   bypass rejection, slot release on cancel.
+- `private-address-rollback.sql` — address read/write scopes, the publish guard, and revocation on
+  cancellation.
+- `account-type-rollback.sql` — proves `account_type` grants and removes no access, and that the
+  backfill demotes only non-hosts.
+- `profile-provisioning-rollback.sql` — signup-trigger fallback name chain, 100-char truncation,
+  idempotency, and that `profiles_insert_own` is unchanged.
 - `ci-bootstrap.sql` — not a test; a stub of the Supabase surface so migrations can replay on bare
   Postgres.
 
@@ -523,7 +533,7 @@ Reflecting §2. Per the brief's §45: stop and verify at each phase boundary.
 | Phase | Work | Gate |
 |---|---|---|
 | **0** | *This document* | ✅ Complete |
-| **1** | Merge #21→#22→#23. Error taxonomy. Avatar bucket. Fix CI `push` trigger to `dev`. Concurrency test for invariant 7 | Invariants 1–8 all enforced and tested |
+| **1** | ~~Merge #21→#25→#23~~ ✅. Error taxonomy. Avatar bucket. Fix CI `push` trigger to `dev`. Concurrency test for invariant 7 | Invariants 1–8 all enforced and tested |
 | **2** | Reservation lifecycle: implement `completed`; migration dropping `pending`/`expired`; handle the §9 coupling hazard | No dead states; past bookings display correctly |
 | **3** | Cancellation policy — cutoff window, guest/host asymmetry, DB-enforced | One authoritative policy, no React duplication |
 | **4** | SEO: `/spaces/[id]` + `generateStaticParams` + `generateMetadata` + sitemap/robots/canonical/OG | Listings indexable |
