@@ -11,6 +11,9 @@ test("browser Back closes the auth modal instead of navigating away underneath i
   await page.goto("/profile/");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
+  // The guard arms in a passive effect, committed after paint -- wait for it directly rather
+  // than racing it, or goBack() can fire before its synthetic history entry exists.
+  await expect.poll(() => page.evaluate(() => (history.state as { backToClose?: boolean } | null)?.backToClose === true)).toBe(true);
 
   await page.goBack();
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -28,6 +31,7 @@ test("browser Back closes the mobile search sheet instead of navigating away und
 
   await page.getByRole("button", { name: "Start your search" }).click();
   await expect(page.getByRole("dialog", { name: "Search Yardly" })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (history.state as { backToClose?: boolean } | null)?.backToClose === true)).toBe(true);
 
   await page.goBack();
   await expect(page.getByRole("dialog", { name: "Search Yardly" })).toHaveCount(0);
@@ -52,6 +56,11 @@ test("browser Back on a dirty new-listing form confirms before discarding it", a
   await page.goto("/host/listings/new/");
   await expect(page.getByRole("heading", { name: "What kind of space will you share?" })).toBeVisible();
   await page.getByRole("button", { name: "Pools", exact: true }).click();
+
+  // The dirty-guard arms in a passive effect, which commits after paint -- asynchronous
+  // relative to the click itself. Wait for it directly rather than racing it; otherwise
+  // goBack() can fire before the guard's synthetic history entry exists, on a slower runner.
+  await expect.poll(() => page.evaluate(() => (history.state as { formGuard?: boolean } | null)?.formGuard === true)).toBe(true);
 
   // Cancelling the confirm keeps the form and its selection intact.
   page.once("dialog", (dialog) => dialog.dismiss());
