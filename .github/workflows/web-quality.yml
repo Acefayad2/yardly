@@ -74,3 +74,5 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/private-address-rollback.sql
       - name: Verify account_type grants no access
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/account-type-rollback.sql
+      - name: Verify signup trigger provisions profiles
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/profile-provisioning-rollback.sql

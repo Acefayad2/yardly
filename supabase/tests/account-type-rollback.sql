@@ -13,7 +13,8 @@ begin
 
   perform set_config('request.jwt.claim.sub', host::text, true);
   execute 'set local role authenticated';
-  insert into public.profiles(id, full_name) values(host, 'QA host');
+  -- The signup trigger already provisioned this row; update it rather than insert.
+  update public.profiles set full_name = 'QA host' where id = host;
   -- A brand-new profile must default to 'guest': the client no longer sends the column.
   select account_type into host_type from public.profiles where id = host;
   if host_type <> 'guest' then raise exception 'FAIL: new profile did not default to guest, got %', host_type; end if;
@@ -34,7 +35,7 @@ begin
 
   -- A non-host who claims 'both' gains nothing at all.
   perform set_config('request.jwt.claim.sub', guest::text, true);
-  insert into public.profiles(id, full_name, account_type) values(guest, 'QA guest', 'both');
+  update public.profiles set full_name = 'QA guest', account_type = 'both' where id = guest;
   select count(*) into n from public.listings where id = hidden;
   if n <> 0 then raise exception 'FAIL: account_type=both exposed another host''s draft listing'; end if;
   update public.listings set title = 'Unauthorized edit' where id = yard;
