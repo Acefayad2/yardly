@@ -2,7 +2,7 @@ name: Yardly web quality
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
   schedule:
     - cron: "17 */6 * * *"
@@ -76,3 +76,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/account-type-rollback.sql
       - name: Verify signup trigger provisions profiles
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/profile-provisioning-rollback.sql
+      # Runs last: unlike the rollback suites it commits fixtures, so it must not
+      # interleave with them. It cleans up after itself via an EXIT trap.
+      - name: Verify concurrent bookings cannot double-book a slot
+        run: bash supabase/tests/booking-concurrency.sh
