@@ -7,6 +7,7 @@ import HostListingForm, { HostListingFormValues, HostListingSubmitResult } from 
 import HostNav from "@/components/HostNav";
 import HostSignInRequired from "@/components/HostSignInRequired";
 import { useStore } from "@/lib/store";
+import type { ListingImagePlanEntry } from "@/lib/types";
 
 export default function EditHostListingPage() {
   return (
@@ -65,7 +66,7 @@ function EditContent() {
     amenities: listing.amenities,
   };
 
-  async function handleSubmit(values: HostListingFormValues, photos: File[]): Promise<HostListingSubmitResult> {
+  async function handleSubmit(values: HostListingFormValues, imagePlan: ListingImagePlanEntry[], onProgress?: (done: number, total: number) => void): Promise<HostListingSubmitResult> {
     return updateHostListing(
       id,
       {
@@ -85,7 +86,8 @@ function EditContent() {
         streetAddress: values.streetAddress,
         status: currentStatus,
       },
-      photos,
+      imagePlan,
+      onProgress,
     );
   }
 

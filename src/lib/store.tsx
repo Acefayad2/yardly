@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
+import type { Session, SupabaseClient, User as SupabaseUser } from "@supabase/supabase-js";
 import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { useRouter } from "next/navigation";
@@ -25,6 +25,7 @@ import type {
   HostListing,
   HostListingStatus,
   HostReservation,
+  ListingImagePlanEntry,
   Space,
   User,
 } from "./types";
@@ -33,6 +34,7 @@ type AuthMode = "login" | "signup";
 type StoredMode = { userId: string; mode: AppMode };
 type ActionResult = { error?: string; message?: string; id?: string };
 type NewHostListing = Omit<HostListing, "id" | "image" | "images" | "createdAt">;
+type UploadProgress = (done: number, total: number) => void;
 type NewBooking = Pick<Booking, "spaceId" | "date" | "startTime" | "endTime" | "guests">;
 
 interface Store {
@@ -63,8 +65,8 @@ interface Store {
   addBooking: (booking: NewBooking) => Promise<ActionResult>;
   cancelBooking: (id: string) => Promise<ActionResult>;
   toggleFavorite: (listingId: string) => void;
-  addHostListing: (listing: NewHostListing, photos: File[]) => Promise<ActionResult>;
-  updateHostListing: (id: string, listing: NewHostListing, photos: File[]) => Promise<ActionResult>;
+  addHostListing: (listing: NewHostListing, imagePlan: ListingImagePlanEntry[], onProgress?: UploadProgress) => Promise<ActionResult>;
+  updateHostListing: (id: string, listing: NewHostListing, imagePlan: ListingImagePlanEntry[], onProgress?: UploadProgress) => Promise<ActionResult>;
   setHostListingStatus: (id: string, status: HostListingStatus) => Promise<void>;
   startConversation: (listingId: string) => Promise<ActionResult>;
   sendMessage: (conversationId: string, body: string) => Promise<ActionResult>;
@@ -438,29 +440,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, [favorites, user]);
 
-  const addHostListing = useCallback(async (listing: NewHostListing, photos: File[]): Promise<ActionResult> => {
+  const addHostListing = useCallback(async (listing: NewHostListing, imagePlan: ListingImagePlanEntry[], onProgress?: UploadProgress): Promise<ActionResult> => {
     if (!user) return { error: "Sign in before saving a listing." };
     setHostDataError(null);
     try {
       const supabase = getSupabase();
       const listingId = crypto.randomUUID();
-      const uploadedImages: string[] = [];
-      let photoFailures = 0;
-
-      for (const photo of photos.slice(0, 8)) {
-        const safeName = photo.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
-        const path = `${user.id}/${listingId}/${crypto.randomUUID()}-${safeName}`;
-        const { error } = await supabase.storage.from("listing-images").upload(path, photo, {
-          cacheControl: "3600",
-          contentType: photo.type,
-          upsert: false,
-        });
-        if (error) {
-          photoFailures += 1;
-          continue;
-        }
-        uploadedImages.push(supabase.storage.from("listing-images").getPublicUrl(path).data.publicUrl);
-      }
+      const { images: uploadedImages, photoFailures } = await uploadImagePlan(supabase, user.id, listingId, imagePlan, onProgress);
 
       const { data, error } = await supabase.from("listings").insert({
         id: listingId,
@@ -510,29 +496,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [accountType, user]);
 
-  const updateHostListing = useCallback(async (id: string, listing: NewHostListing, photos: File[]): Promise<ActionResult> => {
+  const updateHostListing = useCallback(async (id: string, listing: NewHostListing, imagePlan: ListingImagePlanEntry[], onProgress?: UploadProgress): Promise<ActionResult> => {
     if (!user) return { error: "Sign in before editing a listing." };
     setHostDataError(null);
     try {
       const supabase = getSupabase();
-      const existing = hostListings.find((item) => item.id === id);
-      const images: string[] = [...(existing?.images ?? [])];
-      let photoFailures = 0;
-
-      for (const photo of photos.slice(0, 8)) {
-        const safeName = photo.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
-        const path = `${user.id}/${id}/${crypto.randomUUID()}-${safeName}`;
-        const { error } = await supabase.storage.from("listing-images").upload(path, photo, {
-          cacheControl: "3600",
-          contentType: photo.type,
-          upsert: false,
-        });
-        if (error) {
-          photoFailures += 1;
-          continue;
-        }
-        images.push(supabase.storage.from("listing-images").getPublicUrl(path).data.publicUrl);
-      }
+      // The plan already carries every kept existing image (in the host's chosen order)
+      // plus any new files -- no need to separately merge against the stored listing.
+      const { images, photoFailures } = await uploadImagePlan(supabase, user.id, id, imagePlan, onProgress);
 
       const { data, error } = await supabase.from("listings").update({
         title: listing.title,
@@ -569,14 +540,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       return { error: errorMessage(error, "update host listing") };
     }
-  }, [hostListings, refreshMarketplace, user]);
+  }, [refreshMarketplace, user]);
 
   const setHostListingStatus = useCallback(async (id: string, status: HostListingStatus) => {
     if (!user) return;
     const listing = hostListings.find((item) => item.id === id);
-    if (status === "published" && listing && (!listing.images.length || listing.latitude === null || listing.longitude === null || !listing.streetAddress)) {
-      setHostDataError("Add at least one photo, a map location, and a private street address before publishing.");
-      return;
+    // Mirrors listings_published_complete (images/lat/long/description/neighborhood)
+    // and the private-address trigger exactly, field by field, so a host sees a
+    // specific reason instead of the database's generic constraint-violation fallback.
+    if (status === "published" && listing) {
+      const publishIssue = !listing.images.length ? "Add at least one photo before publishing."
+        : listing.latitude === null || listing.longitude === null ? "Add a map location before publishing."
+        : !listing.streetAddress ? "Add a private street address before publishing this listing."
+        : listing.description.trim().length < 20 ? "Write at least 20 characters in your description before publishing."
+        : !listing.neighborhood.trim() ? "Add a neighborhood before publishing."
+        : null;
+      if (publishIssue) {
+        setHostDataError(publishIssue);
+        return;
+      }
     }
     const previous = hostListings;
     setHostDataError(null);
@@ -689,6 +671,48 @@ export function useStore() {
 
 function toAccountType(value: unknown): AccountType {
   return value === "host" || value === "both" ? value : "guest";
+}
+
+// Walks the plan in the host's chosen order, uploading each "new" file as it's reached
+// and using "existing" URLs as-is, so the final images array reflects exactly the order
+// (and cover photo) the host set -- not "existing first, new appended after". A failed
+// upload drops that one entry (order of the rest is preserved) and is counted, never
+// aborts the rest of the plan. onProgress only counts new uploads, since "existing"
+// entries need no network work.
+async function uploadImagePlan(
+  supabase: SupabaseClient,
+  userId: string,
+  listingId: string,
+  plan: ListingImagePlanEntry[],
+  onProgress?: UploadProgress,
+): Promise<{ images: string[]; photoFailures: number }> {
+  const images: string[] = [];
+  let photoFailures = 0;
+  const totalNew = plan.filter((entry) => entry.kind === "new").length;
+  let uploaded = 0;
+
+  for (const entry of plan.slice(0, 8)) {
+    if (entry.kind === "existing") {
+      images.push(entry.url);
+      continue;
+    }
+    const safeName = entry.file.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
+    const path = `${userId}/${listingId}/${crypto.randomUUID()}-${safeName}`;
+    const { error } = await supabase.storage.from("listing-images").upload(path, entry.file, {
+      cacheControl: "3600",
+      contentType: entry.file.type,
+      upsert: false,
+    });
+    if (error) {
+      photoFailures += 1;
+    } else {
+      images.push(supabase.storage.from("listing-images").getPublicUrl(path).data.publicUrl);
+    }
+    uploaded += 1;
+    onProgress?.(uploaded, totalNew);
+  }
+
+  return { images, photoFailures };
 }
 
 function mapUser(user: SupabaseUser): User {
