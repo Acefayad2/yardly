@@ -1,0 +1,5 @@
+# Shell scripts and SQL run on Linux in CI. A CR byte would break bash outright
+# ("$'\r': command not found"), so keep these LF regardless of a contributor's
+# core.autocrlf setting.
+*.sh text eol=lf
+*.sql text eol=lf
