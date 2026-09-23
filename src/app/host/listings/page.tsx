@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import HostNav from "@/components/HostNav";
 import HostSignInRequired from "@/components/HostSignInRequired";
 import { useStore } from "@/lib/store";
@@ -20,7 +20,8 @@ export default function HostListingsPage() {
 
 function ListingsContent() {
   const searchParams = useSearchParams();
-  const { user, hostListings, hostDataLoading, hostDataError, setHostListingStatus } = useStore();
+  const { user, hostListings, hostReservations, hostDataLoading, hostDataError, setHostListingStatus } = useStore();
+  const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null);
 
   if (!user) return <HostSignInRequired />;
 
@@ -42,7 +43,9 @@ function ListingsContent() {
           <div className="mt-8 rounded-2xl bg-white px-6 py-20 text-center" role="status">Loading listings…</div>
         ) : hostListings.length ? (
           <div className="mt-8 space-y-4">
-            {hostListings.map((listing) => (
+            {hostListings.map((listing) => {
+              const upcomingCount = hostReservations.filter((reservation) => reservation.listingId === listing.id && reservation.status === "upcoming").length;
+              return (
               <article key={listing.id} className="grid gap-4 rounded-2xl border border-border-soft bg-white p-4 sm:grid-cols-[10rem_1fr_auto] sm:items-center">
                 <Image src={listing.image} alt="" width={640} height={448} className="h-36 w-full rounded-xl object-cover sm:h-28 sm:w-40" />
                 <div className="min-w-0">
@@ -50,18 +53,37 @@ function ListingsContent() {
                   <h2 className="mt-2 truncate text-lg font-semibold">{listing.title}</h2>
                   <p className="mt-1 text-sm text-muted">{listing.location} · ${listing.hourlyPrice}/hour · Up to {listing.capacity} guests</p>
                 </div>
-                <div className="flex flex-wrap gap-2 sm:flex-col">
-                  <Link href={`/host/listings/availability/?id=${encodeURIComponent(listing.id)}`} className="rounded-lg border border-border-soft px-3 py-2 text-center text-xs font-semibold transition hover:bg-surface-soft">Availability</Link>
-                  <Link href={`/host/listings/edit/?id=${encodeURIComponent(listing.id)}`} className="rounded-lg border border-border-soft px-3 py-2 text-center text-xs font-semibold transition hover:bg-surface-soft">
-                    {isReadyToPublish(listing) ? "Edit" : "Finish setup"}
-                  </Link>
-                  {listing.status !== "published" && <ActionButton onClick={() => setHostListingStatus(listing.id, "published")}>Publish</ActionButton>}
-                  {listing.status === "published" && <ActionButton onClick={() => setHostListingStatus(listing.id, "paused")}>Pause</ActionButton>}
-                  {listing.status === "paused" && <ActionButton onClick={() => setHostListingStatus(listing.id, "draft")}>Move to draft</ActionButton>}
-                  {listing.status === "published" && <Link href={spaceHref(listing.id)} className="rounded-lg border border-border-soft px-3 py-2 text-center text-xs font-semibold transition hover:bg-surface-soft">View listing</Link>}
-                </div>
+                {listing.status === "archived" ? (
+                  <div className="flex flex-wrap gap-2 sm:flex-col">
+                    <ActionButton onClick={() => setHostListingStatus(listing.id, "draft")}>Restore</ActionButton>
+                  </div>
+                ) : confirmArchiveId === listing.id ? (
+                  <div className="max-w-sm rounded-xl border border-amber-200 bg-amber-50 p-3 text-left sm:col-span-1" role="group" aria-label="Confirm archiving this listing">
+                    <p className="text-sm">
+                      Archive this listing? It will no longer be bookable or visible to guests. You can restore it later.
+                      {upcomingCount > 0 && <span className="mt-1 block font-semibold">It has {upcomingCount} upcoming reservation{upcomingCount === 1 ? "" : "s"} — archiving will not cancel {upcomingCount === 1 ? "it" : "them"}.</span>}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button type="button" onClick={() => { setHostListingStatus(listing.id, "archived"); setConfirmArchiveId(null); }} className="min-h-11 rounded-lg bg-red-700 px-3 text-sm font-semibold text-white">Confirm archive</button>
+                      <button type="button" onClick={() => setConfirmArchiveId(null)} className="min-h-11 rounded-lg border border-border px-3 text-sm font-semibold">Keep listing</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2 sm:flex-col">
+                    <Link href={`/host/listings/availability/?id=${encodeURIComponent(listing.id)}`} className="rounded-lg border border-border-soft px-3 py-2 text-center text-xs font-semibold transition hover:bg-surface-soft">Availability</Link>
+                    <Link href={`/host/listings/edit/?id=${encodeURIComponent(listing.id)}`} className="rounded-lg border border-border-soft px-3 py-2 text-center text-xs font-semibold transition hover:bg-surface-soft">
+                      {isReadyToPublish(listing) ? "Edit" : "Finish setup"}
+                    </Link>
+                    {listing.status !== "published" && <ActionButton onClick={() => setHostListingStatus(listing.id, "published")}>Publish</ActionButton>}
+                    {listing.status === "published" && <ActionButton onClick={() => setHostListingStatus(listing.id, "paused")}>Pause</ActionButton>}
+                    {listing.status === "paused" && <ActionButton onClick={() => setHostListingStatus(listing.id, "draft")}>Move to draft</ActionButton>}
+                    {listing.status === "published" && <Link href={spaceHref(listing.id)} className="rounded-lg border border-border-soft px-3 py-2 text-center text-xs font-semibold transition hover:bg-surface-soft">View listing</Link>}
+                    {listing.status !== "published" && <ActionButton onClick={() => setConfirmArchiveId(listing.id)}>Archive</ActionButton>}
+                  </div>
+                )}
               </article>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="mt-8 rounded-2xl border border-dashed border-border-soft bg-white px-6 py-20 text-center">
@@ -77,7 +99,7 @@ function ListingsContent() {
 }
 
 function StatusBadge({ status }: { status: HostListingStatus }) {
-  const styles = status === "published" ? "bg-emerald-50 text-emerald-700" : status === "paused" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600";
+  const styles = status === "published" ? "bg-emerald-50 text-emerald-700" : status === "paused" ? "bg-amber-50 text-amber-700" : status === "archived" ? "bg-zinc-200 text-zinc-500" : "bg-slate-100 text-slate-600";
   return <span className={`rounded-full px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.08em] ${styles}`}>{status}</span>;
 }
 

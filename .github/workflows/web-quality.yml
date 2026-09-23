@@ -78,6 +78,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/profile-provisioning-rollback.sql
       - name: Verify avatar storage bucket policies
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/avatar-storage-rollback.sql
+      - name: Verify listing archive/restore and the capacity guard
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/listing-lifecycle-rollback.sql
       # Runs last: unlike the rollback suites it commits fixtures, so it must not
       # interleave with them. It cleans up after itself via an EXIT trap.
       - name: Verify concurrent bookings cannot double-book a slot
