@@ -68,6 +68,13 @@ export type AppMode = "traveling" | "hosting";
 
 export type HostListingStatus = "draft" | "published" | "paused" | "archived";
 
+// The final, host-ordered sequence of a listing's photos. "existing" entries are
+// already-uploaded URLs; "new" entries are local files still to be uploaded. Walking
+// this in order (rather than always keeping every existing image and appending new
+// ones after) is what lets a host reorder photos -- including making a newly added one
+// the cover photo -- before saving.
+export type ListingImagePlanEntry = { kind: "existing"; url: string } | { kind: "new"; file: File };
+
 export interface HostListing {
   id: string;
   title: string;
