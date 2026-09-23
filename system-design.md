@@ -1,12 +1,12 @@
 # Yardly — System Design
 
 Living architecture document. Describes **the `dev` branch exactly as it stands**, not an aspirational
-merged state. Last audited 2026-09-23 against the 14 migrations, 5 SQL test suites, and the `src/`
-tree actually present on `dev`.
+merged state. Last audited 2026-09-23 against the 15 migrations, 7 files under `supabase/tests/`, and
+the `src/` tree actually present on `dev`.
 
-The three previously-stacked pull requests (#21 → #25 → #23) have now merged, so private address
-disclosure, persistent host mode and signup profile provisioning are all live on `dev` and are
-labelled accordingly below. See §25.
+Phase 0 (this document) and Phase 1 (foundation hardening: the three stacked PRs, an error taxonomy,
+a genuine concurrency test, an avatars bucket, CI running on `dev`) are both complete. See §25 and
+§30.
 
 ## Status vocabulary
 
@@ -341,19 +341,27 @@ lists canonical metadata and social preview artwork as unmet launch requirements
 ## 23. Security architecture — *partially implemented*
 
 Strong where it has been worked: RLS on every table, narrowed grants, column-level update grant on
-reservations, schema-isolated `SECURITY DEFINER`, two substantial rollback test suites.
+reservations, schema-isolated `SECURITY DEFINER`, six rollback suites plus a genuine concurrency test.
 
-**Storage** — one bucket, `listing-images`: `public: true`, 10 MiB limit, MIME allowlist
-(JPEG/PNG/WebP/HEIC/HEIF). Write/update/delete are confined to a top-level folder named for the
-uploader's uid. Gaps: no avatar bucket exists at all (`profiles.avatar_url` is an unbacked text
-column); deleting a listing orphans its images, which stay publicly readable forever; `listings.images`
-is an unvalidated `text[]` that could point anywhere.
+**Storage** — two buckets, `listing-images` and `avatars`: both `public: true`, same MIME allowlist
+(JPEG/PNG/WebP/HEIC/HEIF), write/update/delete confined to a top-level folder named for the
+uploader's uid. `listing-images` allows 10 MiB (a gallery); `avatars` 5 MiB (one photo). Both
+policy shapes are now tested against real roles in `avatar-storage-rollback.sql` — the first test in
+the repo to exercise storage RLS at all; writing it surfaced that `ci-bootstrap.sql` never granted
+`anon`/`authenticated` table-level CRUD on `storage.objects`, which the real platform grants outside
+any project migration. Fixed alongside it. Remaining gaps: `profiles.avatar_url` has a bucket now
+but still no client code reads or writes it (§25); deleting a listing orphans its images, which stay
+publicly readable forever; `listings.images` is an unvalidated `text[]` that could point anywhere.
 
-**Error handling (§32 of the brief) — not implemented.** `errorMessage()`
-(`src/lib/store.tsx:779`) returns `String(error.message)` verbatim, so raw Postgres and PostgREST
-errors reach users. Some are deliberately friendly (`create_reservation` raises *"That time is no
-longer available."*), but constraint violations surface as raw SQL text. There is no error taxonomy
-distinguishing validation / authorization / not-found / conflict / transient.
+**Error handling (§32 of the brief) — implemented.** `src/lib/errors.ts` classifies every error by
+sqlstate into `validation` / `authorization` / `not_found` / `conflict` / `availability` /
+`rate_limit` / `network` / `unknown`, and uses the database's own message only when it does not
+match an engine-output shape (`violates`, `permission denied`, quoted relation/constraint/column
+names) — otherwise substituting safe wording for that class. The database's ~21 authored messages
+(`create_reservation` raising *"That time is no longer available."*, etc.) survive unchanged; raw
+constraint and RLS-policy text never reaches a user. The withheld detail isn't lost — it's logged
+with a context label outside production. Covered by 18 cases in `tests/errors.spec.ts`, including
+mutation-style assertions that specific engine strings are suppressed.
 
 **No rate limiting** anywhere beyond a 60-second client-side throttle on resending confirmation
 email — which is trivially bypassed. Server-side limits need Edge Functions.
@@ -374,7 +382,7 @@ Ranked by severity. Critical items are launch blockers for the real-money path.
 |---|---|
 | **No legal entity / ToS / liability / insurance posture** | Strangers in private backyards and pools. Injury and drowning liability is a legal and insurance question before an engineering one. Blocks launch, not merely a phase |
 | **Stripe platform jurisdiction unresolved** | See §12. Determines whether the US/USD payment path is buildable at all |
-| **No data-protection policy** | DOB, phone numbers and (via PR #21) exact home addresses are stored, with no retention, deletion or export path |
+| **No data-protection policy** | DOB, phone numbers and exact home addresses are stored, with no retention, deletion or export path |
 | **No marketplace tax model** | Tied to jurisdiction; a compliance decision, not a code decision |
 
 ### High
@@ -392,9 +400,8 @@ Ranked by severity. Critical items are launch blockers for the real-money path.
 | Gap | Note |
 |---|---|
 | Search loads all listings into the browser (§19) | Correct but unscalable |
-| No avatar storage bucket (§23) | `avatar_url` is an unbacked column |
+| `avatar_url` has a bucket but no upload path (§23) | Infrastructure landed; no UI or store wiring yet |
 | Orphaned listing images (§23) | Publicly readable indefinitely after listing deletion |
-| Raw DB errors shown to users (§23) | No error taxonomy |
 | `listings.day_price` is dead (§6) | Wire up or drop |
 | 12% fee hardcoded in two places (§11) | Needs one source of truth |
 | No server-side rate limiting (§23) | Needs Edge Functions |
@@ -422,10 +429,13 @@ callback (`com.acefayad.yardly://auth/callback`) is likewise unverified on devic
 | **#21** | `listing_addresses`: exact street address, readable only by the host or a guest with a *confirmed* reservation; `anon` has zero grant. Adds `private-address-rollback.sql`. **Enforces invariant 6** |
 | **#25** | Stops the client writing `account_type` (§4); adds persistent hosting/traveling mode; backfill migration; `account-type-rollback.sql` *(supersedes #22, which GitHub auto-closed when its base branch was deleted on merge of #21)* |
 | **#23** | `AFTER INSERT` trigger on `auth.users` guaranteeing a `profiles` row survives an interrupted signup; `profile-provisioning-rollback.sql` |
+| **#26** | `booking-concurrency.sh` — invariant 7 under genuine concurrent sessions, not a serial transaction; also fixes CI's `push` trigger to include `dev` |
+| **#27** | `src/lib/errors.ts` — error taxonomy; `String(error.message)` no longer reaches users |
+| **#28** | `avatars` storage bucket + policies, mirroring `listing-images`; `avatar-storage-rollback.sql`; fixed a missing grant in `ci-bootstrap.sql` that the new test exposed |
 
-> An earlier draft of this document described all three as implemented while they were still
-> unmerged — the defect that prompted this rewrite. They are now genuinely on `dev`, verified by
-> replaying all 14 migrations and all 5 rollback suites against a clean local Postgres.
+> An earlier draft of this document described #21/#25/#23 as implemented while they were still
+> unmerged — the defect that prompted this rewrite. All six PRs above are now genuinely on `dev`,
+> verified by replaying all 15 migrations and all 6 rollback suites against a clean local Postgres.
 
 ## 26. System invariants
 
@@ -440,7 +450,7 @@ The properties that must hold regardless of how the UI changes. "Tested" means a
 | 4 | A host cannot access unrelated reservations | RLS via listing ownership | ✅ Implemented, tested |
 | 5 | Unpublished listings cannot receive bookings | `create_reservation` + RLS | ✅ Implemented, tested |
 | 6 | Exact addresses are never publicly exposed | `listing_addresses` grants (no `anon` grant at all) | ✅ Implemented, tested |
-| 7 | Overlapping reservations cannot both be valid | `reservations_no_active_overlap` EXCLUDE gist | ✅ Implemented, tested — but serially, never concurrently |
+| 7 | Overlapping reservations cannot both be valid | `reservations_no_active_overlap` EXCLUDE gist | ✅ Implemented, tested — including under genuine concurrency |
 | 8 | Client-provided totals are never trusted | RPC takes no price args + RLS re-derives | ✅ Implemented, tested |
 | 9 | Payment success is determined by verified processing | — | ⛔ Planned (§12) |
 | 10 | Duplicate payment events are idempotent | — | ⛔ Planned (§12) |
@@ -452,14 +462,14 @@ The properties that must hold regardless of how the UI changes. "Tested" means a
 | 16 | Grants *and* RLS are both reviewed | `revoke all` + explicit grant pattern | ✅ Holds |
 | 17 | Critical state transitions are authoritative outside the browser | RPCs + triggers + RLS | ✅ Implemented |
 
-**Invariant 7 carries a caveat worth repeating:** the constraint is index-enforced at commit and is
-genuinely concurrency-safe, but both existing tests run serially inside one transaction. They prove
-the constraint rejects overlaps; they do not exercise two simultaneous sessions. A true concurrency
-test is *planned*.
+**Invariant 7 no longer carries that caveat.** `booking-concurrency.sh` opens two real connections
+and interleaves them — one holds an uncommitted booking while the other attempts an overlapping one,
+which must block and then fail once the first commits. Mutation-tested: dropping the constraint
+makes both sessions succeed, confirming the test can actually observe the failure it guards against.
 
 ## 27. Testing architecture — *partially implemented*
 
-Two deliberately complementary layers. Neither substitutes for the other.
+Three deliberately complementary layers. None substitutes for the others.
 
 **Database tests** (`supabase/tests/*.sql`) — `begin; … rollback;` suites run against an isolated
 Postgres in CI, exercising real RLS as different roles. These are the actual proof that access
@@ -475,17 +485,26 @@ control works.
   backfill demotes only non-hosts.
 - `profile-provisioning-rollback.sql` — signup-trigger fallback name chain, 100-char truncation,
   idempotency, and that `profiles_insert_own` is unchanged.
+- `avatar-storage-rollback.sql` — storage RLS as different roles: public read, owner-scoped
+  write/update/delete, outsider denied. The first test in the repo to exercise storage policies at
+  all; also exists for `listing-images`, untested since the first migration.
 - `ci-bootstrap.sql` — not a test; a stub of the Supabase surface so migrations can replay on bare
   Postgres.
 
+**Concurrency test** (`supabase/tests/booking-concurrency.sh`) — a category of its own: two real,
+simultaneous `psql` sessions, not a serial `begin…rollback`. Commits its own fixtures (both sessions
+must see them) and removes them via an `EXIT` trap. Runs last in CI so it never interleaves with the
+rollback suites. Proves invariant 7 (§26).
+
 **Playwright** (`tests/*.spec.ts`) — mocks Supabase's REST/auth endpoints entirely. Proves UI
-behavior given a backend response; proves **nothing** about backend security.
+behavior given a backend response; proves **nothing** about backend security. `tests/errors.spec.ts`
+is the one exception worth naming: it unit-tests `src/lib/errors.ts` directly rather than mocking a
+backend.
 
 > **Standing gotcha:** `scripts/serve-test-build.mjs` serves a prebuilt `out/` directory. Always run
 > `npm run build` before `npm run test:e2e`, or tests silently exercise stale code.
 
-Gaps: no concurrency test (invariant 7); no storage-security test; no failure-path coverage for most
-flows; CI's `push` trigger is still `branches: [main]` while `dev` is the real integration branch.
+Gaps: no failure-path coverage for most flows; no test for orphaned listing images after deletion.
 
 ## 28. Route map
 
@@ -533,7 +552,7 @@ Reflecting §2. Per the brief's §45: stop and verify at each phase boundary.
 | Phase | Work | Gate |
 |---|---|---|
 | **0** | *This document* | ✅ Complete |
-| **1** | ~~Merge #21→#25→#23~~ ✅. Error taxonomy. Avatar bucket. Fix CI `push` trigger to `dev`. Concurrency test for invariant 7 | Invariants 1–8 all enforced and tested |
+| **1** | ~~Merge #21→#25→#23. Error taxonomy. Avatar bucket. Fix CI `push` trigger to `dev`. Concurrency test for invariant 7~~ ✅ Complete (#21, #25, #23, #26, #27, #28) | Invariants 1–8 all enforced and tested |
 | **2** | Reservation lifecycle: implement `completed`; migration dropping `pending`/`expired`; handle the §9 coupling hazard | No dead states; past bookings display correctly |
 | **3** | Cancellation policy — cutoff window, guest/host asymmetry, DB-enforced | One authoritative policy, no React duplication |
 | **4** | SEO: `/spaces/[id]` + `generateStaticParams` + `generateMetadata` + sitemap/robots/canonical/OG | Listings indexable |
