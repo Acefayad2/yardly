@@ -32,7 +32,7 @@ export default function HostDashboardPage() {
         <section className={`mt-8 grid gap-4 sm:grid-cols-3 ${hostDataLoading ? "animate-pulse opacity-60" : ""}`} aria-label="Hosting summary" aria-busy={hostDataLoading}>
           <Metric label="Upcoming reservations" value={upcoming.length.toString()} detail="All upcoming bookings" />
           <Metric label="Active listings" value={hostListings.filter((listing) => listing.status === "published").length.toString()} detail={`${hostListings.length} total`} />
-          <Metric label="Estimated booking value" value={`$${earnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} detail="Not collected payments or payouts" />
+          <Metric label="Booking value" value={`$${earnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} tag="estimated" detail="Not collected payments or payouts — no money has changed hands yet." emphasizeDetail />
         </section>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_.8fr]">
@@ -75,8 +75,17 @@ export default function HostDashboardPage() {
   );
 }
 
-function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return <div className="rounded-2xl border border-border-soft bg-white p-5"><p className="text-sm text-muted">{label}</p><p className="mt-3 text-3xl font-semibold tracking-tight">{value}</p><p className="mt-1 text-xs text-muted">{detail}</p></div>;
+function Metric({ label, value, tag, detail, emphasizeDetail }: { label: string; value: string; tag?: string; detail: string; emphasizeDetail?: boolean }) {
+  return (
+    <div className="rounded-2xl border border-border-soft bg-white p-5">
+      <p className="text-sm text-muted">{label}</p>
+      <p className="mt-3 text-3xl font-semibold tracking-tight">
+        {value}
+        {tag && <span className="ml-2 text-xs font-normal text-muted">{tag}</span>}
+      </p>
+      <p className={emphasizeDetail ? "mt-1 text-sm font-medium text-amber-700" : "mt-1 text-xs text-muted"}>{detail}</p>
+    </div>
+  );
 }
 
 function EmptyBlock({ title, text }: { title: string; text: string }) {

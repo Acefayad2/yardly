@@ -7,6 +7,7 @@ import HostNav from "@/components/HostNav";
 import AddressMapPicker from "@/components/AddressMapPicker";
 import type { AddressSuggestion } from "@/lib/geocoding";
 import { ListingImagePlanEntry, SpaceType } from "@/lib/types";
+import { useConfirmLeave } from "@/lib/useConfirmLeave";
 
 const spaceTypes: SpaceType[] = ["Backyards", "Pools", "Outdoor kitchens", "Patios & decks", "Gardens", "Fire pits", "Rooftops", "Sport courts", "Event yards", "Hot tubs"];
 const amenityOptions = ["Restroom access", "Wi-Fi", "Outdoor seating", "Grill", "Fire pit", "Pool", "Parking", "Speakers"];
@@ -118,6 +119,30 @@ export default function HostListingForm({ mode, initialValues, existingImages = 
   useEffect(() => () => {
     pendingImagesRef.current.forEach((item) => { if (item.kind === "new") URL.revokeObjectURL(item.previewUrl); });
   }, []);
+
+  // A host can lose everything typed -- including selected photos -- to one accidental
+  // browser Back tap, since this wizard keeps its state only in memory. `dirty` flips true on
+  // the first change to any tracked field after mount and never resets; it drives both guards
+  // below. Submitting navigates away via router.push, which doesn't fire popstate/beforeunload,
+  // so a successful save is never blocked by either guard.
+  const [dirty, setDirty] = useState(false);
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    if (!mountedRef.current) { mountedRef.current = true; return; }
+    setDirty(true);
+  }, [spaceType, title, location, neighborhood, description, hourlyPrice, minHours, capacity, latitude, longitude, streetAddress, timezone, rules, amenities, pendingImages]);
+
+  useConfirmLeave(dirty, "Leave without saving this listing? Your changes will be lost.");
+
+  useEffect(() => {
+    if (!dirty) return;
+    function onBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
 
   function toggleAmenity(amenity: string) {
     setAmenities((current) => current.includes(amenity) ? current.filter((item) => item !== amenity) : [...current, amenity]);

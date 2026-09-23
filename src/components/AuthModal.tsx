@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
+import { useBackToClose } from "@/lib/useBackToClose";
 import { Capacitor } from "@capacitor/core";
 
 export default function AuthModal() {
@@ -28,6 +29,8 @@ export default function AuthModal() {
     setFeedback(null);
     setShowPassword(false);
   }, [setAuthOpen]);
+
+  useBackToClose(authOpen, close);
 
   useEffect(() => {
     if (!authOpen) return;

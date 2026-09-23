@@ -1,7 +1,7 @@
 # Yardly — System Design
 
 Living architecture document. Describes **the `dev` branch exactly as it stands**, not an aspirational
-merged state. Last audited 2026-09-23 against the 17 migrations, 9 files under `supabase/tests/`, and
+merged state. Last audited 2026-09-24 against the 17 migrations, 9 files under `supabase/tests/`, and
 the `src/` tree actually present on `dev`.
 
 Phase 0 (this document), Phase 1 (foundation hardening: the three stacked PRs, an error taxonomy, a
@@ -141,6 +141,13 @@ constraint's five conditions exactly (images, lat/long, street address, descript
 neighborhood), returning the specific failing reason instead of a generic fallback. Every status has
 real behavior, so there are no dead listing states.
 
+That five-condition check is now a single exported function, `getListingPublishIssue`
+(`src/lib/store.tsx`), used both by the actual publish attempt and by the listings list to decide
+"Edit" vs. "Finish setup" and to show the specific missing field inline on the card. A UX audit
+(§31) found the list previously used its own, looser, two-condition copy (images + coordinates
+only), so a listing missing only its street address or description showed "Edit" — implying it was
+publish-ready when it wasn't.
+
 A capacity reduction that would leave an existing `pending`/`confirmed`, not-yet-ended reservation
 over the new limit is rejected by the same trigger that validates availability — direction-aware, so
 raising capacity or lowering it safely is unaffected.
@@ -213,6 +220,11 @@ point up until it's actually over — including the instant before it starts, or
 progress. With no payments there is no refund consequence, so this is currently harmless — but it
 becomes a money question the instant Phase 7 lands. *Planned:* an explicit policy (cutoff window,
 guest vs. host asymmetry, refund tiers) implemented in the database, not in React.
+
+The guest-facing Cancel booking button (`src/components/Bookings.tsx`) now requires an inline
+confirm step before calling `cancelBooking`, matching the confirmation the host side already had
+(`src/app/host/reservations/page.tsx`). A UX audit (§31) found the guest side previously cancelled
+immediately on click — a single mis-tap cancelled a real reservation with no way back.
 
 ## 11. Pricing architecture — *implemented*
 
@@ -618,6 +630,67 @@ than forcing a renumber of Phases 2–13 and their several cross-references (§1
 
 **Running in parallel, not sequenced:** the four critical legal/compliance items in §25. They are
 not engineering phases and should not wait for one.
+
+## 31. UX audit findings — *partially addressed*
+
+A full workflow audit (routing/back-button behavior, the guest booking flow, the host and
+account-management flow) against a "does this feel like Airbnb" bar, 2026-09-24. 26 findings total;
+the ones that risked a destructive action, showed something misleading, or silently lost a host's
+work were fixed immediately (cited inline at §7, §9, §10, and below). The rest are recorded here,
+ranked, rather than built without being asked for or silently dropped.
+
+**Fixed this pass:**
+- Guest cancellation required no confirmation (§10) — now matches the host side's confirm step.
+- The listings list's publish-readiness label used a looser, duplicated check than the real
+  five-condition gate (§7) — now a single shared function, with the specific missing field shown
+  inline on the card.
+- The host dashboard's earnings metric read like real money ("Estimated booking value" with the
+  disclaimer in the smallest, mutedest text) — relabeled with an inline "estimated" tag and a
+  visually-promoted disclaimer, matching the treatment already used on `/host/reservations`.
+- The booking submit button showed "Checking availability…" while actually creating the
+  reservation (reusing the slot-loading state's copy) — now "Confirming your reservation…".
+- Browser/device Back did not close the auth modal or the mobile search sheet — the page underneath
+  navigated away while the modal stayed visually open (a real risk of exiting the Capacitor iOS
+  wrapper via the native back gesture). Both now integrate with the History API
+  (`src/lib/useBackToClose.ts`) so the first Back tap closes them instead.
+- The host listing wizard could silently discard everything typed — including selected photos — to
+  one browser Back tap or an accidental tab close, since it kept state only in memory. It now
+  confirms before discarding (`src/lib/useConfirmLeave.ts`) and guards `beforeunload` while dirty.
+- Publish/Pause/Move-to-draft gave no in-flight feedback; because `setHostListingStatus` updates
+  optimistically, a per-button "Saving…" relabel briefly showed on more than one button at once as
+  the status flip changed which buttons render mid-request. Fixed with one shared "Saving…"
+  indicator at the card level instead of relabeling whichever button happens to be visible.
+
+**Not built this pass — backlog, ranked:**
+- No photo lightbox/gallery on the listing detail page — a listing with more than 5 photos has no
+  way to view the rest.
+- No broken-image fallback anywhere (`<img>`/`<Image>` with no `onError`) — a missing/expired image
+  URL shows the browser's broken-image icon across cards, detail, trips, and bookings.
+- A signed-out guest interrupted mid-booking by the auth modal isn't returned to their in-flight
+  reservation attempt after logging in — they must click Reserve again (form state is preserved, so
+  this is friction, not data loss).
+- No `not-found.tsx` — a dead/mistyped route falls through to Next's generic, unbranded 404, losing
+  the app's chrome entirely.
+- No route-level `loading.tsx`/`error.tsx` on any of the 14 routes — some pages hand-roll their own
+  `Suspense` fallback, inconsistently, and nothing catches an unexpected render throw.
+- `profiles.avatar_url` has a storage bucket (§23) but still no upload UI or client code reading it.
+- No way to change account email from `/profile` (password change works in-place; email is
+  read-only).
+- The availability editor has no "apply to all days" bulk action and blocks dates one at a time via
+  a text input rather than a calendar range-select.
+- Canceled trips show only a count behind a `<details>` disclosure, with no per-booking detail.
+- The hosting/traveling mode badge and switch button are hidden below their responsive breakpoints
+  on narrow mobile viewports — the hamburger account menu is the only way to see or change mode.
+- Mobile listing cards can't swipe between photos — the prev/next arrows are desktop-only
+  (`sm:` and up), with no touch-swipe substitute.
+- The auth modal has no field-level inline validation — errors surface only after submit, in one
+  shared feedback region, relying on native browser validation before that.
+- The Header account-menu dropdown has no focus trap, unlike the auth modal's.
+- When real and demo listings mix in the same grid (once at least one real listing exists), the
+  per-card "Demo listing" pill is the only distinguishing mark — easy to skim past.
+- A few more minor items: the "Resend confirmation email" link is shown even in Log In mode before
+  any signup attempt; the Restore/Publish/Pause action set has no confirmation for Pause
+  specifically (Archive is the only one gated); logout has no visual danger styling or confirmation.
 
 ---
 

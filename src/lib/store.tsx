@@ -548,16 +548,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const setHostListingStatus = useCallback(async (id: string, status: HostListingStatus) => {
     if (!user) return;
     const listing = hostListings.find((item) => item.id === id);
-    // Mirrors listings_published_complete (images/lat/long/description/neighborhood)
-    // and the private-address trigger exactly, field by field, so a host sees a
-    // specific reason instead of the database's generic constraint-violation fallback.
     if (status === "published" && listing) {
-      const publishIssue = !listing.images.length ? "Add at least one photo before publishing."
-        : listing.latitude === null || listing.longitude === null ? "Add a map location before publishing."
-        : !listing.streetAddress ? "Add a private street address before publishing this listing."
-        : listing.description.trim().length < 20 ? "Write at least 20 characters in your description before publishing."
-        : !listing.neighborhood.trim() ? "Add a neighborhood before publishing."
-        : null;
+      const publishIssue = getListingPublishIssue(listing);
       if (publishIssue) {
         setHostDataError(publishIssue);
         return;
@@ -804,6 +796,19 @@ function mapListing(row: Record<string, unknown>): HostListing {
     status: String(row.status) as HostListingStatus,
     createdAt: String(row.created_at),
   };
+}
+
+// Mirrors listings_published_complete (images/lat/long/description/neighborhood) and the
+// private-address trigger exactly, field by field, so a host sees a specific reason instead
+// of the database's generic constraint-violation fallback. Single source of truth: used both
+// to gate the actual publish attempt and to label a listing "ready" in the listings list.
+export function getListingPublishIssue(listing: HostListing): string | null {
+  return !listing.images.length ? "Add at least one photo before publishing."
+    : listing.latitude === null || listing.longitude === null ? "Add a map location before publishing."
+    : !listing.streetAddress ? "Add a private street address before publishing this listing."
+    : listing.description.trim().length < 20 ? "Write at least 20 characters in your description before publishing."
+    : !listing.neighborhood.trim() ? "Add a neighborhood before publishing."
+    : null;
 }
 
 // PostgREST returns a to-one embed as an object when it can infer the unique

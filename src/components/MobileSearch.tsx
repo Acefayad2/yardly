@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import DestinationSearch from "./DestinationSearch";
 import SearchCalendar from "./SearchCalendar";
 import { parseFlex, parseFlexible, flexibleLabel, type FlexibleSearch, searchDateLabel } from "@/lib/search-dates";
+import { useBackToClose } from "@/lib/useBackToClose";
 
 type SearchStep = "where" | "when" | "who";
 
@@ -20,6 +21,7 @@ export default function MobileSearch() {
   const [flexibility, setFlexibility] = useState(0);
   const [flexible, setFlexible] = useState<FlexibleSearch>();
   const [guests, setGuests] = useState(1);
+  useBackToClose(open, () => setOpen(false));
   useEffect(() => {
     if (!open) return;
     const frame = requestAnimationFrame(() => dialog.current?.querySelector<HTMLElement>(".mobile-search-card input, .mobile-search-card button:not([disabled])")?.focus());
