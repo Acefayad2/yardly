@@ -19,9 +19,11 @@ export default function Bookings() {
   const { user, bookings, bookingsLoading, bookingsError, cancelBooking, setAuthOpen } = useStore();
   const justBooked = useSearchParams().get("booked") === "1";
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
 
   async function cancel(id: string) {
+    setConfirmCancelId(null);
     setCancellingId(id);
     setActionError("");
     const result = await cancelBooking(id);
@@ -88,14 +90,36 @@ export default function Bookings() {
                 </div>
                 <div className="mt-3">
                   {b.status !== "cancelled" && b.status !== "completed" && (
-                    <button
-                      type="button"
-                      disabled={cancellingId === b.id}
-                      onClick={() => void cancel(b.id)}
-                      className="text-sm font-semibold text-brand underline disabled:cursor-wait disabled:opacity-60"
-                    >
-                      {cancellingId === b.id ? "Cancelling…" : "Cancel booking"}
-                    </button>
+                    confirmCancelId === b.id ? (
+                      <div className="max-w-sm rounded-xl border border-amber-200 bg-amber-50 p-3 text-left" role="group" aria-label="Confirm cancelling this booking">
+                        <p className="text-sm">Cancel this booking? This can&apos;t be undone.</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            disabled={cancellingId === b.id}
+                            onClick={() => void cancel(b.id)}
+                            className="min-h-11 rounded-lg bg-red-700 px-3 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-60"
+                          >
+                            {cancellingId === b.id ? "Cancelling…" : "Confirm cancel"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmCancelId(null)}
+                            className="min-h-11 rounded-lg border border-border px-3 text-sm font-semibold"
+                          >
+                            Keep booking
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmCancelId(b.id)}
+                        className="text-sm font-semibold text-brand underline"
+                      >
+                        Cancel booking
+                      </button>
+                    )
                   )}
                 </div>
               </div>

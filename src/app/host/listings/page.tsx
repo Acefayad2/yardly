@@ -6,13 +6,9 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import HostNav from "@/components/HostNav";
 import HostSignInRequired from "@/components/HostSignInRequired";
-import { useStore } from "@/lib/store";
-import { HostListing, HostListingStatus } from "@/lib/types";
+import { getListingPublishIssue, useStore } from "@/lib/store";
+import { HostListingStatus } from "@/lib/types";
 import { spaceHref } from "@/lib/spaces";
-
-function isReadyToPublish(listing: HostListing) {
-  return listing.images.length > 0 && listing.latitude !== null && listing.longitude !== null;
-}
 
 export default function HostListingsPage() {
   return <Suspense fallback={<div className="p-12 text-center text-muted">Loading listings…</div>}><ListingsContent /></Suspense>;
@@ -22,8 +18,15 @@ function ListingsContent() {
   const searchParams = useSearchParams();
   const { user, hostListings, hostReservations, hostDataLoading, hostDataError, setHostListingStatus } = useStore();
   const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null);
+  const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
 
   if (!user) return <HostSignInRequired />;
+
+  async function changeStatus(id: string, status: HostListingStatus) {
+    setPendingStatusId(id);
+    await setHostListingStatus(id, status);
+    setPendingStatusId(null);
+  }
 
   return (
     <div className="min-h-screen bg-[#f7f8f5]">
@@ -45,17 +48,25 @@ function ListingsContent() {
           <div className="mt-8 space-y-4">
             {hostListings.map((listing) => {
               const upcomingCount = hostReservations.filter((reservation) => reservation.listingId === listing.id && reservation.status === "upcoming").length;
+              const publishIssue = getListingPublishIssue(listing);
               return (
               <article key={listing.id} className="grid gap-4 rounded-2xl border border-border-soft bg-white p-4 sm:grid-cols-[10rem_1fr_auto] sm:items-center">
                 <Image src={listing.image} alt="" width={640} height={448} className="h-36 w-full rounded-xl object-cover sm:h-28 sm:w-40" />
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2"><StatusBadge status={listing.status} /><span className="text-xs text-muted">{listing.spaceType}</span></div>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={listing.status} />
+                    <span className="text-xs text-muted">{listing.spaceType}</span>
+                    {pendingStatusId === listing.id && <span className="text-xs font-semibold text-brand-dark" role="status">Saving…</span>}
+                  </div>
                   <h2 className="mt-2 truncate text-lg font-semibold">{listing.title}</h2>
                   <p className="mt-1 text-sm text-muted">{listing.location} · ${listing.hourlyPrice}/hour · Up to {listing.capacity} guests</p>
+                  {listing.status !== "published" && listing.status !== "archived" && publishIssue && (
+                    <p className="mt-1 text-xs font-medium text-amber-700">{publishIssue}</p>
+                  )}
                 </div>
                 {listing.status === "archived" ? (
                   <div className="flex flex-wrap gap-2 sm:flex-col">
-                    <ActionButton onClick={() => setHostListingStatus(listing.id, "draft")}>Restore</ActionButton>
+                    <ActionButton pending={pendingStatusId === listing.id} onClick={() => void changeStatus(listing.id, "draft")}>Restore</ActionButton>
                   </div>
                 ) : confirmArchiveId === listing.id ? (
                   <div className="max-w-sm rounded-xl border border-amber-200 bg-amber-50 p-3 text-left sm:col-span-1" role="group" aria-label="Confirm archiving this listing">
@@ -64,7 +75,7 @@ function ListingsContent() {
                       {upcomingCount > 0 && <span className="mt-1 block font-semibold">It has {upcomingCount} upcoming reservation{upcomingCount === 1 ? "" : "s"} — archiving will not cancel {upcomingCount === 1 ? "it" : "them"}.</span>}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <button type="button" onClick={() => { setHostListingStatus(listing.id, "archived"); setConfirmArchiveId(null); }} className="min-h-11 rounded-lg bg-red-700 px-3 text-sm font-semibold text-white">Confirm archive</button>
+                      <button type="button" onClick={() => { void changeStatus(listing.id, "archived"); setConfirmArchiveId(null); }} className="min-h-11 rounded-lg bg-red-700 px-3 text-sm font-semibold text-white">Confirm archive</button>
                       <button type="button" onClick={() => setConfirmArchiveId(null)} className="min-h-11 rounded-lg border border-border px-3 text-sm font-semibold">Keep listing</button>
                     </div>
                   </div>
@@ -72,11 +83,11 @@ function ListingsContent() {
                   <div className="flex flex-wrap gap-2 sm:flex-col">
                     <Link href={`/host/listings/availability/?id=${encodeURIComponent(listing.id)}`} className="rounded-lg border border-border-soft px-3 py-2 text-center text-xs font-semibold transition hover:bg-surface-soft">Availability</Link>
                     <Link href={`/host/listings/edit/?id=${encodeURIComponent(listing.id)}`} className="rounded-lg border border-border-soft px-3 py-2 text-center text-xs font-semibold transition hover:bg-surface-soft">
-                      {isReadyToPublish(listing) ? "Edit" : "Finish setup"}
+                      {publishIssue ? "Finish setup" : "Edit"}
                     </Link>
-                    {listing.status !== "published" && <ActionButton onClick={() => setHostListingStatus(listing.id, "published")}>Publish</ActionButton>}
-                    {listing.status === "published" && <ActionButton onClick={() => setHostListingStatus(listing.id, "paused")}>Pause</ActionButton>}
-                    {listing.status === "paused" && <ActionButton onClick={() => setHostListingStatus(listing.id, "draft")}>Move to draft</ActionButton>}
+                    {listing.status !== "published" && <ActionButton pending={pendingStatusId === listing.id} onClick={() => void changeStatus(listing.id, "published")}>Publish</ActionButton>}
+                    {listing.status === "published" && <ActionButton pending={pendingStatusId === listing.id} onClick={() => void changeStatus(listing.id, "paused")}>Pause</ActionButton>}
+                    {listing.status === "paused" && <ActionButton pending={pendingStatusId === listing.id} onClick={() => void changeStatus(listing.id, "draft")}>Move to draft</ActionButton>}
                     {listing.status === "published" && <Link href={spaceHref(listing.id)} className="rounded-lg border border-border-soft px-3 py-2 text-center text-xs font-semibold transition hover:bg-surface-soft">View listing</Link>}
                     {listing.status !== "published" && <ActionButton onClick={() => setConfirmArchiveId(listing.id)}>Archive</ActionButton>}
                   </div>
@@ -103,6 +114,17 @@ function StatusBadge({ status }: { status: HostListingStatus }) {
   return <span className={`rounded-full px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.08em] ${styles}`}>{status}</span>;
 }
 
-function ActionButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
-  return <button type="button" onClick={onClick} className="rounded-lg border border-border-soft px-3 py-2 text-xs font-semibold transition hover:bg-surface-soft">{children}</button>;
+// `pending` only disables the button -- it must not relabel it. The optimistic update in
+// setHostListingStatus flips a listing's status locally before its request resolves, which
+// swaps which action buttons are even rendered for that status while the request is still in
+// flight; relabeling whichever buttons happen to be visible at that moment (rather than the
+// one actually clicked) showed "Saving…" on more than one at once. The shared "Saving…"
+// indicator next to the status badge covers that instead, once per listing, regardless of
+// which button triggered it.
+function ActionButton({ children, onClick, pending }: { children: React.ReactNode; onClick: () => void; pending?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} disabled={pending} className="rounded-lg border border-border-soft px-3 py-2 text-xs font-semibold transition hover:bg-surface-soft disabled:cursor-wait disabled:opacity-60">
+      {children}
+    </button>
+  );
 }

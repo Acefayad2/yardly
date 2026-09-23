@@ -124,3 +124,21 @@ test("reservation rechecks stale availability and submits the new slot", async (
   await expect(page).toHaveURL(/\/bookings\/?\?booked=1/);
   expect(requested).toEqual({ p_listing_id: yardId, p_booking_date: futureDate(), p_start_time: "14:00", p_end_time: "16:00", p_guests: 1 });
 });
+
+test("reserve button shows a distinct label while the reservation itself is being created", async ({ page }) => {
+  await page.route("**/rest/v1/rpc/get_booking_slots", (route) => route.fulfill({ json: [{ start_hour: 14, end_hour: 16 }] }));
+  await page.route("**/rest/v1/rpc/create_reservation", async (route) => {
+    // A deliberate delay isolated to this one small test, not the shared stale-availability
+    // retry test above -- it only needs to keep the request open long enough to observe the
+    // submitting label before it resolves.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return route.fulfill({ json: { id: "00000000-0000-4000-8000-000000000099" } });
+  });
+  await signIn(page);
+  await page.goto(`/spaces/?id=${yardId}`, { waitUntil: "domcontentloaded" });
+  const widget = page.locator("#booking");
+  await widget.getByLabel("Date", { exact: true }).fill(futureDate());
+  await widget.getByRole("button", { name: "Reserve", exact: true }).click();
+  await expect(widget.getByRole("button", { name: "Confirming your reservation…", exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/bookings\/?\?booked=1/);
+});

@@ -179,7 +179,7 @@ export default function BookingWidget({ space }: { space: Space }) {
         disabled={submitting || space.isDemo || !canReserve}
         className="mt-4 w-full rounded-xl bg-brand py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-brand-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-wait disabled:opacity-60"
       >
-        {space.isDemo ? "Preview only" : submitting ? "Checking availability…" : "Reserve"}
+        {space.isDemo ? "Preview only" : submitting ? "Confirming your reservation…" : "Reserve"}
       </button>
 
       {canReserve && <div className="mt-5 space-y-3 text-sm">
