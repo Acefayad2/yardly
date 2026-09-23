@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useStore } from "@/lib/store";
 
 const links = [
   { href: "/host/dashboard", label: "Today", icon: HomeIcon },
@@ -12,6 +13,8 @@ const links = [
 
 export default function HostNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { setMode } = useStore();
 
   return (
     <nav className="border-b border-border-soft bg-white" aria-label="Host navigation">
@@ -32,9 +35,13 @@ export default function HostNav() {
             </Link>
           );
         })}
-        <Link href="/" className="ml-auto hidden shrink-0 rounded-full border border-border-soft px-4 py-2 text-sm font-semibold transition hover:bg-surface-soft sm:block">
-          Switch to renting
-        </Link>
+        <button
+          type="button"
+          onClick={() => { setMode("traveling"); router.push("/"); }}
+          className="ml-auto hidden shrink-0 rounded-full border border-border-soft px-4 py-2 text-sm font-semibold transition hover:bg-surface-soft sm:block"
+        >
+          Switch to traveling
+        </button>
       </div>
     </nav>
   );

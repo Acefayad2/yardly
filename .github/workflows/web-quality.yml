@@ -72,3 +72,5 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/availability-rollback.sql
       - name: Verify private listing address access
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/private-address-rollback.sql
+      - name: Verify account_type grants no access
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/account-type-rollback.sql
