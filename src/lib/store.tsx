@@ -14,6 +14,7 @@ import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { useRouter } from "next/navigation";
 import { getSupabase } from "./supabase";
+import { errorMessage } from "./errors";
 import { DEMO_SPACES } from "./demo-spaces";
 import type {
   AccountType,
@@ -124,7 +125,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       });
       setSpaces(publishedSpaces.length ? publishedSpaces : DEMO_SPACES);
     } catch (error) {
-      setMarketplaceError(errorMessage(error));
+      setMarketplaceError(errorMessage(error, "load marketplace"));
     } finally {
       setMarketplaceLoading(false);
     }
@@ -146,7 +147,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setHostReservations((reservationsResult.data ?? []).map(mapHostReservation));
       return listings;
     } catch (error) {
-      setHostDataError(errorMessage(error));
+      setHostDataError(errorMessage(error, "load host data"));
       return [];
     } finally {
       setHostDataLoading(false);
@@ -165,7 +166,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
       setBookings((data ?? []).map(mapBooking));
     } catch (error) {
-      setBookingsError(errorMessage(error));
+      setBookingsError(errorMessage(error, "load bookings"));
     } finally {
       setBookingsLoading(false);
     }
@@ -196,7 +197,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const messages = (messagesResult.data ?? []).map(mapMessage);
       setConversations((threads ?? []).map((thread) => mapConversation(thread, messages)));
     } catch (error) {
-      setConversationsError(errorMessage(error));
+      setConversationsError(errorMessage(error, "load conversations"));
     } finally {
       setConversationsLoading(false);
     }
@@ -236,7 +237,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       .upsert(profile)
       .select("account_type")
       .single();
-    if (profileError) setHostDataError(profileError.message);
+    if (profileError) setHostDataError(errorMessage(profileError, "profile sync"));
     // Falling back to "guest" only ever hides the host switcher from a host; it can
     // never hand hosting UI to someone who has not hosted.
     let nextAccountType = toAccountType(profileRow?.account_type);
@@ -366,13 +367,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return {};
     } catch (error) {
       interactiveLogin.current = false;
-      return { error: errorMessage(error) };
+      return { error: errorMessage(error, "login") };
     }
   }, []);
 
   const logout = useCallback(async () => {
     const { error } = await getSupabase().auth.signOut();
-    if (error) setHostDataError(error.message);
+    if (error) setHostDataError(errorMessage(error, "sign out"));
   }, []);
 
   const addBooking = useCallback(async (booking: NewBooking): Promise<ActionResult> => {
@@ -392,7 +393,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       await Promise.all([loadGuestBookings(user.id), loadHostData(user.id)]);
       return { id: String(data.id) };
     } catch (error) {
-      return { error: errorMessage(error) };
+      return { error: errorMessage(error, "add booking") };
     }
   }, [loadGuestBookings, loadHostData, spaces, user]);
 
@@ -404,7 +405,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       await Promise.all([loadGuestBookings(user.id), loadHostData(user.id)]);
       return {};
     } catch (error) {
-      return { error: errorMessage(error) };
+      return { error: errorMessage(error, "cancel booking") };
     }
   }, [loadGuestBookings, loadHostData, user]);
 
@@ -505,7 +506,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ].filter(Boolean);
       return messages.length ? { message: `The draft was saved, but ${messages.join(" and ")}.` } : {};
     } catch (error) {
-      return { error: errorMessage(error) };
+      return { error: errorMessage(error, "add host listing") };
     }
   }, [accountType, user]);
 
@@ -566,7 +567,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ].filter(Boolean);
       return messages.length ? { message: `Your changes were saved, but ${messages.join(" and ")}.` } : {};
     } catch (error) {
-      return { error: errorMessage(error) };
+      return { error: errorMessage(error, "update host listing") };
     }
   }, [hostListings, refreshMarketplace, user]);
 
@@ -583,7 +584,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const { error } = await getSupabase().from("listings").update({ status }).eq("id", id).eq("host_id", user.id);
     if (error) {
       setHostListings(previous);
-      setHostDataError(error.message);
+      setHostDataError(errorMessage(error, "listing status"));
       return;
     }
     await refreshMarketplace();
@@ -616,7 +617,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       await loadConversations(user.id);
       return { id: String(data.id) };
     } catch (error) {
-      return { error: errorMessage(error) };
+      return { error: errorMessage(error, "start conversation") };
     }
   }, [loadConversations, spaces, user]);
 
@@ -634,7 +635,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       await loadConversations(user.id);
       return {};
     } catch (error) {
-      return { error: errorMessage(error) };
+      return { error: errorMessage(error, "send message") };
     }
   }, [loadConversations, user]);
 
@@ -917,7 +918,3 @@ function localDateParts(value: Date, timezone: string) {
   };
 }
 
-function errorMessage(error: unknown) {
-  if (error && typeof error === "object" && "message" in error) return String(error.message);
-  return "Something went wrong. Please try again.";
-}
