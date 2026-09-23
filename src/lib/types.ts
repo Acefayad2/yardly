@@ -66,7 +66,7 @@ export type AccountType = "guest" | "host" | "both";
 // Which side of the marketplace the user is currently looking at.
 export type AppMode = "traveling" | "hosting";
 
-export type HostListingStatus = "draft" | "published" | "paused";
+export type HostListingStatus = "draft" | "published" | "paused" | "archived";
 
 export interface HostListing {
   id: string;
