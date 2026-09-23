@@ -11,8 +11,9 @@ const steps = [
 ];
 
 export default function HostLandingPage() {
-  const { user, hostListings, setAuthOpen } = useStore();
-  const destination = hostListings.length ? "/host/dashboard" : "/host/listings/new";
+  const { user, canHost, setAuthOpen } = useStore();
+  // canHost comes from the profile, so the CTA does not flicker while listings load.
+  const destination = canHost ? "/host/dashboard" : "/host/listings/new";
 
   return (
     <div className="bg-white">
@@ -27,7 +28,7 @@ export default function HostLandingPage() {
           </p>
           {user ? (
             <Link href={destination} className="mt-8 inline-flex rounded-xl bg-brand px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-dark">
-              {hostListings.length ? "Open host dashboard" : "Create your listing"}
+              {canHost ? "Open host dashboard" : "Create your listing"}
             </Link>
           ) : (
             <button type="button" onClick={() => setAuthOpen(true)} className="mt-8 rounded-xl bg-brand px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-dark">

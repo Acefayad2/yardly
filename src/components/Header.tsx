@@ -16,7 +16,7 @@ export default function Header() {
 
 function HeaderContent() {
   const params = useSearchParams();
-  const { user, logout, setAuthOpen } = useStore();
+  const { user, logout, setAuthOpen, canHost, setMode } = useStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [date, setDate] = useState("");
@@ -49,8 +49,16 @@ function HeaderContent() {
   }, [pathname]);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const router = useRouter();
-  const isHost = pathname.startsWith("/host");
+  // Which surface is on screen. The remembered hosting/traveling mode lives in the
+  // store; this only drives header chrome.
+  const isHostSurface = pathname.startsWith("/host");
   const isExplore = pathname === "/";
+
+  const switchTo = (next: "hosting" | "traveling") => {
+    setMode(next);
+    setMenuOpen(false);
+    router.push(next === "hosting" ? "/host/dashboard/" : "/");
+  };
   useEffect(() => {
     queueMicrotask(() => {
       setQuery(params.get("q") ?? "");
@@ -120,17 +128,17 @@ function HeaderContent() {
   ];
 
   return (
-    <header className={`site-header sticky top-0 z-40 border-b border-border-soft bg-background/95 backdrop-blur${pathname.startsWith("/trips") ? " site-header--trips" : ""}${isHost ? " site-header--host" : ""}${!isExplore ? " site-header--compact" : ""}${isExplore && headerCollapsed ? " site-header--scrolled" : ""}`}>
+    <header className={`site-header sticky top-0 z-40 border-b border-border-soft bg-background/95 backdrop-blur${pathname.startsWith("/trips") ? " site-header--trips" : ""}${isHostSurface ? " site-header--host" : ""}${!isExplore ? " site-header--compact" : ""}${isExplore && headerCollapsed ? " site-header--scrolled" : ""}`}>
       <div className="header-shell mx-auto max-w-[90rem] px-4 sm:px-6">
         <div className="header-primary-row">
-          <Link href={isHost ? "/host/dashboard" : "/"} className="header-logo flex shrink-0 items-center gap-2 text-brand" aria-label="Yardly home">
+          <Link href={isHostSurface ? "/host/dashboard" : "/"} className="header-logo flex shrink-0 items-center gap-2 text-brand" aria-label="Yardly home">
             <svg viewBox="0 0 32 32" className="h-8 w-8 fill-current" aria-hidden>
               <path d="M16 2C16 8 12 10 9 12c-4 2.7-5 8-2.4 11.6C8.3 26 11 27 13.6 26.4 12.4 22 13 17.4 16 14c-2 4-2.3 8.4-1.4 12.9.3 1.5.6 2.4.6 3.1h1.6c0-.7.3-1.6.6-3.1.4-1.9.5-3.7.4-5.4 1.6 1 3.7 1.2 5.6.6C26 20.9 27 15.6 24.4 12 21.4 8 16 8 16 2z" />
             </svg>
             <span className="text-lg font-bold tracking-tight sm:text-xl">Yardly</span>
           </Link>
 
-          {!isHost && <nav className="desktop-header-tabs" aria-label="Browse Yardly categories">
+          {!isHostSurface && <nav className="desktop-header-tabs" aria-label="Browse Yardly categories">
             {categories.map((category, index) => (
               <Link
                 key={category.label}
@@ -161,15 +169,17 @@ function HeaderContent() {
               </span>
             </button>
           )}
-          {isHost && <span className="hidden rounded-full bg-brand/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-brand-dark sm:inline-flex">Hosting</span>}
+          {isHostSurface && <span className="hidden rounded-full bg-brand/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-brand-dark sm:inline-flex">Hosting</span>}
 
           <div className="header-actions flex min-w-0 items-center justify-end gap-2">
             {isExplore && <MobileSearch />}
 
-            {!isHost ? (
-              <Link href="/host" className="hidden rounded-full px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-soft active:scale-[0.98] lg:block">Become a host</Link>
+            {isHostSurface ? (
+              <button type="button" onClick={() => switchTo("traveling")} className="hidden rounded-full px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-soft active:scale-[0.98] lg:block">Switch to traveling</button>
+            ) : canHost ? (
+              <button type="button" onClick={() => switchTo("hosting")} className="hidden rounded-full px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-soft active:scale-[0.98] lg:block">Switch to hosting</button>
             ) : (
-              <Link href="/" className="hidden rounded-full px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-soft active:scale-[0.98] lg:block">Switch to renting</Link>
+              <Link href="/host" className="hidden rounded-full px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-soft active:scale-[0.98] lg:block">Become a host</Link>
             )}
 
             <div className="relative">
@@ -211,7 +221,13 @@ function HeaderContent() {
                         <MenuLink href="/bookings" onClick={() => setMenuOpen(false)}>Bookings</MenuLink>
                         <MenuLink href="/wishlists" onClick={() => setMenuOpen(false)}>Wishlists</MenuLink>
                         <MenuLink href="/messages" onClick={() => setMenuOpen(false)}>Messages</MenuLink>
-                        <MenuLink href="/host/dashboard" onClick={() => setMenuOpen(false)}>Switch to hosting</MenuLink>
+                        {canHost ? (
+                          <button type="button" className="account-menu__link" onClick={() => switchTo(isHostSurface ? "traveling" : "hosting")}>
+                            {isHostSurface ? "Switch to traveling" : "Switch to hosting"}
+                          </button>
+                        ) : (
+                          <MenuLink href="/host" onClick={() => setMenuOpen(false)}>Become a host</MenuLink>
+                        )}
                         <div className="account-menu__divider" />
                         <button
                           onClick={() => { logout(); setMenuOpen(false); }}

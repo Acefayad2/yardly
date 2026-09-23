@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -15,6 +16,8 @@ import { useRouter } from "next/navigation";
 import { getSupabase } from "./supabase";
 import { DEMO_SPACES } from "./demo-spaces";
 import type {
+  AccountType,
+  AppMode,
   Booking,
   Conversation,
   ConversationMessage,
@@ -26,6 +29,7 @@ import type {
 } from "./types";
 
 type AuthMode = "login" | "signup";
+type StoredMode = { userId: string; mode: AppMode };
 type ActionResult = { error?: string; message?: string; id?: string };
 type NewHostListing = Omit<HostListing, "id" | "image" | "images" | "createdAt">;
 type NewBooking = Pick<Booking, "spaceId" | "date" | "startTime" | "endTime" | "guests">;
@@ -47,6 +51,10 @@ interface Store {
   hostReservations: HostReservation[];
   hostDataLoading: boolean;
   hostDataError: string | null;
+  accountType: AccountType;
+  canHost: boolean;
+  mode: AppMode;
+  setMode: (mode: AppMode) => void;
   login: (mode: AuthMode, name: string, email: string, password: string, phone: string, dateOfBirth: string) => Promise<ActionResult>;
   logout: () => Promise<void>;
   refreshMarketplace: () => Promise<void>;
@@ -66,6 +74,7 @@ interface Store {
 const StoreContext = createContext<Store | null>(null);
 
 const FAVS_KEY = "yardly_favorites";
+const MODE_KEY = "yardly_mode";
 const IOS_AUTH_REDIRECT = "com.acefayad.yardly://auth/callback";
 const FALLBACK_LISTING_IMAGE = "https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&w=1200&q=85";
 
@@ -94,6 +103,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [hostDataLoading, setHostDataLoading] = useState(true);
   const [hostDataError, setHostDataError] = useState<string | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
+  const [accountType, setAccountType] = useState<AccountType>("guest");
+  const [storedMode, setStoredMode] = useState<StoredMode | null>(null);
+  // Only an explicit login/signup may reroute the user; a silent session restore must not.
+  const interactiveLogin = useRef(false);
 
   const refreshMarketplace = useCallback(async () => {
     setMarketplaceLoading(true);
@@ -117,7 +130,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const loadHostData = useCallback(async (hostId: string) => {
+  const loadHostData = useCallback(async (hostId: string): Promise<HostListing[]> => {
     setHostDataLoading(true);
     setHostDataError(null);
     try {
@@ -128,10 +141,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ]);
       if (listingsResult.error) throw listingsResult.error;
       if (reservationsResult.error) throw reservationsResult.error;
-      setHostListings((listingsResult.data ?? []).map(mapListing));
+      const listings = (listingsResult.data ?? []).map(mapListing);
+      setHostListings(listings);
       setHostReservations((reservationsResult.data ?? []).map(mapHostReservation));
+      return listings;
     } catch (error) {
       setHostDataError(errorMessage(error));
+      return [];
     } finally {
       setHostDataLoading(false);
     }
@@ -195,6 +211,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setHostListings([]);
       setHostReservations([]);
       setHostDataLoading(false);
+      setAccountType("guest");
+      interactiveLogin.current = false;
       return;
     }
 
@@ -202,17 +220,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setUser(nextUser);
     const phoneNumber = String(session.user.user_metadata.phone_number || "");
     const dateOfBirth = String(session.user.user_metadata.date_of_birth || "");
+    // account_type is deliberately absent: PostgREST only builds ON CONFLICT DO UPDATE
+    // for the keys present here, so a new row takes the column's 'guest' default and an
+    // existing row keeps whatever it already has instead of being reset on every sync.
     const profile: Record<string, string> = {
       id: nextUser.id,
       full_name: nextUser.name,
-      account_type: "both",
     };
     if (phoneNumber) profile.phone_number = phoneNumber;
     if (dateOfBirth) profile.date_of_birth = dateOfBirth;
 
     const supabase = getSupabase();
-    const { error: profileError } = await supabase.from("profiles").upsert(profile);
+    const { data: profileRow, error: profileError } = await supabase
+      .from("profiles")
+      .upsert(profile)
+      .select("account_type")
+      .single();
     if (profileError) setHostDataError(profileError.message);
+    // Falling back to "guest" only ever hides the host switcher from a host; it can
+    // never hand hosting UI to someone who has not hosted.
+    let nextAccountType = toAccountType(profileRow?.account_type);
+    setAccountType(nextAccountType);
 
     const storedFavorites = readStoredFavorites();
     if (storedFavorites.length) {
@@ -229,12 +257,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       .eq("user_id", nextUser.id);
     if (!favoritesError) setFavorites((savedListings ?? []).map(({ listing_key }) => String(listing_key)));
 
-    await Promise.all([
+    const [listings] = await Promise.all([
       loadHostData(nextUser.id),
       loadGuestBookings(nextUser.id),
       loadConversations(nextUser.id),
     ]);
-  }, [loadConversations, loadGuestBookings, loadHostData]);
+
+    // Self-heal: someone who owns listings is a host even if an earlier flip failed.
+    if (nextAccountType === "guest" && listings.length) {
+      const { error } = await supabase.from("profiles").update({ account_type: "both" }).eq("id", nextUser.id);
+      if (!error) {
+        nextAccountType = "both";
+        setAccountType("both");
+      }
+    }
+
+    const wasInteractive = interactiveLogin.current;
+    interactiveLogin.current = false;
+    if (!wasInteractive || nextAccountType === "guest") return;
+    const remembered = readStoredMode();
+    if (remembered?.userId !== nextUser.id || remembered.mode !== "hosting") return;
+    // Only from the entry pages. A deep link to a listing, the reset-password screen or
+    // the iOS auth callback must survive login untouched.
+    const path = window.location.pathname;
+    if (path === "/" || path === "/host" || path === "/host/") router.push("/host/dashboard/");
+  }, [loadConversations, loadGuestBookings, loadHostData, router]);
 
   useEffect(() => {
     queueMicrotask(() => void refreshMarketplace());
@@ -244,7 +291,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const supabase = getSupabase();
     let disposed = false;
     let removeAppUrlListener: (() => Promise<void>) | undefined;
-    queueMicrotask(() => setFavorites(readStoredFavorites()));
+    queueMicrotask(() => {
+      setFavorites(readStoredFavorites());
+      setStoredMode(readStoredMode());
+    });
 
     void supabase.auth.getSession()
       .then(({ data }) => applySession(data.session))
@@ -290,6 +340,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (mode: AuthMode, name: string, email: string, password: string, phone: string, dateOfBirth: string): Promise<ActionResult> => {
     try {
       const supabase = getSupabase();
+      interactiveLogin.current = true;
       if (mode === "signup") {
         const phoneNumber = normalizePhone(phone);
         if (!phoneNumber) return { error: "Enter a valid phone number, including the country code." };
@@ -303,7 +354,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           },
         });
         if (error) throw error;
-        if (!data.session) return { message: "Check your email to confirm your Yardly account, then log in." };
+        if (!data.session) {
+          interactiveLogin.current = false;
+          return { message: "Check your email to confirm your Yardly account, then log in." };
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -311,6 +365,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setAuthOpen(false);
       return {};
     } catch (error) {
+      interactiveLogin.current = false;
       return { error: errorMessage(error) };
     }
   }, []);
@@ -352,6 +407,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return { error: errorMessage(error) };
     }
   }, [loadGuestBookings, loadHostData, user]);
+
+  const canHost = accountType !== "guest";
+  // Derived rather than reset in an effect: a sign-out, a different user or losing the
+  // host capability all fall back to "traveling" without a synchronous setState.
+  const mode: AppMode = canHost && user && storedMode?.userId === user.id ? storedMode.mode : "traveling";
+
+  const setMode = useCallback((next: AppMode) => {
+    if (!user) return;
+    const entry = { userId: user.id, mode: next };
+    writeStoredMode(entry);
+    setStoredMode(entry);
+  }, [user]);
 
   const toggleFavorite = useCallback((listingId: string) => {
     const wasSaved = favorites.includes(listingId);
@@ -424,6 +491,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         addressFailed = Boolean(addressError);
       }
       setHostListings((previous) => [{ ...mapListing(data), streetAddress: addressFailed ? null : (listing.streetAddress || null) }, ...previous]);
+
+      // First listing turns the account into a host. This unlocks hosting UI only —
+      // listing access is already granted by ownership in RLS, never by this flag.
+      if (accountType === "guest") {
+        const { error: accountError } = await supabase.from("profiles").update({ account_type: "both" }).eq("id", user.id);
+        if (!accountError) setAccountType("both");
+      }
+
       const messages = [
         photoFailures ? "one or more photos could not be uploaded" : null,
         addressFailed ? "the private address could not be saved" : null,
@@ -432,7 +507,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       return { error: errorMessage(error) };
     }
-  }, [user]);
+  }, [accountType, user]);
 
   const updateHostListing = useCallback(async (id: string, listing: NewHostListing, photos: File[]): Promise<ActionResult> => {
     if (!user) return { error: "Sign in before editing a listing." };
@@ -581,6 +656,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       hostReservations,
       hostDataLoading,
       hostDataError,
+      accountType,
+      canHost,
+      mode,
+      setMode,
       login,
       logout,
       refreshMarketplace,
@@ -605,6 +684,10 @@ export function useStore() {
   const context = useContext(StoreContext);
   if (!context) throw new Error("useStore must be used within StoreProvider");
   return context;
+}
+
+function toAccountType(value: unknown): AccountType {
+  return value === "host" || value === "both" ? value : "guest";
 }
 
 function mapUser(user: SupabaseUser): User {
@@ -777,6 +860,28 @@ function readStoredFavorites(): string[] {
     return value ? JSON.parse(value).filter((item: unknown) => typeof item === "string") : [];
   } catch {
     return [];
+  }
+}
+
+// Keyed by user so a second account signing in on a shared browser does not
+// inherit the previous person's hosting mode.
+function readStoredMode(): StoredMode | null {
+  try {
+    const value = localStorage.getItem(MODE_KEY);
+    if (!value) return null;
+    const parsed = JSON.parse(value);
+    if (typeof parsed?.userId !== "string") return null;
+    return { userId: parsed.userId, mode: parsed.mode === "hosting" ? "hosting" : "traveling" };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredMode(next: StoredMode): void {
+  try {
+    localStorage.setItem(MODE_KEY, JSON.stringify(next));
+  } catch {
+    // A blocked or full localStorage only costs the remembered mode; ignore it.
   }
 }
 

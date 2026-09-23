@@ -59,6 +59,13 @@ export interface User {
   email: string;
 }
 
+// Hosting capability, not a permission. Listing access is always ownership-based
+// (listings.host_id = auth.uid()) in RLS; nothing in the database reads this.
+export type AccountType = "guest" | "host" | "both";
+
+// Which side of the marketplace the user is currently looking at.
+export type AppMode = "traveling" | "hosting";
+
 export type HostListingStatus = "draft" | "published" | "paused";
 
 export interface HostListing {
