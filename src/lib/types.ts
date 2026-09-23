@@ -49,7 +49,7 @@ export interface Booking {
   fullDay: boolean;
   guests: number;
   total: number;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status: "confirmed" | "completed" | "cancelled";
   createdAt: string;
 }
 

@@ -55,7 +55,7 @@ export default function Trips() {
     };
   }, [bookings]);
 
-  const bookedTrips = bookings.filter((booking) => booking.status === "confirmed" || booking.status === "pending").flatMap<Trip>((booking) => {
+  const bookedTrips = bookings.filter((booking) => booking.status === "confirmed").flatMap<Trip>((booking) => {
     const space = spaces.find((candidate) => candidate.id === booking.spaceId);
     if (!space) return [];
     return [{

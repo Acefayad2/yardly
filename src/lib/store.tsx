@@ -138,6 +138,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setHostDataError(null);
     try {
       const supabase = getSupabase();
+      await sweepPastReservations(supabase);
       const [listingsResult, reservationsResult] = await Promise.all([
         supabase.from("listings").select(HOST_LISTING_SELECT).eq("host_id", hostId).order("created_at", { ascending: false }),
         supabase.from("reservations").select(HOST_RESERVATION_SELECT).eq("listings.host_id", hostId).order("start_at", { ascending: true }),
@@ -160,7 +161,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setBookingsLoading(true);
     setBookingsError(null);
     try {
-      const { data, error } = await getSupabase()
+      const supabase = getSupabase();
+      await sweepPastReservations(supabase);
+      const { data, error } = await supabase
         .from("reservations")
         .select(GUEST_RESERVATION_SELECT)
         .eq("guest_id", guestId)
@@ -671,6 +674,24 @@ export function useStore() {
 
 function toAccountType(value: unknown): AccountType {
   return value === "host" || value === "both" ? value : "guest";
+}
+
+// There is no server, cron, or scheduled job anywhere in this project, so completion is
+// a lazy sweep instead: call this before reading a user's reservations, and any of
+// theirs that ended in the past get flipped from confirmed to completed first. The rule
+// itself lives in exactly one place -- the private.complete_past_reservations() function
+// -- this just triggers it; best-effort, since a failed sweep should never block a user
+// from seeing their bookings, only leave a just-ended one displaying as upcoming a bit
+// longer than ideal.
+async function sweepPastReservations(supabase: SupabaseClient): Promise<void> {
+  // supabase-js resolves rather than rejects on an RPC-level error (the { error } field
+  // handles that, not a thrown exception) -- discard both outcomes explicitly rather than
+  // rely on try/catch, which would only ever catch a genuine network-level rejection.
+  try {
+    await supabase.rpc("complete_past_reservations");
+  } catch {
+    // Best-effort; the subsequent read proceeds regardless either way.
+  }
 }
 
 // Walks the plan in the host's chosen order, uploading each "new" file as it's reached

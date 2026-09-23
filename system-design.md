@@ -1,7 +1,7 @@
 # Yardly — System Design
 
 Living architecture document. Describes **the `dev` branch exactly as it stands**, not an aspirational
-merged state. Last audited 2026-09-23 against the 16 migrations, 8 files under `supabase/tests/`, and
+merged state. Last audited 2026-09-23 against the 17 migrations, 9 files under `supabase/tests/`, and
 the `src/` tree actually present on `dev`.
 
 Phase 0 (this document), Phase 1 (foundation hardening: the three stacked PRs, an error taxonomy, a
@@ -164,43 +164,55 @@ inserts cannot interleave:
 *Planned:* date-specific overrides (open unusual hours on one date), buffer time between bookings,
 maximum booking duration beyond the existing 14-hour cap.
 
-## 9. Reservation lifecycle — *partially implemented; target agreed*
+## 9. Reservation lifecycle — *implemented*
 
-**Today the column is `text` CHECK `('pending','confirmed','completed','cancelled')` with default
-`'pending'` — but only two states are reachable.** `create_reservation` inserts the literal
-`'confirmed'`, and the insert RLS policy hard-requires `status = 'confirmed'`. Nothing anywhere
-writes `pending` or `completed`. The default is dead. No scheduler, cron or `pg_cron` exists.
-
-Consequence in the UI: `src/lib/store.tsx:694` buckets anything not `cancelled`/`completed` as
-`"upcoming"`, so a booking from six months ago still displays as upcoming.
-
-**Target state (per §2):**
+`reservations.status` is now `text` CHECK `('confirmed','completed','cancelled')`, default
+`'confirmed'`. `pending` is gone — it was never written by any code path, so narrowing the constraint
+was a zero-risk cleanup, not a behavior change. `expired` was never actually in the schema at all; it
+only ever existed in this document's prose as a *future* Phase 7 (payment-hold) concept, so there was
+nothing to remove for it.
 
 ```
-confirmed ──(end_at passes)──▶ completed
+confirmed ──(end_at passes; swept)──▶ completed        [terminal]
     │
-    └──(either party cancels)──▶ cancelled        [terminal]
+    └──(either party cancels, while still confirmed)──▶ cancelled        [terminal]
 ```
 
-`pending` and `expired` are **removed** via a deliberate migration, and re-added in Phase 7 when a
-payment hold gives them meaning.
+**Completion is a lazy sweep, not a scheduler — stated plainly, this is a real timing trade-off.**
+There is still no server, cron, or scheduled job anywhere in this project. `private.complete_past_
+reservations()` (`SECURITY DEFINER`, mirroring the one other precedent for this pattern,
+`private.booking_slots`) flips any `confirmed` reservation with `end_at < now()` to `completed`. It's
+called — via the thin `public.complete_past_reservations()` invoker wrapper — from
+`loadGuestBookings` and `loadHostData` in `src/lib/store.tsx`, before each reads a user's
+reservations, best-effort (a failed sweep never blocks the page). **Consequence:** a reservation
+becomes `completed` the next time *anyone* loads guest bookings or host reservations, not the instant
+its `end_at` passes. Acceptable for now; would need revisiting (a real scheduled job) if something
+ever depends on completion happening promptly rather than eventually.
 
-> **Coupling hazard — must be handled by any completion mechanism.** The overlap constraint's
-> predicate is `WHERE status IN ('pending','confirmed')`, and both `cancel_reservation`'s eligibility
-> filter and `private.booking_slots`' busy filter use the same set. The moment a row becomes
-> `completed` it drops out of all three. Harmless for past times, but it means `status` is currently
-> doing double duty as *"is this slot live."* Completion must only ever apply to already-past
-> reservations, and that needs a test.
+The coupling hazard flagged in an earlier draft of this document is resolved, not just theoretically
+safe: the overlap constraint, `cancel_reservation`'s eligibility filter, and `private.booking_slots`'
+busy filter all now read `status = 'confirmed'` (simplified from `IN ('pending','confirmed')`, since
+`pending` never occurred). A `completed` reservation's `end_at` is necessarily in the past, so it was
+never at risk of wrongly blocking a future query regardless — but the constraint itself is now
+provably testable, not just reasoned about:
+`supabase/tests/reservation-completion-rollback.sql` mutation-tests both the sweep and the
+cancellation-eligibility narrowing (breaking each was confirmed to fail the suite, not just assumed
+to).
 
 ## 10. Cancellation policy — *partially implemented*
 
 Either party may cancel a `confirmed` reservation, via `cancel_reservation`. Cancelled rows drop out
-of the overlap constraint, immediately freeing the slot.
+of the overlap constraint, immediately freeing the slot. **New, deliberate consequence of §9:** a
+`completed` reservation can no longer be cancelled at all — `cancel_reservation`'s eligibility filter
+is now `status = 'confirmed'` exactly, so attempting to cancel one raises the same `P0002` error as
+cancelling an already-cancelled one. This is a correctness fix (cancelling something that objectively
+already happened doesn't mean anything), not the cutoff-window policy below.
 
-**There is no time-based cutoff of any kind.** A reservation can be cancelled after it was supposed
-to start, or after it ended. With no payments there is no refund consequence, so this is currently
-harmless — but it becomes a money question the instant Phase 7 lands. *Planned:* an explicit policy
-(cutoff window, guest vs. host asymmetry, refund tiers) implemented in the database, not in React.
+**There is still no time-based cutoff for *future* bookings.** A reservation can be cancelled at any
+point up until it's actually over — including the instant before it starts, or while it's in
+progress. With no payments there is no refund consequence, so this is currently harmless — but it
+becomes a money question the instant Phase 7 lands. *Planned:* an explicit policy (cutoff window,
+guest vs. host asymmetry, refund tiers) implemented in the database, not in React.
 
 ## 11. Pricing architecture — *implemented*
 
@@ -281,7 +293,8 @@ No review table, no way to leave one, no computed aggregate. `rating`, `reviews`
 **only as hardcoded demo-data flavor** in `src/lib/demo-spaces.ts` and must not reach production as
 real-looking data.
 
-Blocked on §9: review eligibility requires a `completed` reservation, which is currently unreachable.
+No longer blocked on §9 — `completed` reservations are real now. Still blocked on the reviews feature
+itself not existing at all: no table, no eligibility check, no UI.
 
 ## 17. Trust and safety — *deferred*
 
@@ -404,7 +417,6 @@ Ranked by severity. Critical items are launch blockers for the real-money path.
 |---|---|
 | Zero indexable listings (§22) | Primary acquisition channel for a marketplace is unavailable |
 | No admin or moderation capability (§18) | Nobody can intervene in any dispute, report or bad listing |
-| `completed` unreachable (§9) | Blocks reviews; makes every past booking display as "upcoming" |
 | No notifications (§15) | Guests and hosts receive no booking confirmation of any kind |
 | No observability (§24) | Failures are invisible |
 
@@ -454,7 +466,9 @@ callback (`com.acefayad.yardly://auth/callback`) is likewise unverified on devic
 Since then, two more PRs landed for the master brief's Phase 2 (host/listing domain, §7): **#29**
 (archived status, the capacity-vs-reservation guard, `listing-lifecycle-rollback.sql`) and **#30**
 (photo management, per-field publish validation, the guest-facing preview — client-only, no
-migration). Current counts: 16 migrations, 7 rollback suites plus the concurrency test.
+migration). Then a third round implemented this roadmap's own Phase 2 (§9, §10): `pending` dropped,
+`completed` wired up via a lazy sweep, `reservation-completion-rollback.sql`. Current counts: 17
+migrations, 8 rollback suites plus the concurrency test.
 
 ## 26. System invariants
 
@@ -474,7 +488,7 @@ The properties that must hold regardless of how the UI changes. "Tested" means a
 | 9 | Payment success is determined by verified processing | — | ⛔ Planned (§12) |
 | 10 | Duplicate payment events are idempotent | — | ⛔ Planned (§12) |
 | 11 | Historical reservation prices remain stable | Snapshot columns + snapshot trigger | ✅ Implemented |
-| 12 | Review eligibility requires a completed reservation | — | ⛔ Blocked by §9 and §16 |
+| 12 | Review eligibility requires a completed reservation | Would be `reservations.status = 'completed'` | ⛔ The mechanism exists (§9); still blocked by §16 (no reviews feature at all) |
 | 13 | Admin access is separately authorized | — | ⛔ No admin exists (§18) |
 | 14 | Privileged functions are not callable by unintended roles | `revoke … from public, anon`; `private` schema | ✅ Implemented, partially tested |
 | 15 | RLS is tested, not assumed | 2 rollback suites | ✅ Holds for current tables |
@@ -511,6 +525,9 @@ control works.
   anon and to a different authenticated user, and the capacity-vs-reservation guard (rejects an
   unsafe reduction, allows a safe one or any increase, allows the reduction once the conflicting
   reservation is cancelled).
+- `reservation-completion-rollback.sql` — the sweep completes a past confirmed reservation, leaves a
+  future one and a cancelled one untouched, and a completed reservation can no longer be cancelled;
+  the sweep's grant is confirmed narrow (`anon` denied); re-running the sweep is a no-op.
 - `ci-bootstrap.sql` — not a test; a stub of the Supabase surface so migrations can replay on bare
   Postgres.
 
@@ -586,7 +603,7 @@ than forcing a renumber of Phases 2–13 and their several cross-references (§1
 |---|---|---|
 | **0** | *This document* | ✅ Complete |
 | **1** | ~~Merge #21→#25→#23. Error taxonomy. Avatar bucket. Fix CI `push` trigger to `dev`. Concurrency test for invariant 7~~ ✅ Complete (#21, #25, #23, #26, #27, #28) | Invariants 1–8 all enforced and tested |
-| **2** | Reservation lifecycle: implement `completed`; migration dropping `pending`/`expired`; handle the §9 coupling hazard | No dead states; past bookings display correctly |
+| **2** | ~~Reservation lifecycle: implement `completed`; drop `pending`; handle the §9 coupling hazard~~ ✅ Complete | No dead states; past bookings display correctly |
 | **3** | Cancellation policy — cutoff window, guest/host asymmetry, DB-enforced | One authoritative policy, no React duplication |
 | **4** | SEO: `/spaces/[id]` + `generateStaticParams` + `generateMetadata` + sitemap/robots/canonical/OG | Listings indexable |
 | **5** | Pricing hardening: currency column, single-source fee rate, tax model shape | Currency explicit before price rows accumulate |
