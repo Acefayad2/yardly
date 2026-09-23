@@ -53,6 +53,22 @@ function rememberHostingMode(page: Page) {
   }, ["yardly_mode", userId]);
 }
 
+// toHaveURL resolves as soon as the URL matches, but the document swap can still be in
+// flight, which destroys the execution context mid-evaluate. Retry rather than sleep:
+// the read is cheap and the failure is a race, not a wrong value.
+async function storedMode(page: Page): Promise<Record<string, unknown>> {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      await page.waitForLoadState("domcontentloaded");
+      return JSON.parse((await page.evaluate(() => localStorage.getItem("yardly_mode"))) ?? "{}");
+    } catch (error) {
+      if (attempt === 4) throw error;
+      await page.waitForTimeout(100);
+    }
+  }
+  throw new Error("unreachable");
+}
+
 test("a guest who has never hosted is offered Become a host, not a mode switch", async ({ page }) => {
   const mocks = await mockBackend(page, "guest");
   await logInFromProfile(page);
@@ -73,15 +89,14 @@ test("a host can switch modes and the choice survives a reload", async ({ page }
   await switchMode(page, "Switch to hosting");
   await expect(page).toHaveURL(/\/host\/dashboard\/?$/);
 
-  const stored = await page.evaluate(() => localStorage.getItem("yardly_mode"));
-  expect(JSON.parse(stored ?? "{}")).toMatchObject({ userId, mode: "hosting" });
+  expect(await storedMode(page)).toMatchObject({ userId, mode: "hosting" });
 
   await page.reload();
   await expect(page).toHaveURL(/\/host\/dashboard\/?$/);
 
   await switchMode(page, "Switch to traveling");
   await expect(page).toHaveURL(/\/$/);
-  expect(JSON.parse((await page.evaluate(() => localStorage.getItem("yardly_mode"))) ?? "{}")).toMatchObject({ mode: "traveling" });
+  expect(await storedMode(page)).toMatchObject({ mode: "traveling" });
 });
 
 test("logging in from the Become a host page lands a remembered host in hosting mode", async ({ page }) => {
