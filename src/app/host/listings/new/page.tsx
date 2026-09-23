@@ -25,6 +25,7 @@ export default function NewHostListingPage() {
         rules: values.rules.split("\n").map((rule) => rule.trim()).filter(Boolean),
         latitude: Number(values.latitude),
         longitude: Number(values.longitude),
+        streetAddress: values.streetAddress,
         status: "draft",
       },
       photos,

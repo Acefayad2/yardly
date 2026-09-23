@@ -30,6 +30,7 @@ export interface HostListingFormValues {
   capacity: string;
   latitude: string;
   longitude: string;
+  streetAddress: string;
   timezone: string;
   rules: string;
   amenities: string[];
@@ -57,6 +58,7 @@ const emptyValues: HostListingFormValues = {
   capacity: "12",
   latitude: "",
   longitude: "",
+  streetAddress: "",
   timezone: "America/New_York",
   rules: "",
   amenities: [],
@@ -76,8 +78,12 @@ export default function HostListingForm({ mode, initialValues, existingImages = 
   const [capacity, setCapacity] = useState(base.capacity);
   const [latitude, setLatitude] = useState(base.latitude);
   const [longitude, setLongitude] = useState(base.longitude);
+  const [streetAddress, setStreetAddress] = useState(base.streetAddress);
+  // Prefer the real stored street address for the picker's preview label. Listings saved
+  // before private addresses existed have none on file — fall back to the public city/state
+  // so the map still centers, but the host must choose a real address again to save it.
   const [address, setAddress] = useState<AddressSuggestion | null>(base.latitude && base.longitude ? {
-    id: "existing", label: [base.neighborhood, base.location].filter(Boolean).join(", "),
+    id: "existing", label: base.streetAddress || [base.neighborhood, base.location].filter(Boolean).join(", "),
     publicLocation: base.location, neighborhood: base.neighborhood,
     latitude: Number(base.latitude), longitude: Number(base.longitude),
   } : null);
@@ -119,6 +125,7 @@ export default function HostListingForm({ mode, initialValues, existingImages = 
         capacity,
         latitude,
         longitude,
+        streetAddress: streetAddress.trim(),
         timezone,
         rules,
         amenities,
@@ -189,6 +196,7 @@ export default function HostListingForm({ mode, initialValues, existingImages = 
                   setNeighborhood(next?.neighborhood ?? "");
                   setLatitude(next ? String(Math.round(next.latitude * 100) / 100) : "");
                   setLongitude(next ? String(Math.round(next.longitude * 100) / 100) : "");
+                  setStreetAddress(next?.label ?? "");
                 }} />
                 <Field label="Local timezone" hint="Booking hours are shown in the space's local time">
                   <select required value={timezone} onChange={(event) => setTimezone(event.target.value)} className="host-input">

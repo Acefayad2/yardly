@@ -2420,6 +2420,13 @@ body {
   font-size: 0.88rem;
 }
 
+.trip-card__address {
+  margin-top: 0.3rem;
+  color: var(--foreground);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
 .trip-card__guests {
   display: flex;
   align-items: center;

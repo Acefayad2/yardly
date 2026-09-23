@@ -5,9 +5,11 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { spaceHref } from "@/lib/spaces";
 import { useStore } from "@/lib/store";
+import { getSupabase } from "@/lib/supabase";
 import type { Space } from "@/lib/types";
 import type { TripMapPoint } from "./TripsMap";
 import DemoBookings from "./DemoBookings";
+import { useEffect, useState } from "react";
 
 const TripsMap = dynamic(() => import("./TripsMap"), {
   ssr: false,
@@ -26,6 +28,33 @@ const AVATAR_COLORS = ["#dff2e5", "#ede6fb", "#fff0d2", "#dcecf8"];
 
 export default function Trips() {
   const { bookings, spaces, bookingsLoading, bookingsError } = useStore();
+  const [addresses, setAddresses] = useState<Record<string, string>>({});
+
+  // Airbnb-style: a confirmed trip shows its exact address right on the card, no
+  // extra click needed. RLS on listing_addresses only ever returns rows for a
+  // listing's host or a guest with a confirmed reservation there, so this fetch
+  // naturally comes back empty for anything not actually booked.
+  useEffect(() => {
+    const confirmedListingIds = Array.from(new Set(bookings.filter((booking) => booking.status === "confirmed").map((booking) => booking.spaceId)));
+    if (!confirmedListingIds.length) return;
+    let cancelled = false;
+    void getSupabase()
+      .from("listing_addresses")
+      .select("listing_id,street_address")
+      .in("listing_id", confirmedListingIds)
+      .then(({ data }) => {
+        if (cancelled) return;
+        setAddresses((previous) => {
+          const next = { ...previous };
+          for (const row of data ?? []) next[String(row.listing_id)] = String(row.street_address);
+          return next;
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [bookings]);
+
   const bookedTrips = bookings.filter((booking) => booking.status === "confirmed" || booking.status === "pending").flatMap<Trip>((booking) => {
     const space = spaces.find((candidate) => candidate.id === booking.spaceId);
     if (!space) return [];
@@ -74,6 +103,7 @@ export default function Trips() {
               <div className="trip-card__content">
                 <h2>{trip.space.location.split(",")[0]}</h2>
                 <p>{trip.scheduleLabel}</p>
+                {addresses[trip.space.id] && <p className="trip-card__address">📍 {addresses[trip.space.id]}</p>}
                 <div className="trip-card__guests" aria-label={`${trip.guestInitials.length + trip.additionalGuests} guests`}>
                   {trip.guestInitials.map((initial, index) => (
                     <span key={`${initial}-${index}`} style={{ backgroundColor: AVATAR_COLORS[index % AVATAR_COLORS.length] }}>{initial}</span>

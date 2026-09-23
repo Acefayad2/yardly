@@ -12,6 +12,8 @@ begin
   insert into public.listings(id,host_id,title,location,space_type,hourly_price,min_hours,capacity,timezone,images,latitude,longitude,status,description,neighborhood)
   values(yard,host,'QA availability yard','Test city','Backyards',20,2,5,'America/Los_Angeles',array['https://example.com/test.jpg'],34,-118,'published','Temporary rollback fixture, never committed.','Test area'),
     (draft,host,'QA availability draft','Test city','Backyards',20,2,5,'America/Los_Angeles','{}',null,null,'draft','Temporary rollback fixture, never committed.','Test area');
+  -- A published listing needs a private address on file (see the publish-guard trigger).
+  insert into public.listing_addresses(listing_id, street_address) values (yard, '1 QA Fixture Way, Test City, TS 00000');
   update public.listings set weekly_hours = '[[10,18],[10,18],[10,18],[10,18],[10,18],[10,18],[10,18]]', blocked_dates = array[day+1] where id = yard;
   rejected := false;
   begin update public.listings set weekly_hours = '[null]' where id = yard;

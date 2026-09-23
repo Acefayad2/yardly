@@ -6,6 +6,7 @@ import { Space } from "@/lib/types";
 import BookingWidget from "./BookingWidget";
 import DemoCheckout from "./DemoCheckout";
 import { useStore } from "@/lib/store";
+import { getSupabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -17,7 +18,30 @@ export default function SpaceDetail({ space }: { space: Space }) {
   const [messageError, setMessageError] = useState("");
   const [openingConversation, setOpeningConversation] = useState(false);
   const [bookingVisible, setBookingVisible] = useState(false);
+  const [addressResult, setAddressResult] = useState<{ spaceId: string; address: string | null } | null>(null);
   const isFav = favorites.includes(space.id);
+
+  // RLS returns this row only for the listing's host or a guest with a confirmed
+  // reservation here; anyone else — including signed-out visitors — gets nothing,
+  // and it never appears in the public marketplace feed store.tsx fetches.
+  useEffect(() => {
+    if (space.isDemo || !user) return;
+    let cancelled = false;
+    void getSupabase()
+      .from("listing_addresses")
+      .select("street_address")
+      .eq("listing_id", space.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setAddressResult({ spaceId: space.id, address: data?.street_address ?? null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [space.id, space.isDemo, user]);
+  // Only trust the fetched result while it matches the current listing and a signed-in
+  // user — this also makes a sign-out or listing change clear it without a separate reset.
+  const exactAddress = user && !space.isDemo && addressResult?.spaceId === space.id ? addressResult.address : null;
 
   useEffect(() => {
     const booking = document.getElementById("booking");
@@ -116,7 +140,16 @@ export default function SpaceDetail({ space }: { space: Space }) {
             <h3 id="booking-confidence" className="mb-4 text-lg font-semibold">Book with the important details up front</h3>
             <div className="grid gap-3 sm:grid-cols-3">
               <TrustItem title="Clear rules" body="Review host expectations before reserving." />
-              <TrustItem title={space.isDemo ? "Demo location" : "Location preview"} body={space.isDemo ? "Illustrative map only. No address is delivered in demo mode." : "Confirm arrival details directly with your host before visiting."} />
+              <TrustItem
+                title={space.isDemo ? "Demo location" : "Private address"}
+                body={
+                  space.isDemo
+                    ? "Illustrative map only. No address is delivered in demo mode."
+                    : exactAddress
+                      ? "You have a confirmed booking — the exact address is shown below."
+                      : "Shared automatically once you have a confirmed booking here."
+                }
+              />
               <TrustItem title="Up-front total" body="Hourly rate and service fee are shown together." />
             </div>
           </section>
@@ -151,7 +184,11 @@ export default function SpaceDetail({ space }: { space: Space }) {
             <div className="h-72 overflow-hidden rounded-2xl">
               <MapView spaces={[space]} activeId={space.id} />
             </div>
-            <p className="mt-3 text-xs text-muted">{space.isDemo ? "Illustrative location only. A demo booking does not provide access to this property." : "This map is a location preview, not arrival instructions. Confirm the address directly with your host before visiting."}</p>
+            {exactAddress ? (
+              <p className="mt-3 text-sm font-semibold">{exactAddress}</p>
+            ) : (
+              <p className="mt-3 text-xs text-muted">{space.isDemo ? "Illustrative location only. A demo booking does not provide access to this property." : "The exact address is shared here once your booking is confirmed."}</p>
+            )}
           </div>
         </div>
 

@@ -158,7 +158,7 @@ export default function AddressMapPicker({
 
         <div id="listing-address-help" className="mt-3 flex items-start gap-2 text-xs leading-5 text-muted">
           <svg className="mt-0.5 h-4 w-4 shrink-0 text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"/><path d="M12 11v6M12 7h.01"/></svg>
-          Your street address is used for this preview. The saved guest map uses an approximate pin in the public area shown below.
+          Your street address is kept private and shared only with guests who have a confirmed booking. The public map always shows an approximate pin in the area shown below.
         </div>
         {(error || searchError) && <p id="listing-address-error" role="alert" className="mt-3 text-sm font-medium text-red-700">{error || searchError}</p>}
 
