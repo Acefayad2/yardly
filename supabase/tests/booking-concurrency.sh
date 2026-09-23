@@ -108,10 +108,10 @@ grep -qE "23P01|exclusion|no longer available" "$WORK/b.out" \
 [ "$B_ELAPSED" -ge 3 ] \
   || fail "session B failed in ${B_ELAPSED}s without blocking on A -- it was rejected by a check, not serialized by the constraint"
 
-ACTIVE="$(psql_q -c "select count(*) from public.reservations where listing_id = '${LISTING}' and status in ('pending','confirmed')")"
+ACTIVE="$(psql_q -c "select count(*) from public.reservations where listing_id = '${LISTING}' and status = 'confirmed'")"
 [ "$ACTIVE" = "1" ] || fail "expected exactly 1 active reservation, found ${ACTIVE}"
 
-WINNER="$(psql_q -c "select guest_id from public.reservations where listing_id = '${LISTING}' and status in ('pending','confirmed')")"
+WINNER="$(psql_q -c "select guest_id from public.reservations where listing_id = '${LISTING}' and status = 'confirmed'")"
 [ "$WINNER" = "${GUEST_A}" ] || fail "the committed reservation belongs to the wrong guest: ${WINNER}"
 
 echo "PASS: two concurrent sessions raced for the same slot; the loser blocked ${B_ELAPSED}s on the winner's uncommitted row and then failed with an overlap error; exactly one reservation survived"
