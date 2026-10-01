@@ -2,6 +2,7 @@
 
 ## Maintenance changelog — 2026-10-01
 
+- Patched all development-only `brace-expansion` copies within their existing major versions (1.1.21, 2.1.7, 5.0.12), addressing stack-exhaustion and quadratic-time denial of service in tooling glob patterns. No runtime dependencies or application behavior change. Older Capacitor asset-tool dependencies still have separate tar, Sharp and UUID findings requiring an upstream-compatible remediation.
 - Updated Next.js and its matching ESLint configuration from 16.3.3 to 16.3.8 to clear the critical production dependency advisory GHSA-vcvr-r3jv-pc5j. The static export does not use `next/og`; the dependency gate still requires the patched version.
 - Release acceptance: zero high/critical production audit findings, passing lint/type/build/quality and desktop/mobile browser checks, passing isolated database CI, and preview verification before merging.
 
