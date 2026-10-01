@@ -1,5 +1,10 @@
 # Yardly readiness — 2026-09-13
 
+## Maintenance changelog — 2026-10-01
+
+- Updated Next.js and its matching ESLint configuration from 16.3.3 to 16.3.8 to clear the critical production dependency advisory GHSA-vcvr-r3jv-pc5j. The static export does not use `next/og`; the dependency gate still requires the patched version.
+- Release acceptance: zero high/critical production audit findings, passing lint/type/build/quality and desktop/mobile browser checks, passing isolated database CI, and preview verification before merging.
+
 ## Verified in this pass
 
 - Reproduced and fixed the conversation-insert RLS bug: an unrelated host was accepted because correlated columns were not qualified. Both host identity and reservation/listing/guest association are now checked.
