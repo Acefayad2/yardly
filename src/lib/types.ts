@@ -101,6 +101,7 @@ export type HostReservationStatus = "upcoming" | "completed" | "cancelled";
 
 export interface HostReservation {
   id: string;
+  guestId: string;
   listingId: string;
   listingTitle: string;
   guestName: string;
@@ -125,6 +126,7 @@ export interface Conversation {
   listingId: string;
   listingTitle: string;
   listingImage: string;
+  listingAvailable: boolean;
   guestId: string;
   hostId: string;
   updatedAt: string;

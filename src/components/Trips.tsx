@@ -3,10 +3,9 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { format } from "date-fns";
-import { spaceHref } from "@/lib/spaces";
 import { useStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
-import type { Space } from "@/lib/types";
+import type { Booking, Space } from "@/lib/types";
 import type { TripMapPoint } from "./TripsMap";
 import DemoBookings from "./DemoBookings";
 import { useEffect, useState } from "react";
@@ -18,7 +17,8 @@ const TripsMap = dynamic(() => import("./TripsMap"), {
 
 interface Trip {
   id: string;
-  space: Space;
+  booking: Booking;
+  space?: Space;
   scheduleLabel: string;
   guestInitials: string[];
   additionalGuests: number;
@@ -27,8 +27,9 @@ interface Trip {
 const AVATAR_COLORS = ["#dff2e5", "#ede6fb", "#fff0d2", "#dcecf8"];
 
 export default function Trips() {
-  const { bookings, spaces, bookingsLoading, bookingsError } = useStore();
-  const [addresses, setAddresses] = useState<Record<string, string>>({});
+  const { user, bookings, spaces, bookingsLoading, bookingsError } = useStore();
+  const [addressResult, setAddressResult] = useState<{ userId: string; addresses: Record<string, string> } | null>(null);
+  const addresses = addressResult?.userId === user?.id ? addressResult?.addresses ?? {} : {};
 
   // Airbnb-style: a confirmed trip shows its exact address right on the card, no
   // extra click needed. RLS on listing_addresses only ever returns rows for a
@@ -36,7 +37,7 @@ export default function Trips() {
   // naturally comes back empty for anything not actually booked.
   useEffect(() => {
     const confirmedListingIds = Array.from(new Set(bookings.filter((booking) => booking.status === "confirmed").map((booking) => booking.spaceId)));
-    if (!confirmedListingIds.length) return;
+    if (!user || !confirmedListingIds.length) return;
     let cancelled = false;
     void getSupabase()
       .from("listing_addresses")
@@ -44,37 +45,35 @@ export default function Trips() {
       .in("listing_id", confirmedListingIds)
       .then(({ data }) => {
         if (cancelled) return;
-        setAddresses((previous) => {
-          const next = { ...previous };
-          for (const row of data ?? []) next[String(row.listing_id)] = String(row.street_address);
-          return next;
-        });
+        const next: Record<string, string> = {};
+        for (const row of data ?? []) next[String(row.listing_id)] = String(row.street_address);
+        setAddressResult({ userId: user.id, addresses: next });
       });
     return () => {
       cancelled = true;
     };
-  }, [bookings]);
+  }, [bookings, user]);
 
-  const bookedTrips = bookings.filter((booking) => booking.status === "confirmed").flatMap<Trip>((booking) => {
+  const bookedTrips = bookings.filter((booking) => booking.status === "confirmed").map<Trip>((booking) => {
     const space = spaces.find((candidate) => candidate.id === booking.spaceId);
-    if (!space) return [];
-    return [{
+    return {
       id: booking.id,
+      booking,
       space,
       scheduleLabel: `${format(new Date(`${booking.date}T12:00:00`), "MMM d, yyyy")} · ${tripTimeLabel(booking.startTime)} – ${tripTimeLabel(booking.endTime)}`,
       guestInitials: ["Y", "G"].slice(0, Math.min(booking.guests, 2)),
       additionalGuests: Math.max(booking.guests - 2, 0),
-    }];
+    };
   });
 
-  const trips = bookedTrips.slice(0, 3);
-  const mapPoints: TripMapPoint[] = trips.map(({ id, space }) => ({
+  const trips = bookedTrips;
+  const mapPoints: TripMapPoint[] = trips.flatMap(({ id, space }) => space ? [{
     id,
     label: space.location,
     lat: space.lat,
     lng: space.lng,
     image: space.images[0],
-  }));
+  }] : []);
 
   return (
     <div className="trips-page animate-fade-in">
@@ -97,13 +96,13 @@ export default function Trips() {
           </div>
         ) : <div className="trips-list">
           {trips.map((trip) => (
-            <Link key={trip.id} href={spaceHref(trip.space.id)} className="trip-card">
+            <Link key={trip.id} href={`/bookings/?booking=${encodeURIComponent(trip.id)}`} className="trip-card">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={trip.space.images[0]} alt={trip.space.title} className="trip-card__image" />
+              <img src={trip.booking.image} alt={trip.booking.title} className="trip-card__image" />
               <div className="trip-card__content">
-                <h2>{trip.space.location.split(",")[0]}</h2>
+                <h2>{trip.booking.title}</h2>
                 <p>{trip.scheduleLabel}</p>
-                {addresses[trip.space.id] && <p className="trip-card__address">📍 {addresses[trip.space.id]}</p>}
+                {addresses[trip.booking.spaceId] && <p className="trip-card__address">📍 {addresses[trip.booking.spaceId]}</p>}
                 <div className="trip-card__guests" aria-label={`${trip.guestInitials.length + trip.additionalGuests} guests`}>
                   {trip.guestInitials.map((initial, index) => (
                     <span key={`${initial}-${index}`} style={{ backgroundColor: AVATAR_COLORS[index % AVATAR_COLORS.length] }}>{initial}</span>

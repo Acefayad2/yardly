@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, type FormEvent } from "react";
+import { Suspense, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
@@ -16,28 +16,38 @@ export default function MessagesPage() {
 
 function MessagesContent() {
   const params = useSearchParams();
-  const { user, conversations, conversationsLoading, conversationsError, sendMessage, setAuthOpen } = useStore();
+  const { user, bookings, conversations, conversationsLoading, conversationsError, sendMessage, setAuthOpen } = useStore();
   const requestedId = params.get("conversation") ?? "";
-  const [selectedId, setSelectedId] = useState(requestedId);
-  const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
-  const [sendError, setSendError] = useState("");
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<{ conversationId: string; message: string } | null>(null);
+  const sendInFlight = useRef(false);
 
-  const effectiveSelectedId = selectedId || requestedId || conversations[0]?.id;
-  const selected = conversations.find((conversation) => conversation.id === effectiveSelectedId) ?? conversations[0];
+  const effectiveSelectedId = requestedId || conversations[0]?.id;
+  // Never fall back to a different recipient for a stale or unauthorized deep link.
+  const selected = conversations.find((conversation) => conversation.id === effectiveSelectedId);
+  const draftKey = `${user?.id}:${selected?.id}`;
+  const draft = selected ? drafts[draftKey] ?? "" : "";
+  const sending = sendingId !== null;
+  const listingTitle = (conversation: (typeof conversations)[number]) => conversation.listingAvailable
+    ? conversation.listingTitle
+    : bookings.find((booking) => booking.spaceId === conversation.listingId)?.title ?? conversation.listingTitle;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!selected) return;
-    setSending(true);
-    setSendError("");
-    const result = await sendMessage(selected.id, draft);
-    setSending(false);
+    if (!selected || sendInFlight.current) return;
+    const conversationId = selected.id;
+    sendInFlight.current = true;
+    setSendingId(conversationId);
+    setSendError(null);
+    const result = await sendMessage(conversationId, draft);
+    sendInFlight.current = false;
+    setSendingId(null);
     if (result.error) {
-      setSendError(result.error);
+      setSendError({ conversationId, message: result.error });
       return;
     }
-    setDraft("");
+    setDrafts((previous) => ({ ...previous, [draftKey]: "" }));
   }
 
   if (!user) {
@@ -74,27 +84,30 @@ function MessagesContent() {
             {conversations.map((conversation) => {
               const lastMessage = conversation.messages.at(-1);
               return (
-                <button key={conversation.id} type="button" onClick={() => setSelectedId(conversation.id)} aria-pressed={selected?.id === conversation.id} className={`flex w-full gap-3 border-b border-border-soft p-4 text-left transition ${selected?.id === conversation.id ? "bg-brand/5" : "hover:bg-surface-soft"}`}>
+                <Link key={conversation.id} href={`/messages/?conversation=${encodeURIComponent(conversation.id)}`} aria-current={selected?.id === conversation.id ? "page" : undefined} className={`flex w-full gap-3 border-b border-border-soft p-4 text-left transition ${selected?.id === conversation.id ? "bg-brand/5" : "hover:bg-surface-soft"}`}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={conversation.listingImage} alt="" className="h-12 w-12 shrink-0 rounded-xl object-cover" />
                   <span className="min-w-0">
-                    <strong className="block truncate text-sm">{conversation.listingTitle}</strong>
+                    <strong className="block truncate text-sm">{listingTitle(conversation)}</strong>
                     <span className="mt-1 block truncate text-xs text-muted">{lastMessage?.body ?? "Start the conversation"}</span>
                   </span>
-                </button>
+                </Link>
               );
             })}
           </aside>
 
+          {!selected && <p className="p-6 text-sm text-muted">This conversation is not available for this account. Choose a conversation from your inbox.</p>}
           {selected && (
-            <section className="flex min-h-[30rem] flex-col" aria-label={`Conversation about ${selected.listingTitle}`}>
+            <section className="flex min-h-[30rem] flex-col" aria-label={`Conversation about ${listingTitle(selected)}`}>
               <header className="flex items-center justify-between border-b border-border-soft px-5 py-4">
                 <div>
-                  <h2 className="font-semibold">{selected.listingTitle}</h2>
+                  <h2 className="font-semibold">{listingTitle(selected)}</h2>
                   <p className="text-xs text-muted">Private conversation</p>
                 </div>
-                <Link href={spaceHref(selected.listingId)} className="text-sm font-semibold text-brand-dark">View space</Link>
+                {selected.listingAvailable && <Link href={spaceHref(selected.listingId)} className="text-sm font-semibold text-brand-dark">View space</Link>}
               </header>
+
+              {!selected.listingAvailable && <p className="border-b border-border-soft px-5 py-3 text-xs text-muted">The listing is not currently available. Your conversation is still open.</p>}
 
               <div className="flex-1 space-y-3 overflow-y-auto bg-surface-soft/50 p-5" aria-live="polite">
                 {selected.messages.length === 0 && <p className="mx-auto max-w-sm py-16 text-center text-sm text-muted">Ask about parking, setup, rules, or anything else you need before reserving.</p>}
@@ -114,10 +127,10 @@ function MessagesContent() {
               <form onSubmit={submit} className="border-t border-border-soft p-4">
                 <div className="flex gap-2">
                   <label className="sr-only" htmlFor="message-body">Message</label>
-                  <textarea id="message-body" required maxLength={2000} rows={2} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Write a message…" className="host-input min-h-12 flex-1 resize-none" />
+                  <textarea id="message-body" required maxLength={2000} rows={2} value={draft} disabled={sendingId === selected.id} onChange={(event) => setDrafts((previous) => ({ ...previous, [draftKey]: event.target.value }))} placeholder="Write a message…" className="host-input min-h-12 flex-1 resize-none" />
                   <button type="submit" disabled={sending || !draft.trim()} className="self-end rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-50">{sending ? "Sending…" : "Send"}</button>
                 </div>
-                {sendError && <p role="alert" className="mt-2 text-sm text-red-700">{sendError}</p>}
+                {sendError?.conversationId === selected.id && <p role="alert" className="mt-2 text-sm text-red-700">{sendError.message}</p>}
               </form>
             </section>
           )}
