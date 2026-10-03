@@ -7,6 +7,7 @@ import { useStore } from "@/lib/store";
 import { spaceHref } from "@/lib/spaces";
 import { useState } from "react";
 import DemoBookings from "./DemoBookings";
+import BookingContact from "./BookingContact";
 
 function timeLabel(t: string) {
   const hour = parseInt(t.split(":")[0], 10);
@@ -16,8 +17,11 @@ function timeLabel(t: string) {
 }
 
 export default function Bookings() {
-  const { user, bookings, bookingsLoading, bookingsError, cancelBooking, setAuthOpen } = useStore();
-  const justBooked = useSearchParams().get("booked") === "1";
+  const { user, bookings, spaces, bookingsLoading, bookingsError, cancelBooking, setAuthOpen } = useStore();
+  const params = useSearchParams();
+  const justBooked = params.get("booked") === "1";
+  const requestedId = params.get("booking");
+  const visibleBookings = requestedId ? bookings.filter((booking) => booking.id === requestedId) : bookings;
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
@@ -34,6 +38,7 @@ export default function Bookings() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-10 animate-fade-in">
       <h1 className="text-3xl font-semibold">Your bookings</h1>
+      {requestedId && <Link href="/bookings/" className="mt-3 inline-block text-sm font-semibold text-brand underline">View all bookings</Link>}
       <DemoBookings />
 
       {justBooked && (
@@ -59,6 +64,8 @@ export default function Bookings() {
         </div>
       ) : bookingsLoading ? (
         <div className="mt-10 rounded-2xl bg-surface-soft p-10 text-center" role="status">Loading your reservations…</div>
+      ) : requestedId && visibleBookings.length === 0 ? (
+        <p className="mt-10 rounded-2xl border border-border p-10 text-center">This booking is not available for this account.</p>
       ) : bookings.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-border p-10 text-center">
           <p className="text-lg font-semibold">No bookings yet</p>
@@ -69,16 +76,18 @@ export default function Bookings() {
         </div>
       ) : (
         <div className="mt-8 space-y-5">
-          {bookings.map((b) => (
+          {visibleBookings.map((b) => (
             <div key={b.id} className="flex flex-col gap-4 rounded-2xl border border-border p-4 sm:flex-row">
-              <Link href={spaceHref(b.spaceId)} className="shrink-0">
+              <div className="shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={b.image} alt={b.title} className="h-40 w-full rounded-xl object-cover sm:h-32 sm:w-48" />
-              </Link>
+              </div>
               <div className="flex flex-1 flex-col justify-between">
                 <div>
                   <p className="text-sm text-muted">{b.location}</p>
-                  <Link href={spaceHref(b.spaceId)} className="font-semibold hover:underline">{b.title}</Link>
+                  {spaces.some((space) => space.id === b.spaceId && !space.isDemo)
+                    ? <Link href={spaceHref(b.spaceId)} className="font-semibold hover:underline">{b.title}</Link>
+                    : <><p className="font-semibold">{b.title}</p><p className="text-xs text-muted">Listing is not currently available. Your reservation details are saved below.</p></>}
                   <p className="mt-1 text-sm">
                     {format(new Date(b.date + "T00:00:00"), "EEE, MMM d, yyyy")}
                   </p>
@@ -88,7 +97,8 @@ export default function Bookings() {
                   </p>
                   <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-brand-dark">{b.status}</p>
                 </div>
-                <div className="mt-3">
+                <div className="mt-3 space-y-3">
+                  <BookingContact listingId={b.spaceId} />
                   {b.status !== "cancelled" && b.status !== "completed" && (
                     confirmCancelId === b.id ? (
                       <div className="max-w-sm rounded-xl border border-amber-200 bg-amber-50 p-3 text-left" role="group" aria-label="Confirm cancelling this booking">

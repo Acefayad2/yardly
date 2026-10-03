@@ -2,6 +2,7 @@
 
 import HostNav from "@/components/HostNav";
 import HostSignInRequired from "@/components/HostSignInRequired";
+import BookingContact from "@/components/BookingContact";
 import { useStore } from "@/lib/store";
 import { useState } from "react";
 
@@ -41,6 +42,7 @@ export default function HostReservationsPage() {
                 <div className="space-y-2 sm:text-right">
                   <p className="font-semibold">${reservation.payout.toFixed(2)} <span className="text-xs font-normal text-muted">estimated</span></p>
                   <p className="text-xs capitalize text-muted">{reservation.status}</p>
+                  <BookingContact listingId={reservation.listingId} guestId={reservation.guestId} />
                   {reservation.status === "upcoming" && (confirmId === reservation.id ? <div className="max-w-sm rounded-xl border border-amber-200 bg-amber-50 p-3 text-left" role="group" aria-label="Confirm reservation cancellation">
                     <p className="text-sm">Cancel this reservation and release its time slot? This does not issue a refund or send an email. Message your guest about the change.</p>
                     <div className="mt-3 flex flex-wrap gap-2">

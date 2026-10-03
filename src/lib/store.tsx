@@ -84,7 +84,7 @@ const FALLBACK_LISTING_IMAGE = "https://images.unsplash.com/photo-1558904541-efa
 const LISTING_SELECT = "id,host_id,title,location,neighborhood,timezone,space_type,hourly_price,day_price,min_hours,capacity,description,amenities,rules,images,latitude,longitude,status,host_display_name,host_avatar_url,created_at";
 // Host-only read: embeds the private address, which RLS only ever returns for the listing's own host.
 const HOST_LISTING_SELECT = `${LISTING_SELECT},listing_addresses(street_address)`;
-const GUEST_RESERVATION_SELECT = "id,listing_id,listing_title,listing_location,listing_image,listing_timezone,start_at,end_at,guests,total,host_payout,status,created_at";
+const GUEST_RESERVATION_SELECT = "id,guest_id,listing_id,listing_title,listing_location,listing_image,listing_timezone,start_at,end_at,guests,total,host_payout,status,created_at";
 const HOST_RESERVATION_SELECT = `${GUEST_RESERVATION_SELECT},listings!inner(host_id)`;
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -188,7 +188,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const supabase = getSupabase();
       const { data: threads, error: threadsError } = await supabase
         .from("conversations")
-        .select("id,listing_id,guest_id,host_id,updated_at,listings!inner(title,images)")
+        // A participant can still read the thread when listing RLS hides its parent.
+        // Keep the default left embed so pausing a listing cannot hide messages.
+        .select("id,listing_id,guest_id,host_id,updated_at,listings(title,images,status)")
         .or(`guest_id.eq.${userId},host_id.eq.${userId}`)
         .order("updated_at", { ascending: false });
       if (threadsError) throw threadsError;
@@ -564,11 +566,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setHostDataError(errorMessage(error, "listing status"));
       return;
     }
-    await refreshMarketplace();
-  }, [hostListings, refreshMarketplace, user]);
+    await Promise.all([refreshMarketplace(), loadConversations(user.id)]);
+  }, [hostListings, loadConversations, refreshMarketplace, user]);
 
   const startConversation = useCallback(async (listingId: string): Promise<ActionResult> => {
     if (!user) return { error: "Sign in to message this host." };
+    const existingThread = conversations.find((thread) => thread.listingId === listingId && thread.guestId === user.id);
+    if (existingThread) return { id: existingThread.id };
     const space = spaces.find((item) => item.id === listingId);
     if (!space) return { error: "This listing is not available." };
     if (space.isDemo) return { error: "Demo listings do not have a live host to message." };
@@ -583,7 +587,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         .eq("host_id", space.hostId)
         .maybeSingle();
       if (findError) throw findError;
-      if (existing) return { id: String(existing.id) };
+      if (existing) {
+        await loadConversations(user.id);
+        return { id: String(existing.id) };
+      }
 
       const { data, error } = await supabase.from("conversations").insert({
         listing_id: listingId,
@@ -596,7 +603,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       return { error: errorMessage(error, "start conversation") };
     }
-  }, [loadConversations, spaces, user]);
+  }, [conversations, loadConversations, spaces, user]);
 
   const sendMessage = useCallback(async (conversationId: string, body: string): Promise<ActionResult> => {
     if (!user) return { error: "Sign in to send a message." };
@@ -853,6 +860,7 @@ function mapHostReservation(row: Record<string, unknown>): HostReservation {
   const databaseStatus = String(row.status);
   return {
     id: String(row.id),
+    guestId: String(row.guest_id || ""),
     listingId: String(row.listing_id),
     listingTitle: String(row.listing_title || "Yardly space"),
     guestName: "Yardly guest",
@@ -884,6 +892,7 @@ function mapConversation(row: Record<string, unknown>, messages: ConversationMes
     listingId: String(row.listing_id),
     listingTitle: String(listing.title || "Yardly space"),
     listingImage: images[0] || FALLBACK_LISTING_IMAGE,
+    listingAvailable: listing.status === "published",
     guestId: String(row.guest_id),
     hostId: String(row.host_id),
     updatedAt: String(row.updated_at),
@@ -967,4 +976,3 @@ function localDateParts(value: Date, timezone: string) {
     time: `${part("hour")}:${part("minute")}`,
   };
 }
-
