@@ -78,12 +78,15 @@ test("guest cancellation holds every card until the pending request settles", as
 for (const failure of ["server-error", "network-error"] as const) {
   test(`guest can dismiss and deliberately retry after a delayed ${failure}`, async ({ page }) => {
     const fixture = await pendingCancellationFixture(page);
+    const actionError = page.getByRole("alert").filter({
+      hasText: failure === "server-error" ? "This reservation cannot be cancelled." : "We couldn't reach Yardly.",
+    });
     await page.getByRole("button", { name: "Cancel booking", exact: true }).first().click();
     await page.getByRole("button", { name: "Confirm cancel", exact: true }).click();
     await expect.poll(() => fixture.requests.length).toBe(1);
     await expect(page.getByRole("button", { name: "Cancelling…", exact: true })).toBeDisabled();
     await fixture.release(0, failure);
-    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(actionError).toBeVisible();
     await expect(page.getByText("confirmed", { exact: true })).toHaveCount(2);
     await expect(page.getByRole("button", { name: "Confirm cancel", exact: true })).toBeEnabled();
     await page.getByRole("button", { name: "Keep booking", exact: true }).click();
@@ -93,7 +96,7 @@ for (const failure of ["server-error", "network-error"] as const) {
     await page.getByRole("button", { name: "Cancel booking", exact: true }).first().click();
     await page.getByRole("button", { name: "Confirm cancel", exact: true }).click();
     await expect.poll(() => fixture.requests.length).toBe(2);
-    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(actionError).toHaveCount(0);
     expect(fixture.requests[1].id).toBe(fixture.bookingIds[0]);
     await fixture.release(1);
     await expect(page.getByText("cancelled", { exact: true })).toHaveCount(1);
