@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import { useStore } from "@/lib/store";
 import { spaceHref } from "@/lib/spaces";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import DemoBookings from "./DemoBookings";
 import BookingContact from "./BookingContact";
 import NearbyActivities from "./NearbyActivities";
@@ -24,16 +24,25 @@ export default function Bookings() {
   const requestedId = params.get("booking");
   const visibleBookings = requestedId ? bookings.filter((booking) => booking.id === requestedId) : bookings;
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const cancellationInFlight = useRef(false);
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
 
   async function cancel(id: string) {
-    setConfirmCancelId(null);
+    if (cancellationInFlight.current) return;
+    cancellationInFlight.current = true;
     setCancellingId(id);
     setActionError("");
-    const result = await cancelBooking(id);
-    setCancellingId(null);
-    if (result.error) setActionError(result.error);
+    try {
+      const result = await cancelBooking(id);
+      if (result.error) setActionError(result.error);
+      else setConfirmCancelId(null);
+    } catch {
+      setActionError("Cancellation could not be confirmed. Refresh your bookings before trying again.");
+    } finally {
+      cancellationInFlight.current = false;
+      setCancellingId(null);
+    }
   }
 
   return (
@@ -103,12 +112,12 @@ export default function Bookings() {
                   {b.status !== "cancelled" && <NearbyActivities key={`${user.id}-${b.id}`} listingId={b.spaceId} />}
                   {b.status !== "cancelled" && b.status !== "completed" && (
                     confirmCancelId === b.id ? (
-                      <div className="max-w-sm rounded-xl border border-amber-200 bg-amber-50 p-3 text-left" role="group" aria-label="Confirm cancelling this booking">
+                      <div className="max-w-sm rounded-xl border border-amber-200 bg-amber-50 p-3 text-left" role="group" aria-label="Confirm cancelling this booking" aria-busy={cancellingId === b.id}>
                         <p className="text-sm">Cancel this booking? This can&apos;t be undone.</p>
                         <div className="mt-3 flex flex-wrap gap-2">
                           <button
                             type="button"
-                            disabled={cancellingId === b.id}
+                            disabled={cancellingId !== null}
                             onClick={() => void cancel(b.id)}
                             className="min-h-11 rounded-lg bg-red-700 px-3 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-60"
                           >
@@ -116,8 +125,9 @@ export default function Bookings() {
                           </button>
                           <button
                             type="button"
+                            disabled={cancellingId !== null}
                             onClick={() => setConfirmCancelId(null)}
-                            className="min-h-11 rounded-lg border border-border px-3 text-sm font-semibold"
+                            className="min-h-11 rounded-lg border border-border px-3 text-sm font-semibold disabled:cursor-wait disabled:opacity-60"
                           >
                             Keep booking
                           </button>
@@ -126,8 +136,9 @@ export default function Bookings() {
                     ) : (
                       <button
                         type="button"
+                        disabled={cancellingId !== null}
                         onClick={() => setConfirmCancelId(b.id)}
-                        className="text-sm font-semibold text-brand underline"
+                        className="text-sm font-semibold text-brand underline disabled:cursor-wait disabled:opacity-60"
                       >
                         Cancel booking
                       </button>
