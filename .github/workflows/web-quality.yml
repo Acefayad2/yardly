@@ -84,6 +84,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/reservation-completion-rollback.sql
       - name: Verify booking and message visibility for unavailable listings
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/booking-visibility-rollback.sql
+      - name: Verify nearby recommendations access and limits
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/recommendations-rollback.sql
       # Runs last: unlike the rollback suites it commits fixtures, so it must not
       # interleave with them. It cleans up after itself via an EXIT trap.
       - name: Verify concurrent bookings cannot double-book a slot

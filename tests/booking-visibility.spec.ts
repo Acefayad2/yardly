@@ -81,6 +81,74 @@ async function setup(page: Page, options: { hosting?: boolean; status?: string; 
   return { sent, createAttempts: () => createAttempts };
 }
 
+test("booked guest sees host recommendations without exposing the property's address in directions", async ({ page }, testInfo) => {
+  await setup(page);
+  await page.route("**/rest/v1/listing_recommendations?**", route => route.fulfill({ json: [{ slot: 1, name: "Fixture Park", category: "Parks & outdoors", address: "20 Public Avenue", note: "Bring a picnic." }] }));
+  await page.goto("/bookings/");
+  const guide = page.getByRole("region", { name: "Things to do nearby" });
+  await expect(guide.getByText("Fixture Park", { exact: true })).toBeVisible();
+  const directions = guide.getByRole("link", { name: /Directions/ });
+  await expect(directions).toHaveAttribute("href", "https://www.google.com/maps/dir/?api=1&destination=Fixture%20Park%2C%2020%20Public%20Avenue");
+  await expect(guide.getByRole("button", { name: /Edit|Remove/ })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await guide.screenshot({ path: testInfo.outputPath("nearby-guest.png") });
+});
+
+test("recommendations recover from a loading error and show an honest empty state", async ({ page }) => {
+  await setup(page);
+  let fail = true;
+  await page.route("**/rest/v1/listing_recommendations?**", route => fail
+    ? route.fulfill({ status: 500, json: { message: "Temporary failure" } })
+    : route.fulfill({ json: [] }));
+  await page.goto("/bookings/");
+  const guide = page.getByRole("region", { name: "Things to do nearby" });
+  await expect(guide.getByRole("alert")).toContainText("could not be loaded");
+  fail = false;
+  await guide.getByRole("button", { name: "Retry" }).click();
+  await expect(guide.getByText("Your host hasn't added local recommendations yet.", { exact: false })).toBeVisible();
+});
+
+test("host can save, reload, edit and remove a recommendation", async ({ page }, testInfo) => {
+  await setup(page, { hosting: true });
+  let rows: Record<string, unknown>[] = [];
+  let failSave = true;
+  await page.route("**/rest/v1/listing_recommendations?**", route => {
+    const method = route.request().method();
+    if (method === "POST") {
+      if (failSave) return route.fulfill({ status: 403, json: { message: "Fixture failure" } });
+      const row = route.request().postDataJSON();
+      expect(row.listing_id).toBe(listingId);
+      rows = [row];
+      return route.fulfill({ json: row });
+    }
+    if (method === "DELETE") { rows = []; return route.fulfill({ json: [{ slot: 1 }] }); }
+    return route.fulfill({ json: rows });
+  });
+  await page.goto(`/host/listings/edit/?id=${listingId}`);
+  const guide = page.getByRole("region", { name: "Things to do nearby" });
+  await guide.getByRole("button", { name: "Add recommendation" }).click();
+  await guide.getByLabel("Place name").fill("Fixture Park");
+  await guide.getByLabel("Category", { exact: true }).selectOption("Parks & outdoors");
+  await guide.getByLabel("Public place address").fill("20 Public Avenue");
+  await guide.getByLabel("Host tip (optional)").fill("Bring a picnic.");
+  await guide.getByRole("button", { name: "Save recommendation" }).click();
+  await expect(guide.getByRole("alert")).toContainText("could not be saved");
+  await expect(guide.getByLabel("Place name")).toHaveValue("Fixture Park");
+  failSave = false;
+  await guide.getByRole("button", { name: "Save recommendation" }).click();
+  await expect(guide.getByRole("status")).toHaveText("Recommendation saved.");
+  await page.reload();
+  await expect(guide.getByText("Fixture Park", { exact: true })).toBeVisible();
+  await guide.getByRole("button", { name: "Edit Fixture Park" }).click();
+  await guide.getByLabel("Host tip (optional)").fill("Open during daylight hours.");
+  await guide.getByRole("button", { name: "Save recommendation" }).click();
+  await expect(guide.getByText("Open during daylight hours.")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await guide.screenshot({ path: testInfo.outputPath("nearby-host.png") });
+  await guide.getByRole("button", { name: "Remove Fixture Park" }).click();
+  await expect(guide.getByText("No recommendations yet.", { exact: false })).toBeVisible();
+});
+
 for (const status of ["paused", "archived"]) {
   test(`${status} listing keeps guest trip, booking snapshot and existing conversation usable`, async ({ page }, testInfo) => {
     const state = await setup(page, { status });
