@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import HostListingForm, { HostListingFormValues, HostListingSubmitResult } from "@/components/HostListingForm";
 import HostNav from "@/components/HostNav";
 import HostSignInRequired from "@/components/HostSignInRequired";
+import NearbyActivities from "@/components/NearbyActivities";
 import { useStore } from "@/lib/store";
 import type { ListingImagePlanEntry } from "@/lib/types";
 
@@ -92,13 +93,13 @@ function EditContent() {
   }
 
   return (
-    <HostListingForm
+    <><HostListingForm
       mode="edit"
       initialValues={initialValues}
       existingImages={listing.images}
       submitLabel="Save changes"
       onSubmit={handleSubmit}
       buildRedirect={(result) => `/host/listings?updated=1${result.message ? "&photoWarning=1" : ""}`}
-    />
+    /><div className="mx-auto max-w-3xl px-6 pb-12"><NearbyActivities key={`${user.id}-${listing.id}`} listingId={listing.id} editable /></div></>
   );
 }

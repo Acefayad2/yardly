@@ -8,6 +8,7 @@ import { spaceHref } from "@/lib/spaces";
 import { useState } from "react";
 import DemoBookings from "./DemoBookings";
 import BookingContact from "./BookingContact";
+import NearbyActivities from "./NearbyActivities";
 
 function timeLabel(t: string) {
   const hour = parseInt(t.split(":")[0], 10);
@@ -99,6 +100,7 @@ export default function Bookings() {
                 </div>
                 <div className="mt-3 space-y-3">
                   <BookingContact listingId={b.spaceId} />
+                  {b.status !== "cancelled" && <NearbyActivities key={`${user.id}-${b.id}`} listingId={b.spaceId} />}
                   {b.status !== "cancelled" && b.status !== "completed" && (
                     confirmCancelId === b.id ? (
                       <div className="max-w-sm rounded-xl border border-amber-200 bg-amber-50 p-3 text-left" role="group" aria-label="Confirm cancelling this booking">
