@@ -86,7 +86,7 @@ test("booked guest sees host recommendations without exposing the property's add
   await page.route("**/rest/v1/listing_recommendations?**", route => route.fulfill({ json: [{ slot: 1, name: "Fixture Park", category: "Parks & outdoors", address: "20 Public Avenue", note: "Bring a picnic." }] }));
   await page.goto("/bookings/");
   const guide = page.getByRole("region", { name: "Things to do nearby" });
-  await expect(guide.getByText("Fixture Park", { exact: true })).toBeVisible();
+  await expect(guide.getByRole("heading", { name: "Fixture Park", exact: true })).toBeVisible();
   const directions = guide.getByRole("link", { name: /Directions/ });
   await expect(directions).toHaveAttribute("href", "https://www.google.com/maps/dir/?api=1&destination=Fixture%20Park%2C%2020%20Public%20Avenue");
   await expect(guide.getByRole("button", { name: /Edit|Remove/ })).toHaveCount(0);
@@ -128,7 +128,7 @@ test("host can save, reload, edit and remove a recommendation", async ({ page },
   const guide = page.getByRole("region", { name: "Things to do nearby" });
   await guide.getByRole("button", { name: "Add recommendation" }).click();
   await guide.getByLabel("Place name").fill("Fixture Park");
-  await guide.getByLabel("Category", { exact: true }).selectOption("Parks & outdoors");
+  await guide.getByRole("combobox", { name: "Category", exact: true }).selectOption("Parks & outdoors");
   await guide.getByLabel("Public place address").fill("20 Public Avenue");
   await guide.getByLabel("Host tip (optional)").fill("Bring a picnic.");
   await guide.getByRole("button", { name: "Save recommendation" }).click();
@@ -138,7 +138,7 @@ test("host can save, reload, edit and remove a recommendation", async ({ page },
   await guide.getByRole("button", { name: "Save recommendation" }).click();
   await expect(guide.getByRole("status")).toHaveText("Recommendation saved.");
   await page.reload();
-  await expect(guide.getByText("Fixture Park", { exact: true })).toBeVisible();
+  await expect(guide.getByRole("heading", { name: "Fixture Park", exact: true })).toBeVisible();
   await guide.getByRole("button", { name: "Edit Fixture Park" }).click();
   await guide.getByLabel("Host tip (optional)").fill("Open during daylight hours.");
   await guide.getByRole("button", { name: "Save recommendation" }).click();
