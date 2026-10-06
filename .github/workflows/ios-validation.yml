@@ -1,0 +1,80 @@
+name: Yardly iOS validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - "package.json"
+      - "package-lock.json"
+      - "capacitor.config.ts"
+      - ".github/workflows/ios-validation.yml"
+  pull_request:
+    paths:
+      - "ios/**"
+      - "package.json"
+      - "package-lock.json"
+      - "capacitor.config.ts"
+      - ".github/workflows/ios-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-ios:
+    runs-on: macos-15
+    timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: xcodebuild -version
+      - run: npm ci
+      - name: Build isolated web assets
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_build_check
+      - name: Synchronize the native project
+        run: npx --no-install cap sync ios
+      - name: Inspect native schemes
+        run: xcodebuild -list -project ios/App/App.xcodeproj
+      - name: Resolve native dependencies
+        run: >-
+          xcodebuild -resolvePackageDependencies
+          -project ios/App/App.xcodeproj
+          -scheme App
+      - name: Report and verify native dependency resolution
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const path = 'ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved';
+          const content = fs.readFileSync(path, 'utf8');
+          const resolved = JSON.parse(content);
+          const installed = require('./node_modules/@capacitor/ios/package.json').version;
+          const capacitor = resolved.pins.find((pin) => pin.identity === 'capacitor-swift-pm');
+          assert.equal(capacitor?.state.version, installed);
+          console.log('BEGIN_GENERATED_SWIFT_RESOLUTION');
+          console.log(content);
+          console.log('END_GENERATED_SWIFT_RESOLUTION');
+          NODE
+          git diff --exit-code -- \
+            ios/App/CapApp-SPM/Package.swift \
+            ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+      - name: Build unsigned iOS simulator app
+        run: >-
+          xcodebuild -project ios/App/App.xcodeproj
+          -scheme App
+          -configuration Debug
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath "$RUNNER_TEMP/yardly-ios-derived-data"
+          CODE_SIGNING_ALLOWED=NO
+          build
