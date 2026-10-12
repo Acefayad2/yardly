@@ -9,6 +9,7 @@ import { useStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import ListingPhotoGallery from "./ListingPhotoGallery";
 
 const MapView = dynamic(() => import("./MapView"), { ssr: false });
 
@@ -98,19 +99,7 @@ export default function SpaceDetail({ space }: { space: Space }) {
         <span className="font-medium underline">{space.neighborhood}, {space.location}</span>
       </p>
 
-      {/* Gallery — single hero on mobile, collage on desktop */}
-      <div className="mt-5 overflow-hidden rounded-2xl">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={space.images[0]} alt={space.title} className="h-64 w-full object-cover sm:h-80 md:hidden" />
-        <div className="hidden grid-cols-4 grid-rows-2 gap-2 md:grid" style={{ height: 420 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={space.images[0]} alt={`${space.title}, main view`} className={`${space.images.length === 1 ? "col-span-4" : "col-span-2"} row-span-2 h-full w-full object-cover`} />
-          {space.images.slice(1, 5).map((src, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={i} src={src} alt={`${space.title}, view ${i + 2}`} className="h-full w-full object-cover" loading="lazy" />
-          ))}
-        </div>
-      </div>
+      <ListingPhotoGallery key={space.id} images={space.images} title={space.title} />
 
       <div className="mt-8 flex flex-col gap-10 lg:flex-row">
         <div className="lg:w-[58%]">
