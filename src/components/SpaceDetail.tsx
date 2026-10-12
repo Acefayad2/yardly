@@ -99,7 +99,7 @@ export default function SpaceDetail({ space }: { space: Space }) {
         <span className="font-medium underline">{space.neighborhood}, {space.location}</span>
       </p>
 
-      <ListingPhotoGallery images={space.images} title={space.title} />
+      <ListingPhotoGallery key={space.id} images={space.images} title={space.title} />
 
       <div className="mt-8 flex flex-col gap-10 lg:flex-row">
         <div className="lg:w-[58%]">
