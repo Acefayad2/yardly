@@ -12,7 +12,7 @@ This branch is isolated to Supabase project `vfwbtfkmzxaehbsbrojx` and Stripe te
 
 ## Evidence so far
 
-- 15 mocked server regression tests pass (`node --test tests/payment-server.test.mjs`). These are not real Stripe transaction tests.
+- 17 mocked server regression tests pass (`node --test tests/payment-server.test.mjs`). These are not real Stripe transaction tests.
 - Rollback-only database regression tests pass in the sandbox (`supabase/tests/stripe-sandbox-payments.sql`).
 - Lint, static production build, quality checks and production dependency audit passed locally.
 - Sandbox Supabase security advisor returned no findings.
@@ -21,7 +21,9 @@ This branch is isolated to Supabase project `vfwbtfkmzxaehbsbrojx` and Stripe te
 - Synthetic host Connect onboarding completed; the deployed endpoint reports ready for sandbox payouts.
 - Real sandbox Checkout order `64652565-8f1f-410d-9ea4-159cd771784e` charged $22.40 ($20 host subtotal plus $2.40 guest fee). The signed webhook confirmed the reservation. Cancellation produced refund `re_3UQZYIKrePGT859w0iYnVVGW`; repeated cancellation kept the same refund and no transfer.
 - Checkout exposed missing service-role permissions on existing listings/reservations. The follow-up migration grants only the backend operations required. A new service-role database regression passes; client grants are unchanged.
-- Second sandbox order `065f610d-15bb-4198-b7a9-2a5fefd9a721` paid successfully. Manual reconciliation before its end left it paid with no transfer. Its synthetic reservation was then moved to an ended time for testing; reconciliation still withheld transfer without an error. Settlement/account readiness needs diagnosis before claiming payout completion.
+- Second sandbox order `065f610d-15bb-4198-b7a9-2a5fefd9a721` exposed an early-transfer defect. Although the database stayed paid with no transfer ID, Stripe confirms a $20 transfer `tr_3UQZZnKrePGT859w2ykDIKZw` at 21:19:30 UTC, during the before-end test. The earlier database-only conclusion that no transfer occurred was incorrect. Its reservation was subsequently moved to an ended time for testing. No real funds were involved.
+- The release worker now requires the exact order ID and releasing state from the database claim, rather than a truthiness check that can accept a null-field composite object. Existing transfers without a releasing ledger are blocked for review instead of silently ignoring the mismatch. Two new regressions failed before this fix and pass afterward. Fresh deployed before/after-end tests are still required; this is not a verified payout release yet.
+- Live Stripe account inspection on October 14 found business information, public details, statement descriptor and account representative incomplete. Email verification and product activation were not started. The owner has been asked to complete these with real details. Live release is authorized by the user but remains gated on account activation and payment safety tests.
 
 ## Required release gates
 

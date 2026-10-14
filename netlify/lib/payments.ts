@@ -102,7 +102,7 @@ export async function releaseOrder(s: Services, order: Order) {
   const transfers = await s.stripe.transfers.list({ transfer_group: order.id, limit: 100 });
   const prior = transfers.data.find((t) => t.metadata.yardly_order === order.id);
   if (prior) {
-    if (prior.destination !== order.account_id || prior.amount !== order.subtotal_cents || prior.reversed) {
+    if (order.state !== "releasing" || prior.destination !== order.account_id || prior.amount !== order.subtotal_cents || prior.reversed) {
       await transition(s, order.id, "block"); return;
     }
     await transition(s, order.id, "transferred", prior.id); return;
@@ -119,7 +119,9 @@ export async function releaseOrder(s: Services, order: Order) {
   const balance = charge.balance_transaction as Stripe.BalanceTransaction | null;
   if (!balance || balance.status !== "available" || !(await accountReady(s, order.account_id))) return;
   const claimed = order.state === "releasing" ? order : await transition(s, order.id, "claim_transfer");
-  if (!claimed) return;
+  // A null PostgreSQL composite can arrive as an object with null fields.
+  // Only the exact successful database claim authorizes a transfer.
+  if (claimed?.id !== order.id || claimed.state !== "releasing") return;
   const transfer = await s.stripe.transfers.create({ amount: order.subtotal_cents, currency: "usd",
     destination: order.account_id, source_transaction: charge.id, transfer_group: order.id,
     metadata: { yardly_order: order.id } }, { idempotencyKey: `transfer:${order.id}` });

@@ -6,7 +6,7 @@ import { assertPayment, services, TEST_PROJECT, releaseOrder, refundOrder } from
 const order = {id:"order-1",guest_id:"guest",host_id:"host",account_id:"acct_host",subtotal_cents:10000,fee_cents:1200,total_cents:11200,state:"paid",charge_id:"ch_1",payment_intent_id:"pi_1",operation_started_at:null};
 function fixture(options={}) {
   const calls=[];
-  const s={db:{rpc:async(name,args)=>{calls.push(args);return {data: options.eligible === false ? null : {...order,state:"releasing"},error:null};}},stripe:{
+  const s={db:{rpc:async(name,args)=>{calls.push(args);return {data: options.claim ?? (options.eligible === false ? null : {...order,state:"releasing"}),error:null};}},stripe:{
     transfers:{list:async()=>({data:options.transfers ?? []}),create:async(params,opts)=>{calls.push({transfer:params,key:opts.idempotencyKey});return {id:"tr_1"};}},
     charges:{retrieve:async()=>({id:"ch_1",paid:true,livemode:false,amount:11200,currency:"usd",metadata:{yardly_order:"order-1"},amount_refunded:0,disputed:false,balance_transaction:{status:"available"},...options.charge})},
     refunds:{list:async()=>({data:options.refunds ?? []}),create:async(params,opts)=>{calls.push({refund:params,key:opts.idempotencyKey});return {id:"re_1",status:"succeeded"};}},
@@ -28,6 +28,17 @@ test("checkout amount, currency, order and environment must match",()=>{
 test("payout waits for database end-time claim",async()=>{
   const {s,calls}=fixture({eligible:false});await releaseOrder(s,order);
   assert.equal(calls.filter(c=>c.transfer).length,0);
+});
+test("payout rejects null composite, empty and mismatched database claims",async()=>{
+  for(const claim of [{id:null,state:null},{},{...order,state:"paid"},{...order,id:"other",state:"releasing"}]) {
+    const {s,calls}=fixture({claim});await releaseOrder(s,order);
+    assert.equal(calls.filter(c=>c.transfer).length,0);
+  }
+});
+test("existing transfer without a matching release claim is blocked for review",async()=>{
+  const {s,calls}=fixture({transfers:[{id:"tr_old",destination:"acct_host",amount:10000,reversed:false,metadata:{yardly_order:"order-1"}}]});
+  await releaseOrder(s,order);
+  assert.equal(calls.length,1);assert.equal(calls[0].p_action,"block");
 });
 for(const charge of [{disputed:true},{amount_refunded:1},{livemode:true},{amount:1},{metadata:{yardly_order:"other"}}]) test(`unsafe charge blocks transfer ${JSON.stringify(charge)}`,async()=>{
   const {s,calls}=fixture({charge});await releaseOrder(s,order);
