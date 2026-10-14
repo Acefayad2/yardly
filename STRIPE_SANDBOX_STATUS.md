@@ -42,6 +42,15 @@ This branch is isolated to Supabase project `vfwbtfkmzxaehbsbrojx` and Stripe te
 
 ### Remaining gates
 
+### October 14 native release audit
+
+- Existing bundle ID is `com.acefayad.yardly` in both Capacitor configuration and Xcode. Local project version is 1.0/build 8; this is not a verification of the latest uploaded App Store Connect build. Xcode 26.6 is installed.
+- Native payment transport is not implemented: `src/lib/payments.ts` fetches relative `/.netlify/functions/` URLs, while the app bundles `out` locally without a remote server URL. These routes do not resolve to Netlify in the packaged app.
+- The backend requires the web origin and has no native-origin/preflight handling. Merely replacing the relative URL with an HTTPS URL will not complete native integration.
+- Checkout success/cancellation currently return to the web bookings page. The native `appUrlOpen` listener handles authentication codes only, not payment return links. Implement and device-test an authenticated native checkout/return flow before uploading a payments-enabled review build; do not broaden CORS indiscriminately or embed server secrets.
+
+### Outstanding release work
+
 - Configure branch-specific Netlify public database settings, backend database settings, exact app origin and signed webhook secret. Never commit credentials.
 - Deploy and run real sandbox Checkout success/failure, replayed webhooks, refunds and host onboarding tests.
 - Verify delayed transfers after reservation completion, retry/concurrency behavior and post-transfer dispute/refund recovery.
