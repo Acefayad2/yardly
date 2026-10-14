@@ -51,6 +51,9 @@ This branch is isolated to Supabase project `vfwbtfkmzxaehbsbrojx` and Stripe te
 
 ### Outstanding release work
 
+- Commit `184ccc07` passed GitHub web/database/iOS checks and Netlify deploy `6acffec1cb13b8316cc906a2`. Deployed API checks: repeated cancellation returned 200 and status remained refunded; unauthenticated status access returned no booking data; wrong-origin cancellation was rejected; retrying the expired checkout returned the original expired order with no checkout URL and exactly one ledger record. This does not exercise the new partial-refund guard on Stripe; that dedicated integration test remains outstanding.
+- Deployed cancellation response defect confirmed: retrying an already-refunded booking returns the hard-coded `refund_requested` response even though the subsequent status endpoint correctly returns `refunded`. Change cancellation to report the persisted final state and cover that response in regression tests.
+
 - Refund reconciliation defect fixed locally: a succeeded refund with matching metadata but only a partial amount could previously mark the entire booking refunded. A regression failed before the fix. Refund results now require the exact amount, USD currency, PaymentIntent, charge and booking metadata; mismatches block for review without another refund. Added pending/failed and expanded-reference cases. All 21 tests, lint, production build, quality checks and production dependency audit passed. Deployed verification of this new guard is still required.
 
 - Configure branch-specific Netlify public database settings, backend database settings, exact app origin and signed webhook secret. Never commit credentials.
