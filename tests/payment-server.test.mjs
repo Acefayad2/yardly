@@ -9,7 +9,7 @@ function fixture(options={}) {
   const s={db:{rpc:async(name,args)=>{calls.push(args);return {data: options.claim ?? (options.eligible === false ? null : {...order,state:"releasing"}),error:null};}},stripe:{
     transfers:{list:async()=>({data:options.transfers ?? []}),create:async(params,opts)=>{calls.push({transfer:params,key:opts.idempotencyKey});return {id:"tr_1"};}},
     charges:{retrieve:async()=>({id:"ch_1",paid:true,livemode:false,amount:11200,currency:"usd",metadata:{yardly_order:"order-1"},amount_refunded:0,disputed:false,balance_transaction:{status:"available"},...options.charge})},
-    refunds:{list:async()=>({data:options.refunds ?? []}),create:async(params,opts)=>{calls.push({refund:params,key:opts.idempotencyKey});return {id:"re_1",status:"succeeded"};}},
+    refunds:{list:async()=>({data:options.refunds ?? []}),create:async(params,opts)=>{calls.push({refund:params,key:opts.idempotencyKey});return {id:"re_1",status:"succeeded",amount:params.amount,currency:"usd",payment_intent:params.payment_intent,charge:"ch_1",metadata:params.metadata,...options.createdRefund};}},
     v2:{core:{accounts:{retrieve:async()=>({livemode:false,configuration:{recipient:{capabilities:{stripe_balance:{stripe_transfers:{status:options.ready === false ? "inactive" : "active"}}}}}})}}},
   }};
   return {s,calls};
@@ -68,8 +68,34 @@ test("refund is full guest total, not just host subtotal",async()=>{
   assert.equal(calls[0].refund.amount,11200);assert.equal(calls[0].key,"refund:order-1");assert.equal(calls[1].p_action,"refunded");
 });
 test("existing refund is reconciled without duplicate refund",async()=>{
-  const {s,calls}=fixture({refunds:[{id:"re_old",status:"succeeded",metadata:{yardly_order:"order-1"}}]});
+  const {s,calls}=fixture({refunds:[{id:"re_old",status:"succeeded",amount:11200,currency:"usd",payment_intent:"pi_1",charge:"ch_1",metadata:{yardly_order:"order-1"}}]});
   await refundOrder(s,{...order,state:"refund_requested"});assert.equal(calls.length,1);assert.equal(calls[0].p_value,"re_old");
+});
+test("partial or mismatched existing refund is blocked, never reported fully refunded",async()=>{
+  const refund={id:"re_old",status:"succeeded",amount:11200,currency:"usd",payment_intent:"pi_1",charge:"ch_1",metadata:{yardly_order:"order-1"}};
+  for(const change of [{amount:100},{currency:"eur"},{payment_intent:"pi_other"},{charge:"ch_other"}]) {
+    const {s,calls}=fixture({refunds:[{...refund,...change}]});
+    await refundOrder(s,{...order,state:"refund_requested"});
+    assert.equal(calls.length,1);assert.equal(calls[0].p_action,"block");
+  }
+});
+test("new refund response is validated before recording success",async()=>{
+  const {s,calls}=fixture({createdRefund:{amount:100}});
+  await refundOrder(s,{...order,state:"refund_requested"});
+  assert.equal(calls[0].key,"refund:order-1");assert.equal(calls[1].p_action,"block");
+});
+test("pending refunds wait and failed refunds block without duplicate creation",async()=>{
+  for(const status of ["pending","requires_action","failed","canceled"]) {
+    const {s,calls}=fixture({refunds:[{id:"re_old",status,amount:11200,currency:"usd",payment_intent:"pi_1",charge:"ch_1",metadata:{yardly_order:"order-1"}}]});
+    await refundOrder(s,{...order,state:"refund_requested"});
+    if(["failed","canceled"].includes(status)) {assert.equal(calls.length,1);assert.equal(calls[0].p_action,"block");}
+    else assert.equal(calls.length,0);
+  }
+});
+test("expanded refund payment references reconcile successfully",async()=>{
+  const {s,calls}=fixture({refunds:[{id:"re_old",status:"succeeded",amount:11200,currency:"usd",payment_intent:{id:"pi_1"},charge:{id:"ch_1"},metadata:{yardly_order:"order-1"}}]});
+  await refundOrder(s,{...order,state:"refund_requested"});
+  assert.equal(calls.length,1);assert.equal(calls[0].p_action,"refunded");
 });
 test("Stripe rejects forged or altered webhook payloads",()=>{
   const stripe=new Stripe("sk_test_fixture");const payload=JSON.stringify({id:"evt_test",livemode:false,type:"checkout.session.completed"});const secret="whsec_test_fixture";

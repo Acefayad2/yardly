@@ -12,7 +12,7 @@ This branch is isolated to Supabase project `vfwbtfkmzxaehbsbrojx` and Stripe te
 
 ## Evidence so far
 
-- 17 mocked server regression tests pass (`node --test tests/payment-server.test.mjs`). These are not real Stripe transaction tests.
+- 21 mocked server regression tests pass (`node --test tests/payment-server.test.mjs`). These are not real Stripe transaction tests.
 - Rollback-only database regression tests pass in the sandbox (`supabase/tests/stripe-sandbox-payments.sql`).
 - Lint, static production build, quality checks and production dependency audit passed locally.
 - Sandbox Supabase security advisor returned no findings.
@@ -50,6 +50,8 @@ This branch is isolated to Supabase project `vfwbtfkmzxaehbsbrojx` and Stripe te
 - Checkout success/cancellation currently return to the web bookings page. The native `appUrlOpen` listener handles authentication codes only, not payment return links. Implement and device-test an authenticated native checkout/return flow before uploading a payments-enabled review build; do not broaden CORS indiscriminately or embed server secrets.
 
 ### Outstanding release work
+
+- Refund reconciliation defect fixed locally: a succeeded refund with matching metadata but only a partial amount could previously mark the entire booking refunded. A regression failed before the fix. Refund results now require the exact amount, USD currency, PaymentIntent, charge and booking metadata; mismatches block for review without another refund. Added pending/failed and expanded-reference cases. All 21 tests, lint, production build, quality checks and production dependency audit passed. Deployed verification of this new guard is still required.
 
 - Configure branch-specific Netlify public database settings, backend database settings, exact app origin and signed webhook secret. Never commit credentials.
 - Deploy and run real sandbox Checkout success/failure, replayed webhooks, refunds and host onboarding tests.

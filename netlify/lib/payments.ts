@@ -89,6 +89,14 @@ export async function refundOrder(s: Services, order: Order) {
   if (!refund && refunds.data.length) { await transition(s, order.id, "block"); return; }
   if (!refund) refund = await s.stripe.refunds.create({ payment_intent: order.payment_intent_id,
     amount: order.total_cents, metadata: { yardly_order: order.id } }, { idempotencyKey: `refund:${order.id}` });
+  // Metadata alone is not evidence of a full refund: support may have issued
+  // a partial refund, or a retry may return an unexpected payment object.
+  const intentId = typeof refund.payment_intent === "string" ? refund.payment_intent : refund.payment_intent?.id;
+  const chargeId = typeof refund.charge === "string" ? refund.charge : refund.charge?.id;
+  if (refund.amount !== order.total_cents || refund.currency !== "usd" || intentId !== order.payment_intent_id
+    || !order.charge_id || chargeId !== order.charge_id || refund.metadata?.yardly_order !== order.id) {
+    await transition(s, order.id, "block"); return;
+  }
   if (refund.status === "succeeded") await transition(s, order.id, "refunded", refund.id);
   else if (refund.status === "failed" || refund.status === "canceled") await transition(s, order.id, "block");
 }
