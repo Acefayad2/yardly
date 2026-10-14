@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { bookingQuote, listingToday } from "@/lib/booking";
 import { hourLabel as label, type BookingSlot } from "@/lib/availability";
 import { getSupabase } from "@/lib/supabase";
 import { Space } from "@/lib/types";
 import { useStore } from "@/lib/store";
+import { paymentsEnabled, paymentRequest, stripeRedirect } from "@/lib/payments";
 
 export default function BookingWidget({ space }: { space: Space }) {
   const { user, setAuthOpen, addBooking } = useStore();
@@ -19,6 +20,16 @@ export default function BookingWidget({ space }: { space: Space }) {
   const [submitting, setSubmitting] = useState(false);
   const [availability, setAvailability] = useState<{ date: string; slots: BookingSlot[]; error: string } | null>(null);
   const [refresh, setRefresh] = useState(0);
+  const request = useRef<{details:string;id:string}|null>(null);
+  const [feeBps,setFeeBps]=useState<number|null>(paymentsEnabled ? null : 1200);
+  useEffect(()=>{
+    if(!paymentsEnabled) return;
+    let active=true;
+    void getSupabase().from("payment_settings").select("guest_fee_bps").single().then(({data,error})=>{
+      if(active && !error && data) setFeeBps(data.guest_fee_bps);
+    });
+    return ()=>{active=false;};
+  },[]);
 
   const today = listingToday(space.timezone);
 
@@ -60,7 +71,7 @@ export default function BookingWidget({ space }: { space: Space }) {
 
   function refreshSlots() { setAvailability(null); setRefresh((value) => value + 1); }
 
-  const { subtotal, serviceFee, total } = bookingQuote(space.hourlyPrice, effectiveHours);
+  const { subtotal, serviceFee, total } = bookingQuote(space.hourlyPrice, effectiveHours, feeBps ?? 1200);
 
   async function reserve() {
     setError("");
@@ -71,6 +82,18 @@ export default function BookingWidget({ space }: { space: Space }) {
       return;
     }
     setSubmitting(true);
+    if(paymentsEnabled) {
+      try {
+        const details={spaceId:space.id,date,startTime:`${String(effectiveStart).padStart(2,"0")}:00`,endTime:`${String(endHour).padStart(2,"0")}:00`,guests};
+        const serialized=JSON.stringify(details);
+        if(request.current?.details !== serialized) request.current={details:serialized,id:crypto.randomUUID()};
+        const result=await paymentRequest("payment-checkout",{...details,requestId:request.current.id});
+        if(result.url) stripeRedirect(result.url);
+        else router.push(`/bookings/?payment=${encodeURIComponent(result.id)}`);
+      } catch(e) { setError(e instanceof Error ? e.message : "Could not start checkout."); }
+      finally { setSubmitting(false); }
+      return;
+    }
     const result = await addBooking({
       spaceId: space.id,
       date,
@@ -176,14 +199,14 @@ export default function BookingWidget({ space }: { space: Space }) {
       <button
         type="button"
         onClick={() => void reserve()}
-        disabled={submitting || space.isDemo || !canReserve}
+        disabled={submitting || space.isDemo || !canReserve || feeBps === null}
         className="mt-4 w-full rounded-xl bg-brand py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-brand-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-wait disabled:opacity-60"
       >
-        {space.isDemo ? "Preview only" : submitting ? "Confirming your reservation…" : "Reserve"}
+        {space.isDemo ? "Preview only" : submitting ? "Preparing your reservation…" : paymentsEnabled ? "Continue to test payment" : "Reserve"}
       </button>
 
       {canReserve && <div className="mt-5 space-y-3 text-sm">
-        <p className="text-center text-muted">You won&apos;t be charged yet</p>
+        <p className="text-center text-muted">{paymentsEnabled ? "Sandbox only — no real money. Final price is confirmed on Stripe. Test cancellations before the start receive a full refund." : "You won't be charged yet"}</p>
         <Row
           label={`$${space.hourlyPrice} × ${effectiveHours} hours`}
           value={`$${subtotal.toFixed(2)}`}
