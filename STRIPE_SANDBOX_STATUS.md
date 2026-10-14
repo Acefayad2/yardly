@@ -16,6 +16,8 @@ This branch is isolated to Supabase project `vfwbtfkmzxaehbsbrojx` and Stripe te
 - Rollback-only database regression tests pass in the sandbox (`supabase/tests/stripe-sandbox-payments.sql`).
 - Lint, static production build, quality checks and production dependency audit passed locally.
 - Sandbox Supabase security advisor returned no findings.
+- GitHub database CI now passes both the legacy contract and payment contract tests in order, using the Supabase service role in the isolated test harness.
+- Branch-specific Netlify settings and webhook are configured. A truncated sandbox database secret was identified during authenticated testing and corrected; redeploy and retry are required before declaring the connection verified.
 
 ## Required release gates
 
