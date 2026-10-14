@@ -23,6 +23,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
+      - run: node --experimental-strip-types --test tests/payment-server.test.mjs
       - run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
@@ -64,6 +65,9 @@ jobs:
       - name: Replay versioned migrations
         run: |
           for migration in supabase/migrations/*.sql; do
+            # Exercise the existing unpaid booking contract before the payment
+            # migration intentionally removes direct client booking privileges.
+            if [[ "$migration" == *20261014203347_stripe_sandbox_payments.sql ]]; then continue; fi
             psql -v ON_ERROR_STOP=1 -f "$migration"
           done
       - name: Verify marketplace permissions and bookings
@@ -90,3 +94,7 @@ jobs:
       # interleave with them. It cleans up after itself via an EXIT trap.
       - name: Verify concurrent bookings cannot double-book a slot
         run: bash supabase/tests/booking-concurrency.sh
+      - name: Apply sandbox payment contract
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261014203347_stripe_sandbox_payments.sql
+      - name: Verify paid booking permissions and transitions
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/stripe-sandbox-payments.sql
