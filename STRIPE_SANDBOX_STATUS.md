@@ -27,6 +27,17 @@ This branch is isolated to Supabase project `vfwbtfkmzxaehbsbrojx` and Stripe te
 
 ## Required release gates
 
+### October 14 deployed payout re-test
+
+- Commit `aac68c6d` passed GitHub web/database/iOS checks and deployed to preview #42.
+- Fresh synthetic order `73e8d26b-51e6-41ad-aa8e-c130b2d87270` paid $22.40 using Stripe test card ending 0077; webhook moved the order to paid.
+- Reconciliation before its October 18 reservation end produced no Stripe transfers (verified directly with the Stripe transfer-group lookup, not only the database).
+- Moved only this synthetic sandbox reservation to October 14 17:00–19:00 UTC to simulate completion. Reconciliation created exactly one $20 transfer `tr_3UQZtZKrePGT859w1Ei3aK8M`, matching the database transferred state and transfer ID. Another worker invocation left exactly one transfer in Stripe.
+- The older early-transfer fixture `065f610d-15bb-4198-b7a9-2a5fefd9a721` is now blocked for review. Its earlier test transfer has not been reversed. Fresh transfer testing verifies release to the connected Stripe balance, not a completed bank payout.
+- Remaining tests include failed-card/expiry, actual webhook replay, concurrent/recovery paths and post-transfer dispute/refund recovery. Live activation remains incomplete; no production merge or live charge was performed.
+
+### Remaining gates
+
 - Configure branch-specific Netlify public database settings, backend database settings, exact app origin and signed webhook secret. Never commit credentials.
 - Deploy and run real sandbox Checkout success/failure, replayed webhooks, refunds and host onboarding tests.
 - Verify delayed transfers after reservation completion, retry/concurrency behavior and post-transfer dispute/refund recovery.
