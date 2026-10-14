@@ -53,5 +53,12 @@ begin
   perform public.transition_payment_order(changed.id,'expired');
   if (select status from public.reservations where id=changed.id)<>'cancelled' then raise exception 'Expired checkout held slot'; end if;
 end $$;
+-- Exercise actual invoker-rights backend permissions, not only postgres ownership.
+set local role service_role;
+select public.prepare_payment_order('10000000-0000-4000-8000-000000000002','30000000-0000-4000-8000-000000000004',
+  '20000000-0000-4000-8000-000000000001',current_date+4,'10:00','12:00',2);
+select public.transition_payment_order(id,'expired') from public.payment_orders
+  where request_id='30000000-0000-4000-8000-000000000004';
+reset role;
 select 'PASS: fees, immutable quotes, retry deduplication, holds, overlap, permissions, early payout, cancellation and event ordering' as result;
 rollback;
