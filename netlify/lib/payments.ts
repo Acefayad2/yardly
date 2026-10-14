@@ -100,6 +100,12 @@ export async function refundOrder(s: Services, order: Order) {
   if (refund.status === "succeeded") await transition(s, order.id, "refunded", refund.id);
   else if (refund.status === "failed" || refund.status === "canceled") await transition(s, order.id, "block");
 }
+export async function cancelOrder(s: Services, id: string, actor: string) {
+  const order = await transition(s, id, "cancel", null, actor);
+  if (order?.id !== id) throw new Error("Cancellation was not confirmed.");
+  await refundOrder(s, order);
+  return orderById(s, id);
+}
 export async function accountReady(s: Services, accountId: string) {
   const account = await s.stripe.v2.core.accounts.retrieve(accountId, { include: ["configuration.recipient"] });
   return !account.livemode && account.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers?.status === "active";

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import Stripe from "stripe";
-import { assertPayment, services, TEST_PROJECT, releaseOrder, refundOrder } from "../netlify/lib/payments.ts";
+import { assertPayment, services, TEST_PROJECT, releaseOrder, refundOrder, cancelOrder } from "../netlify/lib/payments.ts";
 
 const order = {id:"order-1",guest_id:"guest",host_id:"host",account_id:"acct_host",subtotal_cents:10000,fee_cents:1200,total_cents:11200,state:"paid",charge_id:"ch_1",payment_intent_id:"pi_1",operation_started_at:null};
 function fixture(options={}) {
@@ -96,6 +96,26 @@ test("expanded refund payment references reconcile successfully",async()=>{
   const {s,calls}=fixture({refunds:[{id:"re_old",status:"succeeded",amount:11200,currency:"usd",payment_intent:{id:"pi_1"},charge:{id:"ch_1"},metadata:{yardly_order:"order-1"}}]});
   await refundOrder(s,{...order,state:"refund_requested"});
   assert.equal(calls.length,1);assert.equal(calls[0].p_action,"refunded");
+});
+test("cancellation reports persisted refund state and forwards the authorized actor",async()=>{
+  for(const state of ["refunded","refund_requested","blocked"]) {
+    const {s,calls}=fixture({claim:{...order,state:"refund_requested"}});
+    s.db.from=()=>({select:()=>({eq:()=>({single:async()=>({data:{...order,state},error:null})})})});
+    const result=await cancelOrder(s,order.id,"guest");
+    assert.equal(result.state,state);
+    assert.equal(calls[0].p_action,"cancel");assert.equal(calls[0].p_actor,"guest");
+  }
+});
+test("already refunded cancellation does not create another Stripe refund",async()=>{
+  const {s,calls}=fixture({claim:{...order,state:"refunded"}});
+  s.db.from=()=>({select:()=>({eq:()=>({single:async()=>({data:{...order,state:"refunded"},error:null})})})});
+  assert.equal((await cancelOrder(s,order.id,"guest")).state,"refunded");
+  assert.equal(calls.length,1);
+});
+test("unconfirmed cancellation fails without refunding",async()=>{
+  const {s,calls}=fixture({claim:{id:null,state:null}});
+  await assert.rejects(cancelOrder(s,order.id,"guest"),/not confirmed/);
+  assert.equal(calls.length,1);
 });
 test("Stripe rejects forged or altered webhook payloads",()=>{
   const stripe=new Stripe("sk_test_fixture");const payload=JSON.stringify({id:"evt_test",livemode:false,type:"checkout.session.completed"});const secret="whsec_test_fixture";
