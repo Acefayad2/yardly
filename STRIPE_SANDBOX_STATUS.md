@@ -38,7 +38,8 @@ This branch is isolated to Supabase project `vfwbtfkmzxaehbsbrojx` and Stripe te
 - Expired real sandbox Checkout session `cs_test_b1neY4mE5jW8dOOokmZFnREHvoC0Qzx8PYSaf7U5AZeLwMhjlLiX0QNvy1` for synthetic order `0f5c2a35-4e55-44fc-8fb9-8f0cf3bae808`. Stripe returned expired/unpaid; the signed webhook left the ledger expired, reservation cancelled, and charge/transfer IDs null. The availability RPC returned the October 19 10:00–12:00 slot again. No payment was attempted.
 - Sent Tim and Joel the live-account and owner-decision checklist in their existing Messages group on October 14. This notification does not establish that the owner tasks are complete.
 - Replayed completed-checkout event `evt_1UQZYJKrePGT859w5IIkuMUr` for already-refunded order `64652565-8f1f-410d-9ea4-159cd771784e`. Stripe pending webhooks returned to zero. The ledger remained refunded with the same refund ID, no transfer, and a cancelled reservation. All 17 server regression tests passed again.
-- Remaining tests include failed-card handling, concurrent/recovery paths and post-transfer dispute/refund recovery. Live activation remains incomplete; no production merge or live charge was performed.
+- Deployed declined-card test passed for synthetic order `4677bfcb-aca6-4d8c-a966-e6faf2c54567`, session `cs_test_b1RiA7M7oWupb7jFhQUuHpmoxT7Y24mTVtm8lJXticXlDH4mflHqSesFty` (October 20, 10:00–12:00). Stripe's official generic-decline test card produced an explicit decline in Checkout. Yardly remained pending, with no recorded charge or transfer. After explicitly expiring the unpaid sandbox session, the webhook set the ledger expired and reservation cancelled; the availability RPC returned the slot again. Link saving was disabled; no real card or funds were used.
+- Remaining tests include concurrent/recovery paths and post-transfer dispute/refund recovery. Live activation remains incomplete; no production merge or live charge was performed.
 
 ### Remaining gates
 
