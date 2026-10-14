@@ -34,7 +34,8 @@ This branch is isolated to Supabase project `vfwbtfkmzxaehbsbrojx` and Stripe te
 - Reconciliation before its October 18 reservation end produced no Stripe transfers (verified directly with the Stripe transfer-group lookup, not only the database).
 - Moved only this synthetic sandbox reservation to October 14 17:00–19:00 UTC to simulate completion. Reconciliation created exactly one $20 transfer `tr_3UQZtZKrePGT859w1Ei3aK8M`, matching the database transferred state and transfer ID. Another worker invocation left exactly one transfer in Stripe.
 - The older early-transfer fixture `065f610d-15bb-4198-b7a9-2a5fefd9a721` is now blocked for review. Its earlier test transfer has not been reversed. Fresh transfer testing verifies release to the connected Stripe balance, not a completed bank payout.
-- Remaining tests include failed-card/expiry, actual webhook replay, concurrent/recovery paths and post-transfer dispute/refund recovery. Live activation remains incomplete; no production merge or live charge was performed.
+- Replayed actual sandbox Checkout event `evt_1UQZtbKrePGT859wJMFsS3UW` to endpoint `we_1UQZ28KrePGT859w9rCQngY1` after the successful transfer. Stripe's pending webhook count returned from 1 to 0; the ledger retained the same transferred state and transfer ID, with the same reservation. Replay did not roll the payment state backward.
+- Remaining tests include failed-card/expiry, replay after refunds, concurrent/recovery paths and post-transfer dispute/refund recovery. Live activation remains incomplete; no production merge or live charge was performed.
 
 ### Remaining gates
 
