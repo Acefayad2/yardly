@@ -12,7 +12,7 @@ This branch is isolated to Supabase project `vfwbtfkmzxaehbsbrojx` and Stripe te
 
 ## Evidence so far
 
-- 21 mocked server regression tests pass (`node --test tests/payment-server.test.mjs`). These are not real Stripe transaction tests.
+- 24 mocked server regression tests pass in GitHub CI (`node --experimental-strip-types --test tests/payment-server.test.mjs`). These are not real Stripe transaction tests.
 - Rollback-only database regression tests pass in the sandbox (`supabase/tests/stripe-sandbox-payments.sql`).
 - Lint, static production build, quality checks and production dependency audit passed locally.
 - Sandbox Supabase security advisor returned no findings.
@@ -52,7 +52,7 @@ This branch is isolated to Supabase project `vfwbtfkmzxaehbsbrojx` and Stripe te
 ### Outstanding release work
 
 - Commit `184ccc07` passed GitHub web/database/iOS checks and Netlify deploy `6acffec1cb13b8316cc906a2`. Deployed API checks: repeated cancellation returned 200 and status remained refunded; unauthenticated status access returned no booking data; wrong-origin cancellation was rejected; retrying the expired checkout returned the original expired order with no checkout URL and exactly one ledger record. This does not exercise the new partial-refund guard on Stripe; that dedicated integration test remains outstanding.
-- Cancellation response correction prepared: the endpoint now reads the persisted state after cancellation/refund processing, instead of returning hard-coded `refund_requested`. Three regression tests cover final states, already-refunded retries and unconfirmed cancellation. Local execution failed before tests because macOS offloaded dependency files (`compressed,dataless`); the owner was asked to keep this workspace downloaded. Validation is being handed to the existing GitHub sandbox CI, not treated as passed. Deployed verification remains required.
+- Cancellation response correction verified on deploy `6ad00a5d1565b778db49c8ab` (commit `107772ce`): repeating cancellation of the refunded fixture returned HTTP 200 with `state: refunded`; the independent payment-status endpoint agreed. All 24 server tests, web checks, database checks and iOS validation passed in GitHub CI. Production dependency audit reported zero vulnerabilities; the full install reported development dependency advisories, which are not covered by that production-only audit. Local dependencies remain offloaded by macOS; the owner was already asked to keep the workspace downloaded. No production merge or live activation occurred.
 
 - Refund reconciliation defect fixed locally: a succeeded refund with matching metadata but only a partial amount could previously mark the entire booking refunded. A regression failed before the fix. Refund results now require the exact amount, USD currency, PaymentIntent, charge and booking metadata; mismatches block for review without another refund. Added pending/failed and expanded-reference cases. All 21 tests, lint, production build, quality checks and production dependency audit passed. Deployed verification of this new guard is still required.
 
