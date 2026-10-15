@@ -1,17 +1,16 @@
 import { getSupabase } from "./supabase";
+import { Capacitor, CapacitorHttp } from "@capacitor/core";
+import { sendPaymentRequest } from "./payment-transport";
 export const paymentsEnabled = process.env.NEXT_PUBLIC_PAYMENTS_MODE === "sandbox";
 
 export async function paymentRequest(path: string, body?: unknown) {
   const { data,error }=await getSupabase().auth.getSession();
   if(error || !data.session) throw new Error("Sign in to continue.");
-  const response=await fetch(`/.netlify/functions/${path}`,{
-    method:body === undefined ? "GET" : "POST",
-    headers:{Authorization:`Bearer ${data.session.access_token}`,"Content-Type":"application/json"},
-    ...(body === undefined ? {} : {body:JSON.stringify(body)}),
-  });
-  const result=await response.json();
-  if(!response.ok) throw new Error(result.error ?? "Payment request failed. Please retry.");
-  return result;
+  return sendPaymentRequest(path, data.session.access_token, body,
+    Capacitor.isNativePlatform() ? {
+      request: options => CapacitorHttp.request(options),
+      origin: process.env.NEXT_PUBLIC_PAYMENTS_API_ORIGIN,
+    } : undefined);
 }
 
 export function stripeRedirect(url: string) {

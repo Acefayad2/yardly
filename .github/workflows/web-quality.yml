@@ -23,7 +23,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
-      - run: node --experimental-strip-types --test tests/payment-server.test.mjs
+      - run: node --experimental-strip-types --test tests/payment-server.test.mjs tests/payment-transport.test.mjs
       - run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co

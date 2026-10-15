@@ -12,7 +12,8 @@ This branch is isolated to Supabase project `vfwbtfkmzxaehbsbrojx` and Stripe te
 
 ## Evidence so far
 
-- 24 mocked server regression tests pass in GitHub CI (`node --experimental-strip-types --test tests/payment-server.test.mjs`). These are not real Stripe transaction tests.
+- October 15: native payment transport now uses CapacitorHttp with an explicit, allowlisted HTTPS `NEXT_PUBLIC_PAYMENTS_API_ORIGIN`, bearer authentication, matching server origin, bounded timeouts and redirects disabled. Web requests remain same-origin. Missing native configuration fails closed. No environment values, native bundle ID, live gates or server authorization were changed. Stripe browser return/deep-link handling and a real simulator/device checkout remain unfinished; this is transport groundwork, not native payment sign-off.
+- Local clean-checkout validation: all 31 tests (25 server + 6 transport), lint, production build, quality audit and production dependency audit pass. CI includes both test files. Transport tests use stub HTTP responses, not a running iOS bridge. Prior server tests also passed CI; this new commit's deployment/CI must be rechecked.
 - Rollback-only database regression tests pass in the sandbox (`supabase/tests/stripe-sandbox-payments.sql`).
 - Lint, static production build, quality checks and production dependency audit passed locally.
 - Sandbox Supabase security advisor returned no findings.
