@@ -135,6 +135,41 @@ test("unconfirmed cancellation fails without refunding",async()=>{
   await assert.rejects(cancelOrder(s,order.id,"guest"),/not confirmed/);
   assert.equal(calls.length,1);
 });
+for (const operation of ["refund", "transfer"]) for (const failure of ["response lost", "ledger write failed"]) {
+  test(`${operation} recovers after ${failure} without a second Stripe create`, async()=>{
+    const {s}=fixture();
+    let stored=null, creates=0, failOnce=true;
+    let ledger={...order,state:operation === "refund" ? "refund_requested" : "paid"};
+    const resource=operation === "refund" ? s.stripe.refunds : s.stripe.transfers;
+    resource.list=async()=>({data:stored ? [stored] : [],has_more:false});
+    resource.create=async(params,opts)=>{
+      creates++;
+      assert.equal(opts.idempotencyKey,`${operation}:order-1`);
+      stored=operation === "refund"
+        ? {id:"re_recovered",status:"succeeded",amount:11200,currency:"usd",payment_intent:"pi_1",charge:"ch_1",metadata:params.metadata}
+        : {id:"tr_recovered",amount:10000,currency:"usd",livemode:false,source_transaction:"ch_1",destination:"acct_host",transfer_group:"order-1",metadata:params.metadata,reversed:false,amount_reversed:0};
+      if(failure === "response lost" && failOnce) { failOnce=false; throw new Error(failure); }
+      return stored;
+    };
+    s.db.rpc=async(name,args)=>{
+      if(args.p_action === "claim_transfer") ledger={...ledger,state:"releasing"};
+      else {
+        assert.equal(args.p_action,operation === "refund" ? "refunded" : "transferred");
+        if(failure === "ledger write failed" && failOnce) { failOnce=false; return {data:null,error:new Error(failure)}; }
+        ledger={...ledger,state:args.p_action,[`${operation}_id`]:args.p_value};
+      }
+      return {data:ledger,error:null};
+    };
+    const run=operation === "refund" ? refundOrder : releaseOrder;
+    await assert.rejects(run(s,ledger),new RegExp(failure));
+    assert.equal(creates,1);
+    assert.equal(ledger.state,operation === "refund" ? "refund_requested" : "releasing");
+    await run(s,ledger);
+    assert.equal(creates,1);
+    assert.equal(ledger.state,operation === "refund" ? "refunded" : "transferred");
+    assert.equal(ledger[`${operation}_id`],stored.id);
+  });
+}
 test("Stripe rejects forged or altered webhook payloads",()=>{
   const stripe=new Stripe("sk_test_fixture");const payload=JSON.stringify({id:"evt_test",livemode:false,type:"checkout.session.completed"});const secret="whsec_test_fixture";
   const header=stripe.webhooks.generateTestHeaderString({payload,secret});
