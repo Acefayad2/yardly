@@ -4,6 +4,8 @@ import Link from "next/link";
 import HostNav from "@/components/HostNav";
 import HostSignInRequired from "@/components/HostSignInRequired";
 import { useStore } from "@/lib/store";
+import HostPayments from "@/components/HostPayments";
+import { paymentsEnabled } from "@/lib/payments";
 
 export default function HostDashboardPage() {
   const { user, hostListings, hostReservations, hostDataLoading, hostDataError } = useStore();
@@ -29,10 +31,11 @@ export default function HostDashboardPage() {
 
         {hostDataError && <p role="alert" className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{hostDataError}</p>}
 
+        {paymentsEnabled && <HostPayments key={user.id} />}
         <section className={`mt-8 grid gap-4 sm:grid-cols-3 ${hostDataLoading ? "animate-pulse opacity-60" : ""}`} aria-label="Hosting summary" aria-busy={hostDataLoading}>
           <Metric label="Upcoming reservations" value={upcoming.length.toString()} detail="All upcoming bookings" />
           <Metric label="Active listings" value={hostListings.filter((listing) => listing.status === "published").length.toString()} detail={`${hostListings.length} total`} />
-          <Metric label="Booking value" value={`$${earnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} tag="estimated" detail="Not collected payments or payouts — no money has changed hands yet." emphasizeDetail />
+          <Metric label="Booking value" value={`$${earnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} tag="estimated" detail={paymentsEnabled ? "Sandbox bookings only. See payment status above for test transfers." : "Not collected payments or payouts — no money has changed hands yet."} emphasizeDetail />
         </section>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_.8fr]">
