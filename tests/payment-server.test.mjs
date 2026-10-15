@@ -7,7 +7,7 @@ const order = {id:"order-1",guest_id:"guest",host_id:"host",account_id:"acct_hos
 function fixture(options={}) {
   const calls=[];
   const s={db:{rpc:async(name,args)=>{calls.push(args);return {data: options.claim ?? (options.eligible === false ? null : {...order,state:"releasing"}),error:null};}},stripe:{
-    transfers:{list:async()=>({data:options.transfers ?? []}),create:async(params,opts)=>{calls.push({transfer:params,key:opts.idempotencyKey});return {id:"tr_1"};}},
+    transfers:{list:async()=>({has_more:options.moreTransfers ?? false,data:(options.transfers ?? []).map(t=>({currency:"usd",livemode:false,source_transaction:"ch_1",transfer_group:"order-1",...t}))}),create:async(params,opts)=>{calls.push({transfer:params,key:opts.idempotencyKey});return {id:"tr_1"};}},
     charges:{retrieve:async()=>({id:"ch_1",paid:true,livemode:false,amount:11200,currency:"usd",metadata:{yardly_order:"order-1"},amount_refunded:0,disputed:false,balance_transaction:{status:"available"},...options.charge})},
     refunds:{list:async()=>({data:options.refunds ?? []}),create:async(params,opts)=>{calls.push({refund:params,key:opts.idempotencyKey});return {id:"re_1",status:"succeeded",amount:params.amount,currency:"usd",payment_intent:params.payment_intent,charge:"ch_1",metadata:params.metadata,...options.createdRefund};}},
     v2:{core:{accounts:{retrieve:async()=>({livemode:false,configuration:{recipient:{capabilities:{stripe_balance:{stripe_transfers:{status:options.ready === false ? "inactive" : "active"}}}}}})}}},
@@ -58,6 +58,19 @@ test("successful payout transfers only subtotal with stable idempotency key",asy
 test("a previously created transfer is reconciled without creating another",async()=>{
   const {s,calls}=fixture({transfers:[{id:"tr_old",destination:"acct_host",amount:10000,reversed:false,metadata:{yardly_order:"order-1"}}]});
   await releaseOrder(s,{...order,state:"releasing"});assert.equal(calls.length,1);assert.equal(calls[0].p_value,"tr_old");
+});
+test("mismatched or ambiguous prior transfers block rather than settle or retry",async()=>{
+  const prior={id:"tr_old",destination:"acct_host",amount:10000,reversed:false,metadata:{yardly_order:"order-1"}};
+  for(const options of [
+    ...[{currency:"eur"},{livemode:true},{source_transaction:"ch_other"},{source_transaction:null},
+      {transfer_group:"other"},{metadata:{yardly_order:"other"}}].map(change=>({transfers:[{...prior,...change}]})),
+    {transfers:[prior,{...prior,id:"tr_duplicate"}]},
+    {transfers:[prior],moreTransfers:true},
+  ]) {
+    const {s,calls}=fixture(options);
+    await releaseOrder(s,{...order,state:"releasing"});
+    assert.equal(calls.length,1);assert.equal(calls[0].p_action,"block");
+  }
 });
 test("uncertain stale payout is blocked, not reissued",async()=>{
   const {s,calls}=fixture();await releaseOrder(s,{...order,state:"releasing",operation_started_at:new Date(Date.now()-25*3600000).toISOString()});

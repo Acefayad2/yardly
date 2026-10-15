@@ -114,11 +114,15 @@ export async function releaseOrder(s: Services, order: Order) {
   if (!order.charge_id || !["paid", "releasing"].includes(order.state)) return;
   // Reconcile before retrying, including after the idempotency cache expires.
   const transfers = await s.stripe.transfers.list({ transfer_group: order.id, limit: 100 });
-  const prior = transfers.data.find((t) => t.metadata.yardly_order === order.id);
-  if (prior) {
+  const prior = transfers.data[0];
+  if (prior || transfers.has_more) {
     // Stripe's reversed flag only covers full reversals; partial reversals
     // must also prevent a retry from reporting the entire payout as delivered.
-    if (order.state !== "releasing" || prior.destination !== order.account_id || prior.amount !== order.subtotal_cents || prior.reversed || prior.amount_reversed > 0) {
+    if (!prior || transfers.has_more || transfers.data.length !== 1 ||
+        order.state !== "releasing" || prior.metadata.yardly_order !== order.id ||
+        prior.transfer_group !== order.id || prior.livemode || prior.currency !== "usd" ||
+        prior.source_transaction !== order.charge_id || prior.destination !== order.account_id ||
+        prior.amount !== order.subtotal_cents || prior.reversed || prior.amount_reversed > 0) {
       await transition(s, order.id, "block"); return;
     }
     await transition(s, order.id, "transferred", prior.id); return;
