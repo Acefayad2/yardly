@@ -1,6 +1,8 @@
 import { getSupabase } from "./supabase";
 import { Capacitor, CapacitorHttp } from "@capacitor/core";
 import { sendPaymentRequest } from "./payment-transport";
+import { Browser } from "@capacitor/browser";
+import { stripeDestination, visitStripe } from "./stripe-browser";
 export const paymentsEnabled = process.env.NEXT_PUBLIC_PAYMENTS_MODE === "sandbox";
 
 export async function paymentRequest(path: string, body?: unknown) {
@@ -13,10 +15,11 @@ export async function paymentRequest(path: string, body?: unknown) {
     } : undefined);
 }
 
-export function stripeRedirect(url: string) {
-  const parsed=new URL(url);
-  if(parsed.protocol !== "https:" || !(parsed.hostname === "checkout.stripe.com" || parsed.hostname === "connect.stripe.com" || parsed.hostname === "connect-js.stripe.com")) {
-    throw new Error("Invalid payment destination.");
+export async function stripeRedirect(url: string) {
+  if (Capacitor.isNativePlatform()) {
+    await visitStripe(url, Browser);
+    return true;
   }
-  window.location.assign(parsed.href);
+  window.location.assign(stripeDestination(url));
+  return false;
 }

@@ -14,8 +14,9 @@ export default function HostPayments() {
   useEffect(()=>{void paymentRequest("host-payments").then(setSummary).catch(e=>setError(e instanceof Error ? e.message : "Could not load payments."));},[]);
   async function setup(){
     setBusy(true);setError("");
-    try{const result=await paymentRequest("host-payments",{});stripeRedirect(result.url);}
-    catch(e){setError(e instanceof Error ? e.message : "Could not open Stripe.");setBusy(false);}
+    try{const result=await paymentRequest("host-payments",{});if(await stripeRedirect(result.url)) await load();}
+    catch(e){setError(e instanceof Error ? e.message : "Could not open Stripe.");}
+    finally{setBusy(false);}
   }
   const transferred=summary?.orders.filter(o=>o.state === "transferred").reduce((sum,o)=>sum+o.subtotal_cents,0) ?? 0;
   return <section className="mt-6 rounded-2xl border border-border bg-white p-6" aria-label="Host payments">

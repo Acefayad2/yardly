@@ -88,7 +88,10 @@ export default function BookingWidget({ space }: { space: Space }) {
         const serialized=JSON.stringify(details);
         if(request.current?.details !== serialized) request.current={details:serialized,id:crypto.randomUUID()};
         const result=await paymentRequest("payment-checkout",{...details,requestId:request.current.id});
-        if(result.url) stripeRedirect(result.url);
+        if(result.url) {
+          const returnedToApp = await stripeRedirect(result.url);
+          if(returnedToApp) router.push(`/bookings/?payment=${encodeURIComponent(result.id)}`);
+        }
         else router.push(`/bookings/?payment=${encodeURIComponent(result.id)}`);
       } catch(e) { setError(e instanceof Error ? e.message : "Could not start checkout."); }
       finally { setSubmitting(false); }
