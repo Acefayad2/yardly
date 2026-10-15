@@ -63,6 +63,11 @@ test("uncertain stale payout is blocked, not reissued",async()=>{
   const {s,calls}=fixture();await releaseOrder(s,{...order,state:"releasing",operation_started_at:new Date(Date.now()-25*3600000).toISOString()});
   assert.equal(calls.length,1);assert.equal(calls[0].p_action,"block");
 });
+test("partially reversed transfer is blocked rather than reported fully transferred",async()=>{
+  const {s,calls}=fixture({transfers:[{id:"tr_partial",destination:"acct_host",amount:10000,reversed:false,amount_reversed:1,metadata:{yardly_order:"order-1"}}]});
+  await releaseOrder(s,{...order,state:"releasing"});
+  assert.equal(calls.length,1);assert.equal(calls[0].p_action,"block");
+});
 test("refund is full guest total, not just host subtotal",async()=>{
   const {s,calls}=fixture();await refundOrder(s,{...order,state:"refund_requested"});
   assert.equal(calls[0].refund.amount,11200);assert.equal(calls[0].key,"refund:order-1");assert.equal(calls[1].p_action,"refunded");

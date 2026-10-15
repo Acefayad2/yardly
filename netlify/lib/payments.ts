@@ -116,7 +116,9 @@ export async function releaseOrder(s: Services, order: Order) {
   const transfers = await s.stripe.transfers.list({ transfer_group: order.id, limit: 100 });
   const prior = transfers.data.find((t) => t.metadata.yardly_order === order.id);
   if (prior) {
-    if (order.state !== "releasing" || prior.destination !== order.account_id || prior.amount !== order.subtotal_cents || prior.reversed) {
+    // Stripe's reversed flag only covers full reversals; partial reversals
+    // must also prevent a retry from reporting the entire payout as delivered.
+    if (order.state !== "releasing" || prior.destination !== order.account_id || prior.amount !== order.subtotal_cents || prior.reversed || prior.amount_reversed > 0) {
       await transition(s, order.id, "block"); return;
     }
     await transition(s, order.id, "transferred", prior.id); return;
