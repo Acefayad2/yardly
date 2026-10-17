@@ -1,0 +1,81 @@
+name: Yardly expansion database
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/tests/provider-marketplace-rollback.sql"
+      - "supabase/tests/provider-request-workflow-rollback.sql"
+      - "supabase/tests/church-listing-workflow-rollback.sql"
+      - "supabase/tests/community-space-directory-rollback.sql"
+      - "supabase/tests/booking-assistance-workflow-rollback.sql"
+      - "supabase/tests/expansion-concurrency.sh"
+      - ".github/workflows/expansion-database.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-expansion-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: isolated_ci_only
+          POSTGRES_DB: yardly_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: isolated_ci_only
+      PGDATABASE: yardly_test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Bootstrap isolated database
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/ci-bootstrap.sql
+      - name: Replay versioned migrations in order
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t migrations < <(find supabase/migrations -maxdepth 1 -type f -name '*.sql' -print | LC_ALL=C sort)
+          printf 'Replaying %s migrations\n' "${#migrations[@]}"
+          for migration in "${migrations[@]}"; do
+            printf 'Applying %s\n' "$migration"
+            psql -v ON_ERROR_STOP=1 -f "$migration"
+          done
+      - name: Run expansion rollback and RLS suites
+        shell: bash
+        run: |
+          set -euo pipefail
+          suites=(
+            supabase/tests/provider-marketplace-rollback.sql
+            supabase/tests/provider-request-workflow-rollback.sql
+            supabase/tests/church-listing-workflow-rollback.sql
+            supabase/tests/community-space-directory-rollback.sql
+            supabase/tests/booking-assistance-workflow-rollback.sql
+          )
+          for suite in "${suites[@]}"; do
+            grep -Eq '^rollback;$' "$suite"
+            printf 'Executing %s\n' "$suite"
+            psql -v ON_ERROR_STOP=1 -f "$suite"
+          done
+      - name: Run expansion concurrency races
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash supabase/tests/expansion-concurrency.sh
