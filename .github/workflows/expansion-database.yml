@@ -9,6 +9,7 @@ on:
       - "supabase/tests/church-listing-workflow-rollback.sql"
       - "supabase/tests/community-space-directory-rollback.sql"
       - "supabase/tests/booking-assistance-workflow-rollback.sql"
+      - "supabase/tests/expansion-concurrency.sh"
       - ".github/workflows/expansion-database.yml"
   workflow_dispatch:
 
@@ -73,3 +74,8 @@ jobs:
             printf 'Executing %s\n' "$suite"
             psql -v ON_ERROR_STOP=1 -f "$suite"
           done
+      - name: Run expansion concurrency races
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash supabase/tests/expansion-concurrency.sh
