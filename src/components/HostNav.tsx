@@ -8,7 +8,7 @@ const links = [
   { href: "/host/dashboard", label: "Today", icon: HomeIcon },
   { href: "/host/reservations", label: "Reservations", icon: CalendarIcon },
   { href: "/host/listings", label: "Listings", icon: ListingIcon },
-  { href: "/host/quotes", label: "Quote requests", icon: QuoteIcon },
+  { href: "/services/requests", label: "Quote requests", icon: QuoteIcon },
   { href: "/messages", label: "Messages", icon: MessageIcon },
 ];
 

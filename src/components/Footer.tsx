@@ -1,6 +1,10 @@
 import Link from "next/link";
 
 const links = [
+  { label: "Services & rentals", href: "/services" },
+  { label: "Church spaces", href: "/churches" },
+  { label: "Community directory", href: "/community" },
+  { label: "Booking help", href: "/booking-help" },
   { label: "How Yardly works", href: "/trust#how-it-works" },
   { label: "Safety", href: "/trust#safety" },
   { label: "Booking policies", href: "/trust#booking-policies" },

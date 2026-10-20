@@ -222,7 +222,7 @@ function HeaderContent() {
                         <MenuLink href="/wishlists" onClick={() => setMenuOpen(false)}>Wishlists</MenuLink>
                         <MenuLink href="/messages" onClick={() => setMenuOpen(false)}>Messages</MenuLink>
                         <MenuLink href="/services" onClick={() => setMenuOpen(false)}>Services &amp; rentals</MenuLink>
-                        <MenuLink href="/quotes" onClick={() => setMenuOpen(false)}>Quote requests</MenuLink>
+                        <MenuLink href="/services/requests" onClick={() => setMenuOpen(false)}>Quote requests</MenuLink>
                         {canHost ? (
                           <button type="button" className="account-menu__link" onClick={() => switchTo(isHostSurface ? "traveling" : "hosting")}>
                             {isHostSurface ? "Switch to traveling" : "Switch to hosting"}
