@@ -80,17 +80,29 @@ Check `supabase_migrations.schema_migrations` for a `20261020101500` row and
 delete it too, or the CLI will believe a migration that no longer exists in the
 repository has been applied.
 
-## Worth folding in later
+## Checked and already covered
 
-Two checks the removed version had and the kept schema does not:
+An earlier draft of this note claimed the kept schema was missing a
+publish-completeness constraint and provider contact format checks. Both claims
+were wrong, and reading the kept migration settles it:
 
-- A publish-completeness constraint on provider profiles, equivalent to
-  `listings_published_complete` — approval cannot currently be blocked at the
-  database level on a profile that has no sample image or no contact method.
-- Format checks on provider contact email and phone.
+- Completeness is enforced in `submit_provider_profile`, and more thoroughly
+  than a table constraint would be: a summary of at least 40 characters, at
+  least one non-empty offering, at least one HTTPS sample URL, and for
+  equipment providers also inventory rows plus delivery, setup and pickup
+  details.
+- There are no contact email or phone columns to format-check, by design.
+  Planners reach a provider through `provider_request_messages` rather than
+  through contact details published on the profile.
 
-Neither is a correctness problem today, since review is a human step, but both
-are cheap to add as a follow-up migration.
+Neither path can be bypassed. `review_state` appears in no column-level grant,
+so no client can write it directly; the only transitions are
+`submit_provider_profile` (draft or rejected to pending) and
+`review_provider_profile` (pending to approved or rejected, staff only). An
+incomplete profile cannot reach `pending`, and only a `pending` profile can be
+approved.
+
+No follow-up migration is needed.
 
 ## Still out of scope
 
