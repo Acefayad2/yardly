@@ -7,6 +7,7 @@ const links = [
   { href: "/host/dashboard", label: "Today", icon: HomeIcon },
   { href: "/host/reservations", label: "Reservations", icon: CalendarIcon },
   { href: "/host/listings", label: "Listings", icon: ListingIcon },
+  { href: "/host/quotes", label: "Quote requests", icon: QuoteIcon },
   { href: "/messages", label: "Messages", icon: MessageIcon },
 ];
 
@@ -50,6 +51,10 @@ function CalendarIcon() {
 
 function ListingIcon() {
   return <svg className="h-4 w-4 fill-none stroke-current stroke-[1.8]" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>;
+}
+
+function QuoteIcon() {
+  return <svg className="h-4 w-4 fill-none stroke-current stroke-[1.8]" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4Z" /><path d="M8 9h8M8 12.5h5" /></svg>;
 }
 
 function MessageIcon() {

@@ -121,6 +121,8 @@ export default function Header() {
                         <MenuLink href="/bookings" onClick={() => setMenuOpen(false)}>Bookings</MenuLink>
                         <MenuLink href="/wishlists" onClick={() => setMenuOpen(false)}>Wishlists</MenuLink>
                         <MenuLink href="/messages" onClick={() => setMenuOpen(false)}>Messages</MenuLink>
+                        <MenuLink href="/services" onClick={() => setMenuOpen(false)}>Services &amp; rentals</MenuLink>
+                        <MenuLink href="/quotes" onClick={() => setMenuOpen(false)}>Quote requests</MenuLink>
                         <MenuLink href="/host/dashboard" onClick={() => setMenuOpen(false)}>Switch to hosting</MenuLink>
                         <div className="account-menu__divider" />
                         <button
