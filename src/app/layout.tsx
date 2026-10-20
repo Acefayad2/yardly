@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import "leaflet/dist/leaflet.css";
 import "./globals.css";
+import "./marketplace-polish.css";
 import { StoreProvider } from "@/lib/store";
 import Header from "@/components/Header";
 import AuthModal from "@/components/AuthModal";
+import AuthLinkNotice from "@/components/AuthLinkNotice";
 import Footer from "@/components/Footer";
 import BottomNav from "@/components/BottomNav";
 
@@ -11,7 +13,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://yardly-app.netlify.app"),
   title: "Yardly — rent backyards, pools & outdoor spaces by the hour",
   description:
-    "Find and book backyards, pools, outdoor kitchens, and unique outdoor spaces near you — by the hour or the day.",
+    "Find and book backyards, pools, outdoor kitchens, and unique outdoor spaces near you — by the hour.",
   applicationName: "Yardly",
   appleWebApp: {
     capable: true,
@@ -38,12 +40,12 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="h-full antialiased" data-scroll-behavior="smooth">
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <a href="#main-content" className="skip-link">Skip to content</a>
         <StoreProvider>
           <Header />
-          <main id="main-content" className="flex-1">{children}</main>
+          <main id="main-content" className="flex-1"><AuthLinkNotice />{children}</main>
           <Footer />
           <AuthModal />
           <BottomNav />

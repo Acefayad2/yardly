@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test:e2e": "playwright test",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -16,13 +17,13 @@
   "dependencies": {
     "@capacitor/app": "^8.1.1",
     "@capacitor/core": "^8.5.0",
-    "@capacitor/ios": "^8.5.0",
+    "@capacitor/ios": "8.5.1",
     "@capacitor/splash-screen": "^8.0.2",
     "@capacitor/status-bar": "^8.0.3",
     "@supabase/supabase-js": "2.112.4",
     "date-fns": "^4.4.0",
     "leaflet": "^1.9.4",
-    "next": "16.3.3",
+    "next": "16.3.8",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-leaflet": "^5.0.0-rc.2"
@@ -30,13 +31,14 @@
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.5.0",
+    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.3",
+    "eslint-config-next": "16.3.8",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

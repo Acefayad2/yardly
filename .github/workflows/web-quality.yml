@@ -2,7 +2,7 @@ name: Yardly web quality
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
   schedule:
     - cron: "17 */6 * * *"
@@ -29,3 +29,64 @@ jobs:
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_build_check
       - run: npm run quality
       - run: npm audit --omit=dev --audit-level=high
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-test-results
+          path: test-results/
+  verify-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: isolated_ci_only
+          POSTGRES_DB: yardly_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: isolated_ci_only
+      PGDATABASE: yardly_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bootstrap isolated database
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/ci-bootstrap.sql
+      - name: Replay versioned migrations
+        run: |
+          for migration in supabase/migrations/*.sql; do
+            psql -v ON_ERROR_STOP=1 -f "$migration"
+          done
+      - name: Verify marketplace permissions and bookings
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/marketplace-rollback.sql
+      - name: Verify host availability and guest slots
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/availability-rollback.sql
+      - name: Verify private listing address access
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/private-address-rollback.sql
+      - name: Verify account_type grants no access
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/account-type-rollback.sql
+      - name: Verify signup trigger provisions profiles
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/profile-provisioning-rollback.sql
+      - name: Verify avatar storage bucket policies
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/avatar-storage-rollback.sql
+      - name: Verify listing archive/restore and the capacity guard
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/listing-lifecycle-rollback.sql
+      - name: Verify reservation completion and its effect on cancellation
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/reservation-completion-rollback.sql
+      - name: Verify booking and message visibility for unavailable listings
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/booking-visibility-rollback.sql
+      - name: Verify nearby recommendations access and limits
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/recommendations-rollback.sql
+      # Runs last: unlike the rollback suites it commits fixtures, so it must not
+      # interleave with them. It cleans up after itself via an EXIT trap.
+      - name: Verify concurrent bookings cannot double-book a slot
+        run: bash supabase/tests/booking-concurrency.sh

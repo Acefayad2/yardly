@@ -35,7 +35,7 @@ export default function BottomNav() {
               href={href}
               className={`bottom-nav__item${brand ? " bottom-nav__item--brand" : ""}`}
               aria-current={active ? "page" : undefined}
-              aria-label={brand ? "Open Yardly trips" : undefined}
+              aria-label={brand ? `Open Yardly ${label.toLowerCase()}` : undefined}
             >
               <span className="bottom-nav__icon" aria-hidden="true"><Icon /></span>
               <span>{label}</span>

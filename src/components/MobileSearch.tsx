@@ -1,36 +1,51 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import DestinationSearch from "./DestinationSearch";
+import SearchCalendar from "./SearchCalendar";
+import { parseFlex, parseFlexible, flexibleLabel, type FlexibleSearch, searchDateLabel } from "@/lib/search-dates";
+import { useBackToClose } from "@/lib/useBackToClose";
 
 type SearchStep = "where" | "when" | "who";
 
-const destinations = [
-  { icon: "⌁", title: "Nearby", description: "See spaces around you", value: "" },
-  { icon: "☀", title: "Los Angeles, CA", description: "Pools and private backyards", value: "Los Angeles" },
-  { icon: "♨", title: "Austin, TX", description: "Outdoor kitchens and patios", value: "Austin" },
-  { icon: "≈", title: "Miami, FL", description: "Tropical pools and event yards", value: "Miami" },
-];
-
 export default function MobileSearch() {
+  const dialog = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<SearchStep>("where");
   const [query, setQuery] = useState("");
   const [date, setDate] = useState("");
+  const [flexibility, setFlexibility] = useState(0);
+  const [flexible, setFlexible] = useState<FlexibleSearch>();
   const [guests, setGuests] = useState(1);
+  useBackToClose(open, () => setOpen(false));
+  useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(() => dialog.current?.querySelector<HTMLElement>(".mobile-search-card input, .mobile-search-card button:not([disabled])")?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [open, step]);
 
   useEffect(() => {
     if (!open) return;
+    const previousTrigger = trigger.current;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
+      if (event.key === "Tab") {
+        const items = Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input') ?? []);
+        const first = items[0], last = items.at(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => {
       document.body.style.overflow = previousOverflow;
+      previousTrigger?.focus();
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [open]);
@@ -38,6 +53,8 @@ export default function MobileSearch() {
   function clearAll() {
     setQuery("");
     setDate("");
+    setFlexibility(0);
+    setFlexible(undefined);
     setGuests(1);
     setStep("where");
   }
@@ -46,27 +63,21 @@ export default function MobileSearch() {
     event.preventDefault();
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
-    if (date) params.set("date", date);
+    if (flexible) { params.set("month", flexible.month); params.set("days", flexible.days); }
+    else {
+      if (date) params.set("date", date);
+      if (date && flexibility) params.set("flex", String(flexibility));
+    }
     if (guests > 1) params.set("guests", String(guests));
     setOpen(false);
     router.push(params.size ? `/?${params.toString()}#discover` : "/#discover");
   }
 
-  function continueToGuests(event: React.MouseEvent<HTMLButtonElement>) {
-    const dateInput = event.currentTarget.form?.querySelector<HTMLInputElement>(".mobile-search-date input");
-    if (dateInput?.value) setDate(dateInput.value);
-    setStep("who");
-  }
-
   const overlay = open ? (
-    <div className="mobile-search-overlay lg:hidden" role="dialog" aria-modal="true" aria-label="Search Yardly">
+    <div ref={dialog} className="mobile-search-overlay lg:hidden" role="dialog" aria-modal="true" aria-label="Search Yardly">
       <form className="mobile-search-sheet" onSubmit={submitSearch}>
         <div className="mobile-search-sheet__topbar">
-          <div className="mobile-search-tabs" aria-label="Space categories">
-            <span className="mobile-search-tab mobile-search-tab--active"><b aria-hidden="true">⌂</b>Spaces</span>
-            <span className="mobile-search-tab"><b aria-hidden="true">≈</b>Pools</span>
-            <span className="mobile-search-tab"><b aria-hidden="true">✦</b>Events</span>
-          </div>
+          <p className="search-sheet-title">Find your outdoor space</p>
           <button type="button" className="mobile-search-close" onClick={() => setOpen(false)} aria-label="Close search">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
           </button>
@@ -76,24 +87,7 @@ export default function MobileSearch() {
           {step === "where" ? (
             <section className="mobile-search-card" aria-labelledby="mobile-search-where">
               <h2 id="mobile-search-where">Where?</h2>
-              <label className="mobile-search-location">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3-3" /></svg>
-                <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search cities or neighborhoods" aria-label="Search cities or neighborhoods" />
-              </label>
-              <p className="mobile-search-card__label">Suggested destinations</p>
-              <div className="mobile-destinations">
-                {destinations.map((destination) => (
-                  <button
-                    key={destination.title}
-                    type="button"
-                    onClick={() => { setQuery(destination.value); setStep("when"); }}
-                    className="mobile-destination"
-                  >
-                    <span className="mobile-destination__icon" aria-hidden="true">{destination.icon}</span>
-                    <span><strong>{destination.title}</strong><small>{destination.description}</small></span>
-                  </button>
-                ))}
-              </div>
+              <DestinationSearch autoFocus value={query} onChange={setQuery} onChoose={() => setStep("when")} />
             </section>
           ) : (
             <CollapsedSection label="Where" value={query || "Add a destination"} onClick={() => setStep("where")} />
@@ -102,14 +96,11 @@ export default function MobileSearch() {
           {step === "when" ? (
             <section className="mobile-search-card mobile-search-card--compact" aria-labelledby="mobile-search-when">
               <h2 id="mobile-search-when">When?</h2>
-              <label className="mobile-search-date">
-                <span>Choose a date</span>
-                <input type="date" value={date} onChange={(event) => setDate(event.target.value)} aria-label="Booking date" />
-              </label>
-              <button type="button" className="mobile-search-next" onClick={continueToGuests}>Next: guests</button>
+              <SearchCalendar value={date} onChange={setDate} flexibility={flexibility} onFlexibility={setFlexibility} flexible={flexible} onFlexible={setFlexible} />
+              <button type="button" className="mobile-search-next" onClick={() => setStep("who")}>Next: guests</button>
             </section>
           ) : (
-            <CollapsedSection label="When" value={date ? new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "Add a date"} onClick={() => setStep("when")} />
+            <CollapsedSection label="When" value={flexible ? flexibleLabel(flexible) : searchDateLabel(date, flexibility)} onClick={() => setStep("when")} />
           )}
 
           {step === "who" ? (
@@ -142,7 +133,15 @@ export default function MobileSearch() {
 
   return (
     <>
-      <button type="button" className="mobile-search-trigger lg:hidden" onClick={() => { setStep("where"); setOpen(true); }}>
+      <button ref={trigger} type="button" className="mobile-search-trigger lg:hidden" onClick={() => {
+        const params = new URLSearchParams(window.location.search);
+        setQuery(params.get("q") ?? "");
+        setDate(params.get("date") ?? "");
+        setFlexibility(parseFlex(params.get("flex")));
+        setFlexible(parseFlexible(params.get("month"), params.get("days")));
+        setGuests(Math.min(60, Math.max(1, Number(params.get("guests")) || 1)));
+        setStep("where"); setOpen(true);
+      }}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3-3" /></svg>
         <span>Start your search</span>
       </button>
@@ -153,7 +152,7 @@ export default function MobileSearch() {
 
 function CollapsedSection({ label, value, onClick }: { label: string; value: string; onClick: () => void }) {
   return (
-    <button type="button" className="mobile-search-collapsed" onClick={onClick}>
+    <button type="button" className="mobile-search-collapsed" onMouseDown={(event) => event.preventDefault()} onClick={onClick}>
       <span>{label}</span>
       <strong>{value}</strong>
     </button>

@@ -1,21 +1,107 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
 import MobileSearch from "./MobileSearch";
+import DestinationSearch from "./DestinationSearch";
+import SearchBookingFields from "./SearchBookingFields";
+import { parseFlex, parseFlexible, flexibleLabel, type FlexibleSearch, searchDateLabel } from "@/lib/search-dates";
 
 export default function Header() {
-  const { user, logout, setAuthOpen } = useStore();
+  return <Suspense><HeaderContent /></Suspense>;
+}
+
+function HeaderContent() {
+  const params = useSearchParams();
+  const { user, logout, setAuthOpen, canHost, setMode } = useStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [date, setDate] = useState("");
+  const [flexibility, setFlexibility] = useState(0);
+  const [flexible, setFlexible] = useState<FlexibleSearch>();
   const [guests, setGuests] = useState("");
-  const router = useRouter();
+  const [bookingPanel, setBookingPanel] = useState<"when" | "who" | null>(null);
+  const searchForm = useRef<HTMLFormElement>(null);
   const pathname = usePathname();
-  const isHost = pathname.startsWith("/host");
+  const activeSearchField = useRef<HTMLElement | null>(null);
+  const [searchHighlight, setSearchHighlight] = useState({ x: 0, width: 0, visible: false, animate: false });
+  function highlightField(target: EventTarget | null) {
+    const field = (target as HTMLElement | null)?.closest<HTMLElement>(".header-search__field");
+    const form = searchForm.current;
+    if (!field || !form) return;
+    activeSearchField.current = field;
+    // Layout coordinates stay stable while the whole header expands or collapses.
+    setSearchHighlight((current) => ({ x: field.offsetLeft, width: field.offsetWidth, visible: true, animate: current.visible }));
+  }
+  useEffect(() => {
+    const form = searchForm.current;
+    if (!form) return;
+    const observer = new ResizeObserver(() => {
+      const field = activeSearchField.current;
+      if (field) setSearchHighlight((current) => ({ ...current, x: field.offsetLeft, width: field.offsetWidth, animate: false }));
+    });
+    observer.observe(form);
+    form.querySelectorAll(".header-search__field").forEach((field) => observer.observe(field));
+    return () => observer.disconnect();
+  }, [pathname]);
+  const [headerCollapsed, setHeaderCollapsed] = useState(false);
+  const router = useRouter();
+  // Which surface is on screen. The remembered hosting/traveling mode lives in the
+  // store; this only drives header chrome.
+  const isHostSurface = pathname.startsWith("/host");
   const isExplore = pathname === "/";
+
+  const switchTo = (next: "hosting" | "traveling") => {
+    setMode(next);
+    setMenuOpen(false);
+    router.push(next === "hosting" ? "/host/dashboard/" : "/");
+  };
+  useEffect(() => {
+    queueMicrotask(() => {
+      setQuery(params.get("q") ?? "");
+      setDate(params.get("date") ?? "");
+      setFlexibility(parseFlex(params.get("flex")));
+      setFlexible(parseFlexible(params.get("month"), params.get("days")));
+      setGuests(params.get("guests") ?? "");
+      setMenuOpen(false);
+      setBookingPanel(null);
+    });
+  }, [params, pathname]);
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setMenuOpen(false); };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, []);
+
+  useEffect(() => {
+    if (!isExplore) return;
+
+    let frame = 0;
+    function updateHeader() {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        const searchHasFocus = document.activeElement?.closest(".header-search");
+        setHeaderCollapsed(window.scrollY > 96 && !bookingPanel && !searchHasFocus);
+      });
+    }
+
+    updateHeader();
+    window.addEventListener("scroll", updateHeader, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", updateHeader);
+      window.cancelAnimationFrame(frame);
+    };
+  }, [isExplore, bookingPanel]);
+
+  const compactDate = useMemo(() => {
+    if (flexible) return flexibleLabel(flexible);
+    if (!date) return "Anytime";
+    return searchDateLabel(date, flexibility);
+  }, [date, flexibility, flexible]);
 
   function search(e: React.FormEvent) {
     e.preventDefault();
@@ -25,7 +111,11 @@ export default function Header() {
     const guestCount = String(form.get("guests") ?? "");
     const params = new URLSearchParams();
     if (location) params.set("q", location);
-    if (selectedDate) params.set("date", selectedDate);
+    if (flexible) { params.set("month", flexible.month); params.set("days", flexible.days); }
+    else {
+      if (selectedDate) params.set("date", selectedDate);
+      if (selectedDate && flexibility) params.set("flex", String(flexibility));
+    }
     if (guestCount) params.set("guests", guestCount);
     router.push(params.size ? `/?${params.toString()}#discover` : "/#discover");
   }
@@ -38,52 +128,62 @@ export default function Header() {
   ];
 
   return (
-    <header className={`site-header sticky top-0 z-40 border-b border-border-soft bg-background/95 backdrop-blur${pathname.startsWith("/trips") ? " site-header--trips" : ""}${isHost ? " site-header--host" : ""}${!isExplore ? " site-header--compact" : ""}`}>
+    <header className={`site-header sticky top-0 z-40 border-b border-border-soft bg-background/95 backdrop-blur${pathname.startsWith("/trips") ? " site-header--trips" : ""}${isHostSurface ? " site-header--host" : ""}${!isExplore ? " site-header--compact" : ""}${isExplore && headerCollapsed ? " site-header--scrolled" : ""}`}>
       <div className="header-shell mx-auto max-w-[90rem] px-4 sm:px-6">
         <div className="header-primary-row">
-          <Link href={isHost ? "/host/dashboard" : "/"} className="header-logo flex shrink-0 items-center gap-2 text-brand" aria-label="Yardly home">
+          <Link href={isHostSurface ? "/host/dashboard" : "/"} className="header-logo flex shrink-0 items-center gap-2 text-brand" aria-label="Yardly home">
             <svg viewBox="0 0 32 32" className="h-8 w-8 fill-current" aria-hidden>
               <path d="M16 2C16 8 12 10 9 12c-4 2.7-5 8-2.4 11.6C8.3 26 11 27 13.6 26.4 12.4 22 13 17.4 16 14c-2 4-2.3 8.4-1.4 12.9.3 1.5.6 2.4.6 3.1h1.6c0-.7.3-1.6.6-3.1.4-1.9.5-3.7.4-5.4 1.6 1 3.7 1.2 5.6.6C26 20.9 27 15.6 24.4 12 21.4 8 16 8 16 2z" />
             </svg>
             <span className="text-lg font-bold tracking-tight sm:text-xl">Yardly</span>
           </Link>
 
-          {!isHost && <nav className="desktop-header-tabs" aria-label="Browse Yardly categories">
+          {!isHostSurface && <nav className="desktop-header-tabs" aria-label="Browse Yardly categories">
             {categories.map((category, index) => (
               <Link
                 key={category.label}
                 href={category.href}
-                className={`desktop-header-tab${index === 0 ? " desktop-header-tab--active" : ""}`}
+                className={`desktop-header-tab${(index === 0 ? !params.get("q") : params.get("q") === (category.label === "Events" ? "Event yards" : category.label)) ? " desktop-header-tab--active" : ""}`}
               >
                 <span className="desktop-header-tab__icon" aria-hidden="true">{category.icon}</span>
                 <span>{category.label}</span>
               </Link>
             ))}
           </nav>}
-          {isHost && <span className="hidden rounded-full bg-brand/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-brand-dark sm:inline-flex">Hosting</span>}
+          {isExplore && (
+            <button
+              type="button"
+              className="compact-header-search"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              aria-label="Open the full Yardly search"
+              aria-hidden={!headerCollapsed}
+              tabIndex={headerCollapsed ? 0 : -1}
+            >
+              <span className="compact-header-search__segment">{query.trim() || "Anywhere"}</span>
+              <span className="compact-header-search__segment">{compactDate}</span>
+              <span className="compact-header-search__segment compact-header-search__segment--guests">
+                {guests ? `${guests} ${guests === "1" ? "guest" : "guests"}` : "Add guests"}
+              </span>
+              <span className="compact-header-search__submit" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m20 20-3-3" /></svg>
+              </span>
+            </button>
+          )}
+          {isHostSurface && <span className="hidden rounded-full bg-brand/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-brand-dark sm:inline-flex">Hosting</span>}
 
           <div className="header-actions flex min-w-0 items-center justify-end gap-2">
             {isExplore && <MobileSearch />}
 
-            {!isHost ? (
-              <Link href="/host" className="hidden rounded-full px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-soft active:scale-[0.98] lg:block">Become a host</Link>
+            {isHostSurface ? (
+              <button type="button" onClick={() => switchTo("traveling")} className="hidden rounded-full px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-soft active:scale-[0.98] lg:block">Switch to traveling</button>
+            ) : canHost ? (
+              <button type="button" onClick={() => switchTo("hosting")} className="hidden rounded-full px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-soft active:scale-[0.98] lg:block">Switch to hosting</button>
             ) : (
-              <Link href="/" className="hidden rounded-full px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-soft active:scale-[0.98] lg:block">Switch to renting</Link>
+              <Link href="/host" className="hidden rounded-full px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-soft active:scale-[0.98] lg:block">Become a host</Link>
             )}
 
             <div className="relative">
               <div className="flex items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setMenuOpen(true)}
-                  className="header-utility-button header-language-button"
-                  aria-label="Language and region: English"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M3 12h18M12 3c2.4 2.5 3.6 5.5 3.6 9S14.4 18.5 12 21c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3Z" />
-                  </svg>
-                </button>
                 <button
                   type="button"
                   onClick={() => setMenuOpen((v) => !v)}
@@ -123,7 +223,13 @@ export default function Header() {
                         <MenuLink href="/messages" onClick={() => setMenuOpen(false)}>Messages</MenuLink>
                         <MenuLink href="/services" onClick={() => setMenuOpen(false)}>Services &amp; rentals</MenuLink>
                         <MenuLink href="/quotes" onClick={() => setMenuOpen(false)}>Quote requests</MenuLink>
-                        <MenuLink href="/host/dashboard" onClick={() => setMenuOpen(false)}>Switch to hosting</MenuLink>
+                        {canHost ? (
+                          <button type="button" className="account-menu__link" onClick={() => switchTo(isHostSurface ? "traveling" : "hosting")}>
+                            {isHostSurface ? "Switch to traveling" : "Switch to hosting"}
+                          </button>
+                        ) : (
+                          <MenuLink href="/host" onClick={() => setMenuOpen(false)}>Become a host</MenuLink>
+                        )}
                         <div className="account-menu__divider" />
                         <button
                           onClick={() => { logout(); setMenuOpen(false); }}
@@ -141,10 +247,7 @@ export default function Header() {
                           <span>It&apos;s easy to start hosting and earn extra income.</span>
                         </Link>
                         <div className="account-menu__divider" />
-                        <button type="button" className="account-menu__link" onClick={() => { setAuthOpen(true); setMenuOpen(false); }}>Refer a host</button>
-                        <button type="button" className="account-menu__link" onClick={() => { setAuthOpen(true); setMenuOpen(false); }}>Find a co-host</button>
-                        <button type="button" className="account-menu__link" onClick={() => { setAuthOpen(true); setMenuOpen(false); }}>Gift cards</button>
-                        <div className="account-menu__divider" />
+                        <MenuLink href="/trust/#booking-policies" onClick={() => setMenuOpen(false)}>Booking policies</MenuLink>
                         <button type="button" className="account-menu__link" onClick={() => { setAuthOpen(true); setMenuOpen(false); }}>Log in or sign up</button>
                       </>
                     )}
@@ -156,37 +259,21 @@ export default function Header() {
         </div>
 
         {isExplore && <form
+          ref={searchForm}
+          onFocusCapture={(event) => highlightField(event.target)}
+          onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) { activeSearchField.current = null; setSearchHighlight((current) => ({ ...current, visible: false, animate: false })); } }}
           onSubmit={search}
           className="header-search mx-auto hidden min-w-0 lg:grid"
           aria-label="Search Yardly spaces"
+          aria-hidden={headerCollapsed}
+          inert={headerCollapsed ? true : undefined}
         >
-          <label className="header-search__field header-search__field--where">
+          <div aria-hidden="true" className={`search-sliding-highlight${searchHighlight.animate ? " search-sliding-highlight--moving" : ""}`} style={{ transform: `translate3d(${searchHighlight.x}px, 0, 0)`, width: searchHighlight.width, opacity: searchHighlight.visible ? 1 : 0 }} />
+          <div className="header-search__field header-search__field--where">
             <span>Where</span>
-            <input
-              value={query}
-              name="q"
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search destinations"
-              aria-label="Where"
-            />
-          </label>
-          <label className="header-search__field">
-            <span>When</span>
-            <input
-              type="date"
-              name="date"
-              aria-label="When"
-            />
-          </label>
-          <label className="header-search__field">
-            <span>Who</span>
-            <select name="guests" value={guests} onChange={(e) => setGuests(e.target.value)} aria-label="Who">
-              <option value="">Add guests</option>
-              {Array.from({ length: 60 }, (_, index) => index + 1).map((count) => (
-                <option key={count} value={count}>{count} {count === 1 ? "guest" : "guests"}</option>
-              ))}
-            </select>
-          </label>
+            <DestinationSearch value={query} onChange={setQuery} />
+          </div>
+          <SearchBookingFields date={date} flexibility={flexibility} onFlexibility={setFlexibility} flexible={flexible} onFlexible={setFlexible} guests={guests} onDate={setDate} onGuests={setGuests} open={bookingPanel} setOpen={setBookingPanel} />
           <button
             type="submit"
             className="header-search__submit"

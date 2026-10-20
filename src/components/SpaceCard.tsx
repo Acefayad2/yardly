@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Space } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { spaceHref } from "@/lib/spaces";
+import { searchDateLabel } from "@/lib/search-dates";
 
 export default function SpaceCard({
   space,
@@ -26,6 +27,7 @@ export default function SpaceCard({
   };
 
   const href = spaceHref(space.id, bookingQuery);
+  const matchedDate = new URLSearchParams(bookingQuery).get("date");
 
   const select = (event: React.MouseEvent<HTMLAnchorElement>) => {
     if (!onSelect) return;
@@ -57,10 +59,12 @@ export default function SpaceCard({
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            if (space.isDemo) return;
             toggleFavorite(space.id);
           }}
-          className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-full bg-black/15 transition hover:scale-105 hover:bg-black/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:right-3 sm:top-3 sm:h-10 sm:w-10"
-          aria-label={isFav ? "Remove from saved spaces" : "Save this space"}
+          disabled={space.isDemo}
+          className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-full bg-black/15 transition hover:scale-105 hover:bg-black/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-60 sm:right-3 sm:top-3 sm:h-10 sm:w-10"
+          aria-label={space.isDemo ? "Demo listing cannot be saved" : isFav ? "Remove from saved spaces" : "Save this space"}
         >
           <svg
             viewBox="0 0 24 24"
@@ -72,7 +76,7 @@ export default function SpaceCard({
         </button>
 
         <span className="pointer-events-none absolute left-2 top-2 z-10 max-w-[70%] truncate rounded-lg bg-background/95 px-2 py-1 text-[10px] font-semibold shadow sm:left-3 sm:top-3 sm:px-2.5 sm:text-xs">
-          {space.topHost ? "★ Top host" : space.spaceType}
+          {space.isDemo ? "Demo listing" : space.topHost ? "★ Top host" : space.spaceType}
         </span>
 
         {space.images.length > 1 && (
@@ -107,13 +111,14 @@ export default function SpaceCard({
               {space.location}
             </Link>
           </h3>
-          <span className="flex shrink-0 items-center gap-1 text-xs sm:text-sm" aria-label={`${space.rating.toFixed(2)} out of 5 from ${space.reviews} reviews`}>
+          {space.reviews > 0 ? <span className="flex shrink-0 items-center gap-1 text-xs sm:text-sm" aria-label={`${space.rating.toFixed(2)} out of 5 from ${space.reviews} reviews`}>
             <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current"><path d="M12 2l2.9 6.3 6.9.6-5.2 4.6 1.6 6.8L12 17.3 5.8 20.9l1.6-6.8L2.2 8.9l6.9-.6z" /></svg>
             {space.rating.toFixed(2)} <span className="hidden text-xs text-muted sm:inline">({space.reviews})</span>
-          </span>
+          </span> : <span className="text-xs text-muted">New</span>}
         </div>
         <p className="truncate text-xs text-muted min-[375px]:text-sm">{space.neighborhood} · {space.spaceType}</p>
         <p className="truncate text-xs text-muted min-[375px]:text-sm">{space.title}</p>
+        {!space.isDemo && matchedDate && <p className="mt-1 text-xs font-semibold text-brand-dark">Available {searchDateLabel(matchedDate)}</p>}
         <p className="hidden truncate text-sm text-muted sm:block">Up to {space.capacity} guests · {space.minHours} hr minimum</p>
         <p className="mt-1 text-xs min-[375px]:text-sm">
           <span className="font-semibold text-foreground">${space.hourlyPrice}</span>

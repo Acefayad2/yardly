@@ -4,9 +4,12 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Space } from "@/lib/types";
 import BookingWidget from "./BookingWidget";
+import DemoCheckout from "./DemoCheckout";
 import { useStore } from "@/lib/store";
+import { getSupabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import ListingPhotoGallery from "./ListingPhotoGallery";
 
 const MapView = dynamic(() => import("./MapView"), { ssr: false });
 
@@ -15,7 +18,39 @@ export default function SpaceDetail({ space }: { space: Space }) {
   const router = useRouter();
   const [messageError, setMessageError] = useState("");
   const [openingConversation, setOpeningConversation] = useState(false);
+  const [bookingVisible, setBookingVisible] = useState(false);
+  const [addressResult, setAddressResult] = useState<{ spaceId: string; address: string | null } | null>(null);
   const isFav = favorites.includes(space.id);
+
+  // RLS returns this row only for the listing's host or a guest with a confirmed
+  // reservation here; anyone else — including signed-out visitors — gets nothing,
+  // and it never appears in the public marketplace feed store.tsx fetches.
+  useEffect(() => {
+    if (space.isDemo || !user) return;
+    let cancelled = false;
+    void getSupabase()
+      .from("listing_addresses")
+      .select("street_address")
+      .eq("listing_id", space.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setAddressResult({ spaceId: space.id, address: data?.street_address ?? null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [space.id, space.isDemo, user]);
+  // Only trust the fetched result while it matches the current listing and a signed-in
+  // user — this also makes a sign-out or listing change clear it without a separate reset.
+  const exactAddress = user && !space.isDemo && addressResult?.spaceId === space.id ? addressResult.address : null;
+
+  useEffect(() => {
+    const booking = document.getElementById("booking");
+    if (!booking) return;
+    const observer = new IntersectionObserver(([entry]) => setBookingVisible(entry.isIntersecting), { rootMargin: "-100px 0px -120px 0px" });
+    observer.observe(booking);
+    return () => observer.disconnect();
+  }, [space.id]);
 
   async function messageHost() {
     if (!user) {
@@ -36,16 +71,22 @@ export default function SpaceDetail({ space }: { space: Space }) {
   return (
     <div className="mx-auto max-w-6xl px-6 pb-28 pt-6 lg:pb-12">
       <div className="flex items-start justify-between gap-4">
-        <h1 className="max-w-3xl text-balance text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">{space.title}</h1>
+        <div>
+          {space.isDemo && <span className="mb-2 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">Demo listing</span>}
+          <h1 className="max-w-3xl text-balance text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">{space.title}</h1>
+        </div>
         <button
           type="button"
-          onClick={() => toggleFavorite(space.id)}
-          className="flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium underline hover:bg-border-soft"
+          onClick={() => {
+            if (!space.isDemo) toggleFavorite(space.id);
+          }}
+          disabled={space.isDemo}
+          className="flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium underline hover:bg-border-soft disabled:cursor-not-allowed disabled:opacity-50"
         >
           <svg viewBox="0 0 24 24" className={`h-4 w-4 ${isFav ? "fill-brand stroke-brand" : "fill-none stroke-current"}`} strokeWidth={2}>
             <path d="M12 21s-7.5-4.6-10-9.2C.5 8.3 2 5 5.2 5c2 0 3.3 1.2 4.3 2.6l1.5 2 1.5-2C13.5 6.2 14.8 5 16.8 5 20 5 21.5 8.3 22 11.8 19.5 16.4 12 21 12 21z" />
           </svg>
-          {isFav ? "Saved" : "Save"}
+          {space.isDemo ? "Preview" : isFav ? "Saved" : "Save"}
         </button>
       </div>
       <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm">
@@ -58,19 +99,7 @@ export default function SpaceDetail({ space }: { space: Space }) {
         <span className="font-medium underline">{space.neighborhood}, {space.location}</span>
       </p>
 
-      {/* Gallery — single hero on mobile, collage on desktop */}
-      <div className="mt-5 overflow-hidden rounded-2xl">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={space.images[0]} alt={space.title} className="h-64 w-full object-cover sm:h-80 md:hidden" />
-        <div className="hidden grid-cols-4 grid-rows-2 gap-2 md:grid" style={{ height: 420 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={space.images[0]} alt={`${space.title}, main view`} className="col-span-2 row-span-2 h-full w-full object-cover" />
-          {space.images.slice(1, 5).map((src, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={i} src={src} alt={`${space.title}, view ${i + 2}`} className="h-full w-full object-cover" loading="lazy" />
-          ))}
-        </div>
-      </div>
+      <ListingPhotoGallery key={space.id} images={space.images} title={space.title} />
 
       <div className="mt-8 flex flex-col gap-10 lg:flex-row">
         <div className="lg:w-[58%]">
@@ -80,14 +109,14 @@ export default function SpaceDetail({ space }: { space: Space }) {
                 {space.spaceType} hosted by {space.host.name}
               </h2>
               <p className="text-muted">
-                Up to {space.capacity} guests · {space.acres} acre yard · {space.minHours} hr minimum
+                Up to {space.capacity} guests{space.acres > 0 ? ` · ${space.acres} acre yard` : ""} · {space.minHours} hr minimum
               </p>
               <p className="mt-1 text-sm text-muted">
-                {space.topHost ? "Top host · " : ""}Hosting since {space.host.since} · {space.host.responseRate}% response rate
+                {space.topHost ? "Top host · " : ""}Hosting since {space.host.since}{space.isDemo ? ` · ${space.host.responseRate}% sample response rate` : ""}
               </p>
-              <button type="button" onClick={() => void messageHost()} disabled={openingConversation} className="mt-3 text-sm font-semibold text-brand-dark underline underline-offset-4 disabled:cursor-wait disabled:opacity-60">
-                {openingConversation ? "Opening conversation…" : "Message host"}
-              </button>
+              {user?.id === space.hostId ? <Link href={`/host/listings/edit/?id=${encodeURIComponent(space.id)}`} className="mt-3 inline-block text-sm font-semibold text-brand-dark underline underline-offset-4">Manage your listing</Link> : <button type="button" onClick={() => void messageHost()} disabled={openingConversation || space.isDemo} className="mt-3 text-sm font-semibold text-brand-dark underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-50">
+                {space.isDemo ? "Demo host unavailable" : openingConversation ? "Opening conversation…" : "Message host"}
+              </button>}
               {messageError && <p role="alert" className="mt-2 text-sm text-red-700">{messageError}</p>}
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -100,7 +129,16 @@ export default function SpaceDetail({ space }: { space: Space }) {
             <h3 id="booking-confidence" className="mb-4 text-lg font-semibold">Book with the important details up front</h3>
             <div className="grid gap-3 sm:grid-cols-3">
               <TrustItem title="Clear rules" body="Review host expectations before reserving." />
-              <TrustItem title="Private address" body="Exact location follows a confirmed booking." />
+              <TrustItem
+                title={space.isDemo ? "Demo location" : "Private address"}
+                body={
+                  space.isDemo
+                    ? "Illustrative map only. No address is delivered in demo mode."
+                    : exactAddress
+                      ? "You have a confirmed booking — the exact address is shown below."
+                      : "Shared automatically once you have a confirmed booking here."
+                }
+              />
               <TrustItem title="Up-front total" body="Hourly rate and service fee are shown together." />
             </div>
           </section>
@@ -135,13 +173,17 @@ export default function SpaceDetail({ space }: { space: Space }) {
             <div className="h-72 overflow-hidden rounded-2xl">
               <MapView spaces={[space]} activeId={space.id} />
             </div>
-            <p className="mt-3 text-xs text-muted">Exact address is shared after booking is confirmed.</p>
+            {exactAddress ? (
+              <p className="mt-3 text-sm font-semibold">{exactAddress}</p>
+            ) : (
+              <p className="mt-3 text-xs text-muted">{space.isDemo ? "Illustrative location only. A demo booking does not provide access to this property." : "The exact address is shared here once your booking is confirmed."}</p>
+            )}
           </div>
         </div>
 
         <div className="lg:w-[42%]">
           <div className="sticky top-24">
-            <BookingWidget space={space} />
+            {space.isDemo ? <DemoCheckout key={space.id} space={space} /> : <BookingWidget key={space.id} space={space} />}
           </div>
         </div>
       </div>
@@ -150,14 +192,14 @@ export default function SpaceDetail({ space }: { space: Space }) {
         <Link href="/" className="text-sm font-semibold underline">← Back to all spaces</Link>
       </div>
 
-      <div className="mobile-booking-bar fixed inset-x-0 z-30 border-t border-border bg-background/96 px-4 py-3 shadow-[0_-14px_34px_rgba(30,42,34,0.12)] backdrop-blur lg:hidden">
+      <div hidden={bookingVisible} className="mobile-booking-bar fixed inset-x-0 z-30 border-t border-border bg-background/96 px-4 py-3 shadow-[0_-14px_34px_rgba(30,42,34,0.12)] backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-lg items-center justify-between gap-4">
           <div>
             <p className="text-lg font-semibold tabular-nums">${space.hourlyPrice} <span className="text-sm font-normal text-muted">/ hour</span></p>
             <p className="text-xs text-muted">{space.minHours} hr minimum · {space.reviews ? `${space.rating.toFixed(2)} rating` : "New listing"}</p>
           </div>
           <a href="#booking" className="rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white transition active:scale-[0.98]">
-            Choose a time
+            {space.isDemo ? "Try demo booking" : "Choose a time"}
           </a>
         </div>
       </div>

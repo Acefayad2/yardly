@@ -2,6 +2,7 @@
 
 import L from "leaflet";
 import { MapContainer, Marker, TileLayer } from "react-leaflet";
+import { MAP_TILE_ATTRIBUTION, MAP_TILE_SUBDOMAINS, MAP_TILE_URL } from "@/lib/maps";
 
 export interface TripMapPoint {
   id: string;
@@ -34,8 +35,9 @@ export default function TripsMap({ points }: { points: TripMapPoint[] }) {
         className="h-full w-full"
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          attribution={MAP_TILE_ATTRIBUTION}
+          subdomains={MAP_TILE_SUBDOMAINS}
+          url={MAP_TILE_URL}
         />
         {points.map((point) => (
           <Marker

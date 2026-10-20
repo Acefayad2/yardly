@@ -6,7 +6,9 @@ import { useSearchParams } from "next/navigation";
 import HostListingForm, { HostListingFormValues, HostListingSubmitResult } from "@/components/HostListingForm";
 import HostNav from "@/components/HostNav";
 import HostSignInRequired from "@/components/HostSignInRequired";
+import NearbyActivities from "@/components/NearbyActivities";
 import { useStore } from "@/lib/store";
+import type { ListingImagePlanEntry } from "@/lib/types";
 
 export default function EditHostListingPage() {
   return (
@@ -59,12 +61,13 @@ function EditContent() {
     capacity: String(listing.capacity),
     latitude: listing.latitude === null ? "" : String(listing.latitude),
     longitude: listing.longitude === null ? "" : String(listing.longitude),
+    streetAddress: listing.streetAddress ?? "",
     timezone: listing.timezone,
     rules: listing.rules.join("\n"),
     amenities: listing.amenities,
   };
 
-  async function handleSubmit(values: HostListingFormValues, photos: File[]): Promise<HostListingSubmitResult> {
+  async function handleSubmit(values: HostListingFormValues, imagePlan: ListingImagePlanEntry[], onProgress?: (done: number, total: number) => void): Promise<HostListingSubmitResult> {
     return updateHostListing(
       id,
       {
@@ -81,20 +84,22 @@ function EditContent() {
         rules: values.rules.split("\n").map((rule) => rule.trim()).filter(Boolean),
         latitude: Number(values.latitude),
         longitude: Number(values.longitude),
+        streetAddress: values.streetAddress,
         status: currentStatus,
       },
-      photos,
+      imagePlan,
+      onProgress,
     );
   }
 
   return (
-    <HostListingForm
+    <><HostListingForm
       mode="edit"
       initialValues={initialValues}
       existingImages={listing.images}
       submitLabel="Save changes"
       onSubmit={handleSubmit}
       buildRedirect={(result) => `/host/listings?updated=1${result.message ? "&photoWarning=1" : ""}`}
-    />
+    /><div className="mx-auto max-w-3xl px-6 pb-12"><NearbyActivities key={`${user.id}-${listing.id}`} listingId={listing.id} editable /></div></>
   );
 }

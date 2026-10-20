@@ -13,6 +13,7 @@ export type SpaceType =
 export interface Space {
   id: string;
   hostId: string;
+  isDemo?: boolean;
   title: string;
   location: string; // "City, ST"
   neighborhood: string;
@@ -48,7 +49,7 @@ export interface Booking {
   fullDay: boolean;
   guests: number;
   total: number;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status: "confirmed" | "completed" | "cancelled";
   createdAt: string;
 }
 
@@ -58,7 +59,21 @@ export interface User {
   email: string;
 }
 
-export type HostListingStatus = "draft" | "published" | "paused";
+// Hosting capability, not a permission. Listing access is always ownership-based
+// (listings.host_id = auth.uid()) in RLS; nothing in the database reads this.
+export type AccountType = "guest" | "host" | "both";
+
+// Which side of the marketplace the user is currently looking at.
+export type AppMode = "traveling" | "hosting";
+
+export type HostListingStatus = "draft" | "published" | "paused" | "archived";
+
+// The final, host-ordered sequence of a listing's photos. "existing" entries are
+// already-uploaded URLs; "new" entries are local files still to be uploaded. Walking
+// this in order (rather than always keeping every existing image and appending new
+// ones after) is what lets a host reorder photos -- including making a newly added one
+// the cover photo -- before saving.
+export type ListingImagePlanEntry = { kind: "existing"; url: string } | { kind: "new"; file: File };
 
 export interface HostListing {
   id: string;
@@ -75,6 +90,7 @@ export interface HostListing {
   rules: string[];
   latitude: number | null;
   longitude: number | null;
+  streetAddress: string | null; // private; never included in the public marketplace feed
   images: string[];
   image: string;
   status: HostListingStatus;
@@ -85,6 +101,7 @@ export type HostReservationStatus = "upcoming" | "completed" | "cancelled";
 
 export interface HostReservation {
   id: string;
+  guestId: string;
   listingId: string;
   listingTitle: string;
   guestName: string;
@@ -109,6 +126,7 @@ export interface Conversation {
   listingId: string;
   listingTitle: string;
   listingImage: string;
+  listingAvailable: boolean;
   guestId: string;
   hostId: string;
   updatedAt: string;

@@ -1,12 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { SpaceType } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import CategoryBar from "./CategoryBar";
+import PricePromiseModal from "./PricePromiseModal";
 import SpaceCard from "./SpaceCard";
+import { parseFlex, parseFlexible, flexibleLabel, searchDateLabel, validSearchDate } from "@/lib/search-dates";
+import { useSearchAvailability } from "@/lib/use-search-availability";
 
 const MapView = dynamic(() => import("./MapView"), {
   ssr: false,
@@ -27,15 +30,20 @@ export default function Explore() {
   const router = useRouter();
   const rawQuery = params.get("q") ?? "";
   const query = rawQuery.toLowerCase();
-  const requestedDate = params.get("date") ?? "";
+  const rawDate = params.get("date") ?? "";
+  const requestedDate = validSearchDate(rawDate) ? rawDate : "";
+  const flexibility = parseFlex(params.get("flex"));
+  const flexible = parseFlexible(params.get("month"), params.get("days"));
+  const hasDateSearch = !!requestedDate || !!flexible;
   const requestedGuests = Math.max(1, Number(params.get("guests") ?? "1") || 1);
   const [spaceType, setSpaceType] = useState<SpaceType | "All">("All");
   const [showMap, setShowMap] = useState(false);
   const [activeSpaceId, setActiveSpaceId] = useState<string>();
   const [hoveredSpaceId, setHoveredSpaceId] = useState<string>();
   const [visibleMapState, setVisibleMapState] = useState<{ scope: string; ids: string[] }>();
+  const showingDemoListings = marketplaceSpaces.length > 0 && marketplaceSpaces.every((space) => space.isDemo);
 
-  const spaces = useMemo(() => {
+  const candidates = useMemo(() => {
     return marketplaceSpaces.filter((s) => {
       const matchType = spaceType === "All" || s.spaceType === spaceType;
       const matchQuery =
@@ -47,21 +55,27 @@ export default function Explore() {
       return matchType && matchQuery && s.capacity >= requestedGuests;
     });
   }, [marketplaceSpaces, spaceType, query, requestedGuests]);
+  const availability = useSearchAvailability(candidates, requestedDate, flexibility, flexible);
+  const spaces = hasDateSearch ? candidates.filter((space) => space.isDemo || availability.dates[space.id]) : candidates;
 
   const spaceScope = spaces.map((space) => space.id).join("|");
+  const updateVisibleSpaces = useCallback((ids: string[]) => {
+    setVisibleMapState((current) => current?.scope === spaceScope && current.ids.join("|") === ids.join("|")
+      ? current : { scope: spaceScope, ids });
+  }, [spaceScope]);
   const visibleMapIds = visibleMapState?.scope === spaceScope ? visibleMapState.ids : undefined;
 
   const mapListSpaces = visibleMapIds
     ? spaces.filter((space) => visibleMapIds.includes(space.id))
     : spaces;
 
-  const bookingQuery = useMemo(() => {
+  function bookingQuery(id: string) {
     const next = new URLSearchParams();
-    if (requestedDate) next.set("date", requestedDate);
+    if (availability.dates[id] || requestedDate) next.set("date", availability.dates[id] || requestedDate);
     if (requestedGuests > 1) next.set("guests", String(requestedGuests));
     const value = next.toString();
     return value ? `?${value}` : "";
-  }, [requestedDate, requestedGuests]);
+  }
 
   function clearSearch() {
     setSpaceType("All");
@@ -70,30 +84,7 @@ export default function Explore() {
 
   return (
     <div>
-      {!showMap && (
-        <section className="hero-shell">
-          <div className="hero-content">
-            <p className="hero-eyebrow">Room for the good stuff</p>
-            <h1>Private outdoor spaces, booked by the hour.</h1>
-            <p className="hero-copy">
-              Find a backyard, pool, garden, or rooftop for celebrations, shoots, dinners, and days that deserve more space.
-            </p>
-
-            <TripSearch
-              key={`${rawQuery}|${requestedDate}|${requestedGuests}`}
-              initialLocation={rawQuery}
-              initialDate={requestedDate}
-              initialGuests={requestedGuests}
-            />
-
-            <div className="hero-assurances" aria-label="Yardly booking benefits">
-              <span>Clear hourly pricing</span>
-              <span>Rules before you book</span>
-              <span>Exact address stays private</span>
-            </div>
-          </div>
-        </section>
-      )}
+      <PricePromiseModal />
 
       <div id="discover" className="sticky top-[65px] z-30 scroll-mt-24 border-b border-border-soft bg-background/95 backdrop-blur sm:top-[73px] lg:top-[169px] lg:scroll-mt-48">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
@@ -101,13 +92,13 @@ export default function Explore() {
         </div>
       </div>
 
-      {(query || requestedDate || requestedGuests > 1) && (
+      {(query || hasDateSearch || requestedGuests > 1) && (
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-6 pt-6 text-sm">
           <p className="text-muted">
             <strong className="text-foreground">{spaces.length} {spaces.length === 1 ? "space" : "spaces"}</strong>
             {query ? <> near “{rawQuery}”</> : null}
             {requestedGuests > 1 ? <> for {requestedGuests} guests</> : null}
-            {requestedDate ? <> on {new Date(`${requestedDate}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</> : null}
+            {hasDateSearch ? <> · {flexible ? flexibleLabel(flexible) : searchDateLabel(requestedDate, flexibility)}{showingDemoListings ? " (demo dates not verified)" : ""}</> : null}
           </p>
           <button type="button" onClick={clearSearch} className="font-semibold text-brand-dark underline underline-offset-4">
             Clear search
@@ -115,16 +106,24 @@ export default function Explore() {
         </div>
       )}
 
-      {showMap ? (
+      {showingDemoListings && (
+        <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <strong>Demo inventory:</strong> Try a simulated booking and checkout. No real charges or reservations; demo hosts cannot be messaged.
+          </div>
+        </div>
+      )}
+
+      {availability.loading ? <p role="status" className="mx-auto max-w-7xl px-6 py-16 text-center">Checking available days…</p> : availability.error ? <div role="alert" className="mx-auto max-w-7xl px-6 py-16 text-center"><p>We couldn’t check available days. Please try again.</p><button type="button" onClick={availability.retry} className="mt-4 font-semibold underline">Retry availability</button></div> : showMap ? (
         <div className="mx-auto h-[calc(100dvh-166px)] max-w-[1440px] px-0 lg:h-[calc(100vh-150px)] lg:px-6 lg:py-5">
           <div className="map-mode-layout h-full">
             <section className="no-scrollbar hidden overflow-y-auto lg:block" aria-label="Spaces in map view">
               <div className="map-results-heading">
                 <div>
                   <p>Places to make your own</p>
-                  <h2>{mapListSpaces.length} spaces in this map area</h2>
+                  <h2>{mapListSpaces.length} {mapListSpaces.length === 1 ? "space" : "spaces"} in this map area</h2>
                 </div>
-                <span>Updated today</span>
+                <span>Explore the area</span>
               </div>
               <div className="grid grid-cols-1 gap-x-5 gap-y-8 px-1 pb-8 xl:grid-cols-2">
                 {mapListSpaces.map((space) => (
@@ -137,7 +136,7 @@ export default function Explore() {
                   >
                     <SpaceCard
                       space={space}
-                      bookingQuery={bookingQuery}
+                      bookingQuery={bookingQuery(space.id)}
                       onSelect={() => setActiveSpaceId(space.id)}
                     />
                   </div>
@@ -146,11 +145,12 @@ export default function Explore() {
             </section>
             <section className="map-canvas-frame" aria-label="Map of available spaces">
               <MapView
+                bookingQueries={Object.fromEntries(spaces.map((space) => [space.id, bookingQuery(space.id)]))}
                 spaces={spaces}
                 activeId={hoveredSpaceId ?? activeSpaceId}
                 focusId={activeSpaceId}
                 onActiveChange={setActiveSpaceId}
-                onVisibleChange={(ids) => setVisibleMapState({ scope: spaceScope, ids })}
+                onVisibleChange={updateVisibleSpaces}
               />
             </section>
           </div>
@@ -158,9 +158,8 @@ export default function Explore() {
       ) : (
         <div className="mx-auto max-w-7xl px-3 py-4 min-[375px]:px-4 sm:px-6 sm:py-8">
           {marketplaceLoading ? (
-            <div className="rounded-3xl bg-surface-soft px-6 py-20 text-center" role="status">
-              <p className="text-lg font-semibold">Finding available spaces…</p>
-              <p className="mt-1 text-muted">Loading current Yardly listings.</p>
+            <div className="listing-skeletons" role="status" aria-label="Loading available spaces">
+              {Array.from({ length: 8 }, (_, index) => <div className="listing-skeleton" key={index} aria-hidden="true"><div /><span /><span /></div>)}
             </div>
           ) : marketplaceError ? (
             <div className="rounded-3xl border border-red-200 bg-red-50 px-6 py-20 text-center" role="alert">
@@ -178,13 +177,13 @@ export default function Explore() {
             </div>
           ) : (
             <>
-              <div className="mobile-discovery-heading md:hidden">
-                <h2>Popular outdoor spaces near you</h2>
-                <span aria-hidden="true">→</span>
+              <div className="discovery-heading">
+                <div><p>Make room for a good day</p><h1>{query ? `Spaces matching “${rawQuery}”` : spaceType === "All" ? "Find your kind of outside" : `${spaceType} for your next gathering`}</h1></div>
+                <span>{spaces.length} {spaces.length === 1 ? "space" : "spaces"} · Book by the hour</span>
               </div>
               <div className="grid grid-cols-2 gap-x-2.5 gap-y-6 min-[375px]:gap-x-3 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-3 xl:grid-cols-4">
                 {spaces.map((s) => (
-                  <SpaceCard key={s.id} space={s} bookingQuery={bookingQuery} />
+                  <SpaceCard key={s.id} space={s} bookingQuery={bookingQuery(s.id)} />
                 ))}
               </div>
             </>
@@ -209,57 +208,5 @@ export default function Explore() {
         </button>
       )}
     </div>
-  );
-}
-
-function TripSearch({
-  initialLocation,
-  initialDate,
-  initialGuests,
-}: {
-  initialLocation: string;
-  initialDate: string;
-  initialGuests: number;
-}) {
-  const router = useRouter();
-  const [location, setLocation] = useState(initialLocation);
-  const [date, setDate] = useState(initialDate);
-  const [guests, setGuests] = useState(initialGuests);
-
-  function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const next = new URLSearchParams();
-    if (location.trim()) next.set("q", location.trim());
-    if (date) next.set("date", date);
-    if (guests > 1) next.set("guests", String(guests));
-    router.push(next.size ? `/?${next.toString()}#discover` : "/#discover");
-  }
-
-  return (
-    <form className="trip-search" onSubmit={submit} aria-label="Plan your Yardly search">
-      <label className="trip-search__field trip-search__field--location">
-        <span>Where</span>
-        <input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="City or neighborhood" />
-      </label>
-      <label className="trip-search__field">
-        <span>When</span>
-        <input type="date" value={date} onChange={(event) => setDate(event.target.value)} aria-label="Booking date" />
-      </label>
-      <label className="trip-search__field">
-        <span>Guests</span>
-        <select value={guests} onChange={(event) => setGuests(Number(event.target.value))}>
-          {Array.from({ length: 60 }, (_, index) => index + 1).map((count) => (
-            <option key={count} value={count}>{count} {count === 1 ? "guest" : "guests"}</option>
-          ))}
-        </select>
-      </label>
-      <button type="submit" className="trip-search__submit">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="11" cy="11" r="7" />
-          <path d="m20 20-3-3" />
-        </svg>
-        <span>Search spaces</span>
-      </button>
-    </form>
   );
 }

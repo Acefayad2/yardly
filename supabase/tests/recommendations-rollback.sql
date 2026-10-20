@@ -1,0 +1,56 @@
+begin;
+do $$
+declare
+  host uuid := gen_random_uuid(); guest uuid := gen_random_uuid(); outsider uuid := gen_random_uuid();
+  yard uuid := gen_random_uuid(); booked public.reservations; n integer; rejected boolean;
+begin
+  insert into auth.users(id) values(host), (guest), (outsider);
+  perform set_config('request.jwt.claim.sub', host::text, true);
+  execute 'set local role authenticated';
+  insert into public.listings(id,host_id,title,location,space_type,hourly_price,min_hours,capacity,timezone,images,latitude,longitude,status,description,neighborhood)
+  values(yard,host,'QA local guide','Test city','Backyards',20,2,5,'America/New_York',array['https://example.com/test.jpg'],34,-118,'published','Temporary rollback fixture, never committed.','Test area');
+  insert into public.listing_recommendations values(yard,1,'Test park','Parks & outdoors','10 Public Road','Bring water');
+  update public.listing_recommendations set note = 'Bring a picnic' where listing_id = yard;
+  select count(*) into n from public.listing_recommendations where listing_id = yard and note = 'Bring a picnic';
+  if n <> 1 then raise exception 'FAIL host read/update'; end if;
+  rejected := false;
+  begin insert into public.listing_recommendations values(yard,7,'Too many','Essentials','10 Road','');
+  exception when check_violation then rejected := true; end;
+  if not rejected then raise exception 'FAIL slot limit'; end if;
+  perform set_config('request.jwt.claim.sub', outsider::text, true);
+  select count(*) into n from public.listing_recommendations where listing_id = yard;
+  if n <> 0 then raise exception 'FAIL outsider read'; end if;
+  rejected := false;
+  begin insert into public.listing_recommendations values(yard,2,'Bad insert','Essentials','10 Road','');
+  exception when insufficient_privilege then rejected := true; end;
+  if not rejected then raise exception 'FAIL outsider insert'; end if;
+  update public.listing_recommendations set name = 'Bad update' where listing_id = yard;
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL outsider update'; end if;
+  delete from public.listing_recommendations where listing_id = yard;
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL outsider delete'; end if;
+  perform set_config('request.jwt.claim.sub', guest::text, true);
+  booked := public.create_reservation(yard, current_date + 30, '10:00', '12:00', 2);
+  select count(*) into n from public.listing_recommendations where listing_id = yard;
+  if n <> 1 then raise exception 'FAIL booked guest read'; end if;
+  update public.listing_recommendations set name = 'Guest update' where listing_id = yard;
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL guest update'; end if;
+  perform set_config('request.jwt.claim.sub', host::text, true);
+  update public.listings set status = 'paused' where id = yard;
+  perform set_config('request.jwt.claim.sub', guest::text, true);
+  select count(*) into n from public.listing_recommendations where listing_id = yard;
+  if n <> 1 then raise exception 'FAIL paused listing guide disappeared'; end if;
+  perform public.cancel_reservation(booked.id);
+  select count(*) into n from public.listing_recommendations where listing_id = yard;
+  if n <> 0 then raise exception 'FAIL cancelled guest read'; end if;
+  execute 'set local role anon';
+  rejected := false;
+  begin perform 1 from public.listing_recommendations;
+  exception when insufficient_privilege then rejected := true; end;
+  if not rejected then raise exception 'FAIL anon access'; end if;
+end;
+$$;
+rollback;
+select 'PASS: local guide ownership, booked-only access, cancellation and limits' as result;
