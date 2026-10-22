@@ -14,6 +14,7 @@ import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { useRouter } from "next/navigation";
 import { getSupabase } from "./supabase";
+import { paymentsEnabled, paymentRequest } from "./payments";
 import { errorMessage } from "./errors";
 import { DEMO_SPACES } from "./demo-spaces";
 import type {
@@ -146,7 +147,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       await sweepPastReservations(supabase);
       const [listingsResult, reservationsResult] = await Promise.all([
         supabase.from("listings").select(HOST_LISTING_SELECT).eq("host_id", hostId).order("created_at", { ascending: false }),
-        supabase.from("reservations").select(HOST_RESERVATION_SELECT).eq("listings.host_id", hostId).order("start_at", { ascending: true }),
+        supabase.from("reservations").select(HOST_RESERVATION_SELECT).eq("listings.host_id", hostId).neq("status", "pending").order("start_at", { ascending: true }),
       ]);
       if (listingsResult.error) throw listingsResult.error;
       if (reservationsResult.error) throw reservationsResult.error;
@@ -172,6 +173,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         .from("reservations")
         .select(GUEST_RESERVATION_SELECT)
         .eq("guest_id", guestId)
+        .neq("status", "pending")
         .order("start_at", { ascending: false });
       if (error) throw error;
       setBookings((data ?? []).map(mapBooking));
@@ -412,6 +414,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const cancelBooking = useCallback(async (id: string): Promise<ActionResult> => {
     if (!user) return { error: "Sign in before cancelling a reservation." };
     try {
+      if (paymentsEnabled) {
+        await paymentRequest("payment-cancel", {id});
+        await Promise.all([loadGuestBookings(user.id),loadHostData(user.id)]);
+        return {};
+      }
       const { error } = await getSupabase().rpc("cancel_reservation", { p_reservation_id: id });
       if (error) throw error;
       await Promise.all([loadGuestBookings(user.id), loadHostData(user.id)]);
