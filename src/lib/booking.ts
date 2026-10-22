@@ -1,6 +1,6 @@
-export function bookingQuote(hourlyPrice: number, hours: number) {
+export function bookingQuote(hourlyPrice: number, hours: number, feeBps = 1200) {
   const subtotalCents = Math.round(hourlyPrice * 100) * hours;
-  const feeCents = Math.round(subtotalCents * 12 / 100);
+  const feeCents = Math.round(subtotalCents * feeBps / 10000);
   return { subtotal: subtotalCents / 100, serviceFee: feeCents / 100, total: (subtotalCents + feeCents) / 100 };
 }
 
