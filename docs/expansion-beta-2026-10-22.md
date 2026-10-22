@@ -68,9 +68,22 @@ No new SECURITY DEFINER function was introduced for photo storage.
   approved photos and directory sources still require client onboarding.
 - $49 billing remains preview-only pending separate business authorization.
 - Production schema/deployment was not changed by these sandbox operations.
-- Build 10 native archive, simulator walkthrough and TestFlight distribution
-  must be verified separately; build 9 remains the last confirmed tester release
-  at the time this note was created.
+- Build 10 (1.0) signed archive and IPA export succeeded, preserving the existing
+  bundle ID. Simulator launch, demo inventory and profile/menu navigation were
+  visually checked. Full authenticated native workflows remain unverified.
+- Apple accepted build 10 at 15:11 EDT October 22; processing and tester-group
+  availability still require confirmation. Build 9 is the last confirmed tester release.
+
+## Final release checks
+
+- All PR #44 GitHub checks passed: web, iOS, core database and expansion database.
+- Final release assets: all 52 expansion desktop/mobile browser tests passed.
+- Post-merge full local suite: 190 passed, one skipped, one mobile auth-modal
+  timing failure. Targeted navigation rerun passed all nine repetitions without
+  code changes. CI web check subsequently passed.
+- Release archive uses sandbox database and the existing PR #42 sandbox payment
+  API; demo inventory is enabled, AI drafting disabled. No production credentials
+  or real-charge enablement was added.
 
 ## Tester walkthrough
 
