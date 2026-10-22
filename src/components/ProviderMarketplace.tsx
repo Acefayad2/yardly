@@ -143,6 +143,7 @@ function ProviderCard({ profile }: { profile: ProviderProfile }) {
     <div className={styles.cardBody}>
       <span className={styles.badge}>{profile.kind === "equipment" ? "Equipment rental" : profile.category}</span>
       <h3>{profile.businessName}</h3><p className={styles.area}>Serves {profile.serviceArea}</p><p>{profile.summary}</p>
+      {profile.sampleUrls.length > 1 && <details><summary>View all {profile.sampleUrls.length} work samples</summary>{profile.sampleUrls.slice(1).map((url, index) => <ProviderPhoto key={url + index} url={url} label={`${profile.businessName} work sample ${index + 2}`} />)}</details>}
       <ul>{profile.offerings.map((offering) => <li key={offering}>{offering}</li>)}</ul>
       {profile.kind === "equipment" && <><p className={styles.label}>Available equipment</p><p>{profile.inventory.map((item) => `${item.name} (${item.quantityAvailable})`).join(" · ")}</p><dl className={styles.details}><div><dt>Delivery</dt><dd>{profile.deliveryDetails}</dd></div><div><dt>Setup</dt><dd>{profile.setupDetails}</dd></div><div><dt>Pickup</dt><dd>{profile.pickupDetails}</dd></div></dl></>}
       <div className={styles.cardFooter}><span>Starting at <strong>{new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(profile.startingPrice)}</strong></span><Link href={`/services/requests/?provider=${encodeURIComponent(profile.id)}`}>Request a separate quote</Link></div>
