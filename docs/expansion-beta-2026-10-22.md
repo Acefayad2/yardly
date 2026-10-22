@@ -71,8 +71,10 @@ No new SECURITY DEFINER function was introduced for photo storage.
 - Build 10 (1.0) signed archive and IPA export succeeded, preserving the existing
   bundle ID. Simulator launch, demo inventory and profile/menu navigation were
   visually checked. Full authenticated native workflows remain unverified.
-- Apple accepted build 10 at 15:11 EDT October 22; processing and tester-group
-  availability still require confirmation. Build 9 is the last confirmed tester release.
+- Apple accepted build 10 at 15:11 EDT October 22. Processing completed and beta
+  submission succeeded. App Store Connect now shows **Testing**, assigned to
+  Yardly Internal and Yardly Testers, with 10 invitations. Automatic tester
+  notification is enabled. This is TestFlight distribution, not an App Store release.
 
 ## Final release checks
 
