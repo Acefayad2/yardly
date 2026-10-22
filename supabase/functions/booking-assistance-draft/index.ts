@@ -13,6 +13,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { createClient } from "@supabase/supabase-js";
+import { corsHeaders } from "@supabase/supabase-js/cors";
 import { z } from "zod";
 
 const DraftSchema = z.object({
@@ -55,8 +56,7 @@ Rules:
 - Set requiresVenuePayment and requiresPermit to your best reading of that venue type for that kind of event. Staff verifies both.`;
 
 const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
+  ...corsHeaders,
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -154,7 +154,6 @@ Deno.serve(async (request) => {
       return json(
         {
           error: "The model declined to draft this case. Prepare it by hand.",
-          category: response.stop_details?.category ?? null,
         },
         422,
       );

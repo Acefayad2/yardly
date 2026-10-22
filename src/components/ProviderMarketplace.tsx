@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
 import { errorMessage } from "@/lib/errors";
+import { uploadProviderPhoto, resolveProviderPhoto, validateProviderPhoto } from "@/lib/provider-photos";
 import {
   PROVIDER_PROFILE_SELECT,
   commaList,
@@ -138,7 +139,7 @@ function Directory({ profiles }: { profiles: ProviderProfile[] }) {
 
 function ProviderCard({ profile }: { profile: ProviderProfile }) {
   return <article className={styles.card}>
-    {profile.sampleUrls[0] && <div className={styles.sample} role="img" aria-label={`${profile.businessName} work sample`} style={{ backgroundImage: `url(${JSON.stringify(profile.sampleUrls[0]).slice(1, -1)})` }} />}
+    {profile.sampleUrls[0] && <ProviderPhoto url={profile.sampleUrls[0]} label={`${profile.businessName} work sample`} />}
     <div className={styles.cardBody}>
       <span className={styles.badge}>{profile.kind === "equipment" ? "Equipment rental" : profile.category}</span>
       <h3>{profile.businessName}</h3><p className={styles.area}>Serves {profile.serviceArea}</p><p>{profile.summary}</p>
@@ -155,6 +156,23 @@ function ProviderEditor({ userId, profile, onSaved, onNotice }: { userId: string
   const [samples, setSamples] = useState(profile?.sampleUrls.join("\n") ?? "");
   const [inventory, setInventory] = useState(profile?.inventory.map((item) => `${item.name}: ${item.quantityAvailable}`).join("\n") ?? "");
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  async function upload(files: FileList | null) {
+    if (!files?.length) return;
+    const selected = Array.from(files);
+    if (selected.length > 10) { onNotice({ kind: "error", text: "Upload up to 10 photos at a time." }); return; }
+    const invalid = selected.map(validateProviderPhoto).find(Boolean);
+    if (invalid) { onNotice({ kind: "error", text: invalid }); return; }
+    setUploading(true); onNotice(null);
+    try {
+      for (const file of selected) {
+        const url = await uploadProviderPhoto(userId, file);
+        setSamples((value) => [value.trim(), url].filter(Boolean).join("\n"));
+      }
+      onNotice({ kind: "success", text: "Photos uploaded privately. Save or submit the profile to attach them." });
+    } catch (error) { onNotice({ kind: "error", text: errorMessage(error, "upload work samples") }); }
+    finally { setUploading(false); }
+  }
   const locked = profile?.reviewState === "pending" || profile?.reviewState === "approved";
 
   async function save(submit: boolean) {
@@ -200,13 +218,16 @@ function ProviderEditor({ userId, profile, onSaved, onNotice }: { userId: string
       <Field label="Offerings (comma separated)" wide><input required value={offerings} onChange={(event) => setOfferings(event.target.value)} placeholder="Two-hour event coverage, Edited digital gallery" /></Field>
       <Field label="Starting price (USD)"><input required type="number" min="0" step="0.01" value={draft.startingPrice} onChange={(event) => setDraft({ ...draft, startingPrice: Number(event.target.value) })} /></Field>
       <Field label="HTTPS work-sample URLs (one per line)" wide><textarea required rows={3} value={samples} onChange={(event) => setSamples(event.target.value)} /></Field>
+      <Field label="Upload work-sample photos" wide><input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={saving || uploading} onChange={(event) => { void upload(event.target.files); event.target.value = ""; }} /><span>JPEG, PNG, or WebP, up to 5 MB each. Uploads stay private until staff approves the profile. Only upload photos you have permission to publish.</span></Field>
+      {uploading && <p role="status">Uploading photos…</p>}
+      <div className={styles.wide}>{samples.split("\n").filter((url) => url.startsWith("https://")).map((url, index) => <ProviderPhoto key={url + index} url={url} label={`Work sample ${index + 1}`} />)}</div>
       {draft.kind === "equipment" && <>
         <Field label="Equipment and available quantity (one per line)" wide><textarea required rows={3} value={inventory} onChange={(event) => setInventory(event.target.value)} placeholder={"Folding chairs: 60\nSix-foot tables: 10"} /></Field>
         <Field label="Delivery details"><textarea required rows={3} value={draft.deliveryDetails} onChange={(event) => setDraft({ ...draft, deliveryDetails: event.target.value })} /></Field>
         <Field label="Setup details"><textarea required rows={3} value={draft.setupDetails} onChange={(event) => setDraft({ ...draft, setupDetails: event.target.value })} /></Field>
         <Field label="Pickup details"><textarea required rows={3} value={draft.pickupDetails} onChange={(event) => setDraft({ ...draft, pickupDetails: event.target.value })} /></Field>
       </>}
-      <div className={styles.actions}><button disabled={saving} className={styles.secondary} type="submit">Save private draft</button><button disabled={saving} className={styles.primary} type="button" onClick={() => void save(true)}>Submit for review</button></div>
+      <div className={styles.actions}><button disabled={saving || uploading} className={styles.secondary} type="submit">Save private draft</button><button disabled={saving || uploading} className={styles.primary} type="button" onClick={() => void save(true)}>Submit for review</button></div>
     </form>
   </section>;
 }
@@ -226,6 +247,22 @@ function ReviewQueue({ profiles, onReviewed, onNotice }: { profiles: ProviderPro
   }
   if (!profiles.length) return <Status title="Review queue is clear" body="New provider submissions will appear here." />;
   return <section><div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Staff review</p><h2>Provider submissions</h2></div></div><div className={styles.reviewGrid}>{profiles.map((profile) => <article className={styles.reviewCard} key={profile.id}><ProviderCard profile={profile} /><label>Review note<textarea rows={3} value={notes[profile.id] ?? ""} onChange={(event) => setNotes({ ...notes, [profile.id]: event.target.value })} /></label><div className={styles.actions}><button disabled={busy === profile.id} className={styles.secondary} onClick={() => void decide(profile.id, "rejected")}>Return for changes</button><button disabled={busy === profile.id} className={styles.primary} onClick={() => void decide(profile.id, "approved")}>Approve and publish</button></div></article>)}</div></section>;
+}
+
+function ProviderPhoto({ url, label }: { url: string; label: string }) {
+  const [source, setSource] = useState("");
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let current = true;
+    const refresh = () => { void resolveProviderPhoto(url).then((value) => { if (current) { setSource(value); setFailed(false); } }).catch(() => { if (current) setFailed(true); }); };
+    refresh();
+    const timer = setInterval(refresh, 240000);
+    return () => { current = false; clearInterval(timer); };
+  }, [url]);
+  if (failed) return <p>Photo unavailable. Try reloading this page.</p>;
+  // Native img supports private, short-lived signed Storage URLs in static exports.
+  // eslint-disable-next-line @next/next/no-img-element
+  return source ? <img className={styles.sample} style={{ objectFit: "cover" }} src={source} alt={label} onError={() => setFailed(true)} /> : <p>Loading photo…</p>;
 }
 
 function Field({ label, wide, children }: { label: string; wide?: boolean; children: React.ReactNode }) { return <label className={wide ? styles.wide : ""}><span>{label}</span>{children}</label>; }

@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { mapProviderProfile, validateProviderDraft, type ProviderProfileDraft } from "../src/lib/provider-marketplace";
+import { validateProviderPhoto } from "../src/lib/provider-photos";
+
+test("provider photo validation rejects empty, oversized, and active formats", () => {
+  expect(validateProviderPhoto({ type: "image/jpeg", size: 1024 })).toBeNull();
+  expect(validateProviderPhoto({ type: "image/svg+xml", size: 1024 })).toContain("JPEG");
+  expect(validateProviderPhoto({ type: "image/png", size: 0 })).toContain("5 MB");
+  expect(validateProviderPhoto({ type: "image/webp", size: 5242881 })).toContain("5 MB");
+});
 
 const validDraft: ProviderProfileDraft = {
   kind: "service",
@@ -105,7 +113,16 @@ test("signed-in provider can submit a complete photography profile for review", 
   await page.getByLabel("About the business").fill("Documentary event photography with edited digital galleries and clear delivery expectations.");
   await page.getByLabel("Offerings (comma separated)").fill("Two-hour coverage, Edited digital gallery");
   await page.getByLabel("Starting price (USD)").fill("325");
-  await page.getByLabel("HTTPS work-sample URLs (one per line)").fill("https://example.com/sample.jpg");
+  let uploadPath = "";
+  await page.route("**/storage/v1/object/provider-work-samples/**", (route) => {
+    uploadPath = route.request().url();
+    return route.fulfill({ json: { Key: "provider-work-samples/photo.png" } });
+  });
+  await page.route("**/storage/v1/object/sign/provider-work-samples/**", (route) => route.fulfill({ json: { signedURL: "/object/sign/provider-work-samples/photo.png?token=test" } }));
+  await page.getByLabel("Upload work-sample photos").setInputFiles({ name: "sample.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==", "base64") });
+  await expect(page.getByRole("status").filter({ hasText: "Photos uploaded privately" })).toBeVisible();
+  expect(uploadPath).toContain(`/provider-work-samples/${user.id}/`);
+  await expect(page.getByLabel("HTTPS work-sample URLs (one per line)")).toHaveValue(/\/object\/authenticated\/provider-work-samples\//);
   await page.getByRole("button", { name: "Submit for review" }).click();
   expect((await submitted).postDataJSON().p_profile_id).toBe("00000000-0000-4000-8000-000000000041");
   await expect(page.getByRole("status").filter({ hasText: "submitted for staff review" })).toBeVisible();

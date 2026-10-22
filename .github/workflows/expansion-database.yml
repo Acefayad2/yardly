@@ -5,6 +5,7 @@ on:
     paths:
       - "supabase/migrations/**"
       - "supabase/tests/provider-marketplace-rollback.sql"
+      - "supabase/tests/provider-photos-rollback.sql"
       - "supabase/tests/provider-request-workflow-rollback.sql"
       - "supabase/tests/church-listing-workflow-rollback.sql"
       - "supabase/tests/community-space-directory-rollback.sql"
@@ -64,6 +65,7 @@ jobs:
           set -euo pipefail
           suites=(
             supabase/tests/provider-marketplace-rollback.sql
+            supabase/tests/provider-photos-rollback.sql
             supabase/tests/provider-request-workflow-rollback.sql
             supabase/tests/church-listing-workflow-rollback.sql
             supabase/tests/community-space-directory-rollback.sql

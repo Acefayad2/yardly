@@ -114,6 +114,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const refreshMarketplace = useCallback(async () => {
     setMarketplaceLoading(true);
     setMarketplaceError(null);
+    if (process.env.NEXT_PUBLIC_DEMO_INVENTORY === "true") {
+      setSpaces(DEMO_SPACES.map((space) => ({ ...space, rating: 0, reviews: 0, topHost: false })));
+      setMarketplaceLoading(false);
+      return;
+    }
     try {
       const { data, error } = await getSupabase()
         .from("listings")
