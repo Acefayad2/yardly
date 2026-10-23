@@ -2,6 +2,7 @@
 
 ## Maintenance changelog — 2026-10-01
 
+- Extended only the web quality job's GitHub Actions timeout from 15 to 20 minutes so transiently slow Ubuntu dependency mirrors do not cancel the complete browser suite; no test or database timeout changed.
 - Updated Next.js and its matching ESLint configuration from 16.3.8 to 16.4.2, resolving the October 2026 critical RCE and high-severity denial-of-service advisories affecting production dependencies.
 - Made every uploaded listing photo reachable from the listing detail gallery, with keyboard-accessible viewing and an in-place unavailable state when an image fails to load.
 - Patched all development-only `brace-expansion` copies within their existing major versions (1.1.21, 2.1.7, 5.0.12), addressing stack-exhaustion and quadratic-time denial of service in tooling glob patterns. No runtime dependencies or application behavior change. Older Capacitor asset-tool dependencies still have separate tar, Sharp and UUID findings requiring an upstream-compatible remediation.
