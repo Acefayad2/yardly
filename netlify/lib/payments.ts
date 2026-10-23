@@ -2,7 +2,7 @@ import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import type {} from "@netlify/functions";
 
-export const TEST_PROJECT = "vfwbtfkmzxaehbsbrojx";
+export const TEST_PROJECT = "nzdiempfezheorauxmsb";
 export function env(name: string) {
   const value = Netlify.env.get(name);
   if (!value) throw new Error(`Missing server configuration: ${name}`);

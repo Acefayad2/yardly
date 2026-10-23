@@ -20,6 +20,12 @@ test("sandbox rejects live key and production database",()=>{
   globalThis.Netlify.env.get=name=>({STRIPE_SECRET_KEY:"rk_test_not_a_real_key",PAYMENTS_SUPABASE_URL:"https://obgbriewuvobgehndxzk.supabase.co",PAYMENTS_SUPABASE_SECRET_KEY:"test"}[name]);
   assert.throws(()=>services(),/isolation/);
 });
+test("Ace sandbox rejects the previous platform ledger and accepts only its isolated database",()=>{
+  globalThis.Netlify={env:{get:name=>({STRIPE_SECRET_KEY:"rk_test_not_a_real_key",PAYMENTS_SUPABASE_URL:"https://vfwbtfkmzxaehbsbrojx.supabase.co",PAYMENTS_SUPABASE_SECRET_KEY:"test"}[name])}};
+  assert.throws(()=>services(),/isolation/);
+  globalThis.Netlify.env.get=name=>({STRIPE_SECRET_KEY:"rk_test_not_a_real_key",PAYMENTS_SUPABASE_URL:`https://${TEST_PROJECT}.supabase.co`,PAYMENTS_SUPABASE_SECRET_KEY:"test"}[name]);
+  assert.doesNotThrow(()=>services());
+});
 test("checkout amount, currency, order and environment must match",()=>{
   const session={livemode:false,client_reference_id:order.id,currency:"usd",amount_total:11200};
   assert.doesNotThrow(()=>assertPayment(session,order));

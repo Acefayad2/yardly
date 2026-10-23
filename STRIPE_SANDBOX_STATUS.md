@@ -1,6 +1,19 @@
 # Stripe sandbox integration — not production-ready
 
-This branch is isolated to Supabase project `vfwbtfkmzxaehbsbrojx` and Stripe test keys. Do not merge or apply its payment migration to production until the release gates below are verified.
+This branch is isolated to Supabase project `nzdiempfezheorauxmsb` and Ace Financials LLC Stripe sandbox `acct_1UTit3GmJYt8TLMC`. Do not merge or apply its payment migration to production until the release gates below are verified.
+
+## October 23 — Ace sandbox connection (in progress)
+
+- Created isolated Supabase branch `ace-stripe-sandbox`; no production customer data was copied. Applied the payment contract and service permissions together as a registered migration.
+- Rollback-only payment database tests passed against this new branch (fees, immutable quotes, retry deduplication, holds, overlap, permissions, early payout, cancellation and event ordering). Security advisor returned no findings.
+- The 40 existing local payment/transport/browser tests passed before the platform-isolation update. These are mocked helper tests, not end-to-end verification of Ace's integration.
+- Saved replacement restricted test key in Netlify secret `STRIPE_SECRET_KEY` only for `codex/ace-stripe-sandbox`. Production remains empty; the previous preview key is unchanged. No credential is stored here.
+- Updated the backend's fail-closed database allowlist to the new isolated branch, preventing reuse of Tim's previous payment ledger with Ace's Stripe key.
+- Stored the new database server secret in the same branch-only Netlify context, and configured its public URL/key, backend URL and sandbox mode. Production credentials remain untouched.
+- All 41 local payment tests pass, including the new cross-platform isolation regression. Lint, static build and quality audit pass. Updated this older payment branch to the already-reviewed Next.js 16.4.2 security versions used on main; production dependency audit reports zero vulnerabilities. The development-inclusive installation reports seven advisories and is not claimed clean.
+- Supabase dashboard reports outstanding organization invoices; the account owner must resolve billing before launch to avoid service interruption.
+- Still required: remaining branch-specific database configuration, signed webhook, deployed authenticated checkout/failure/refund/replay/transfer tests, post-transfer recovery, owner-approved live settings and separate live activation. Do not report live payments ready.
+- The October 14–15 evidence below belongs to the previous Stripe/Supabase sandbox (`vfwbtfkmzxaehbsbrojx`), not this new Ace environment. It does not substitute for new end-to-end tests.
 
 ## Implemented
 
