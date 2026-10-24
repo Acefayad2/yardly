@@ -20,7 +20,13 @@ test("community freshness expires after seven days", () => {
   const now = Date.parse("2026-10-17T12:00:00Z");
   expect(isCommunitySpaceStale("2026-10-11T12:00:01Z", now)).toBe(false);
   expect(isCommunitySpaceStale("2026-10-10T11:59:59Z", now)).toBe(true);
-  expect(mapCommunitySpace(communityRow("2026-10-17T09:00:00Z")).officialUrl).toBe("https://example.gov/center");
+  const lastChecked = "2026-10-10T12:00:00Z";
+  expect(isCommunitySpaceStale(lastChecked, now)).toBe(false);
+  expect(isCommunitySpaceStale(lastChecked, now + 1)).toBe(true);
+  // Fixture source visibility must use the same clock as the freshness assertions.
+  expect(mapCommunitySpace(communityRow(lastChecked, undefined, undefined, now)).officialUrl).toBe("https://example.gov/center");
+  expect(mapCommunitySpace(communityRow(lastChecked, undefined, undefined, now + 1)).officialUrl).toBe("");
+  expect(mapCommunitySpace(communityRow("2026-10-17T09:00:00Z", undefined, undefined, now)).officialUrl).toBe("https://example.gov/center");
 });
 
 test.beforeEach(async ({ page }) => {
@@ -176,6 +182,6 @@ test("community corrections invalidate publication until a successful recheck", 
 });
 
 function churchRow(reviewState = "approved") { return { id: churchId, owner_id: ownerId, church_name: "Community Church", space_name: "Fellowship Hall", location: "Washington, DC", description: "A welcoming and flexible gathering hall for neighborhood events.", capacity: 120, published_price: "$150 per hour", amenities: ["Kitchen", "Parking"], rules: "No smoking; cleanup required.", booking_contact_name: "Church office", photo_urls: ["https://example.com/hall.jpg"], photo_permission_granted: true, owner_approved_at: "2026-10-16T12:00:00Z", review_state: reviewState }; }
-function communityRow(lastChecked: string, id = spaceId, name = "QA Recreation Center") { const fresh = !isCommunitySpaceStale(lastChecked); return { id, name, space_type: "recreation_center", location: "Washington, DC", capacity: 180, amenities: ["Gym", "Kitchen"], published_pricing: "$75 per hour", restrictions: "Permit and insurance may be required.", source_name: "District recreation department", last_checked_at: lastChecked, is_published: true, content_revision: 1, community_space_sources: fresh ? { official_url: "https://example.gov/center" } : null }; }
+function communityRow(lastChecked: string, id = spaceId, name = "QA Recreation Center", now = Date.now()) { const fresh = !isCommunitySpaceStale(lastChecked, now); return { id, name, space_type: "recreation_center", location: "Washington, DC", capacity: 180, amenities: ["Gym", "Kitchen"], published_pricing: "$75 per hour", restrictions: "Permit and insurance may be required.", source_name: "District recreation department", last_checked_at: lastChecked, is_published: true, content_revision: 1, community_space_sources: fresh ? { official_url: "https://example.gov/center" } : null }; }
 async function mockLogin(page: Page, id: string, email: string) { const user = { id, aud: "authenticated", role: "authenticated", email, user_metadata: { full_name: "Expansion QA" }, app_metadata: { provider: "email" } }; const jwt = `${Buffer.from('{"alg":"HS256","typ":"JWT"}').toString("base64url")}.${Buffer.from(JSON.stringify({ sub: id, exp: Math.floor(Date.now() / 1000) + 3600 })).toString("base64url")}.sig`; await page.unroute("**/auth/v1/**"); await page.route("**/auth/v1/**", (route) => route.fulfill({ json: route.request().url().includes("/token") ? { access_token: jwt, refresh_token: "qa-refresh", token_type: "bearer", expires_in: 3600, user } : user })); }
 async function login(page: Page, email: string) { await page.getByLabel("Email address").fill(email); await page.getByLabel("Password", { exact: true }).fill("expansion-test-password"); await page.getByRole("button", { name: "Log in", exact: true }).click(); }
