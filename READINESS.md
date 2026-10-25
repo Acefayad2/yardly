@@ -2,6 +2,7 @@
 
 ## Maintenance changelog — 2026-10-01
 
+- 2026-10-25: Updated development-only Zod from 4.4.3 to 4.6.6 within the React Hooks lint plugin's supported range, resolving GHSA-mrhx-c7xc-m3w5 without changing application or native dependencies. Seven separate native-tooling audit findings remain; production audit remains clean.
 - Extended only the web quality job's GitHub Actions timeout from 15 to 20 minutes so transiently slow Ubuntu dependency mirrors do not cancel the complete browser suite; no test or database timeout changed.
 - Updated Next.js and its matching ESLint configuration from 16.3.8 to 16.4.2, resolving the October 2026 critical RCE and high-severity denial-of-service advisories affecting production dependencies.
 - Made every uploaded listing photo reachable from the listing detail gallery, with keyboard-accessible viewing and an in-place unavailable state when an image fails to load.
