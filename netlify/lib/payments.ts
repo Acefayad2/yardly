@@ -147,3 +147,41 @@ export async function releaseOrder(s: Services, order: Order) {
     metadata: { yardly_order: order.id } }, { idempotencyKey: `transfer:${order.id}` });
   await transition(s, order.id, "transferred", transfer.id);
 }
+
+// Held payments wait for a person: owner policy is staff review, not automatic recovery.
+export const REVIEW_STATES = ["blocked", "refund_requested"] as const;
+export const REVIEW_DECISIONS = ["noted", "refund_guest", "release_host", "no_action"] as const;
+export type Review = {
+  id: number; order_id: string; staff_id: string; decision: string; note: string;
+  order_state: string; charge_id: string | null; transfer_id: string | null; refund_id: string | null; created_at: string;
+};
+export async function isPaymentStaff(s: Services, userId: string) {
+  const { data, error } = await s.db.from("payment_staff").select("user_id").eq("user_id", userId).maybeSingle();
+  if (error) throw error;
+  return Boolean(data);
+}
+export async function heldOrders(s: Services) {
+  const { data, error } = await s.db.from("payment_orders")
+    .select("id,state,subtotal_cents,fee_cents,total_cents,charge_id,transfer_id,refund_id,created_at")
+    .in("state", [...REVIEW_STATES]).order("created_at", { ascending: true }).limit(100);
+  if (error) throw error;
+  return (data ?? []) as Partial<Order>[];
+}
+export async function reviewsFor(s: Services, orderIds: string[]) {
+  if (!orderIds.length) return [] as Review[];
+  const { data, error } = await s.db.from("payment_reviews")
+    .select("id,order_id,staff_id,decision,note,order_state,charge_id,transfer_id,refund_id,created_at")
+    .in("order_id", orderIds).order("created_at", { ascending: false }).limit(500);
+  if (error) throw error;
+  return (data ?? []) as Review[];
+}
+// Recording a decision never moves money: Stripe actions stay deliberate and manual.
+export async function recordReview(s: Services, orderId: string, staffId: string, decision: string, note: string) {
+  const text = typeof note === "string" ? note.trim() : "";
+  if (!(REVIEW_DECISIONS as readonly string[]).includes(decision)) throw new Error("Choose one of the listed review decisions.");
+  if (!text || text.length > 1000) throw new Error("Add a review note of up to 1000 characters.");
+  if (!/^[0-9a-f-]{36}$/i.test(orderId ?? "")) throw new Error("Booking payment was not found.");
+  const { data, error } = await s.db.rpc("record_payment_review", { p_order: orderId, p_staff: staffId, p_decision: decision, p_note: text });
+  if (error) throw error;
+  return data as Review;
+}

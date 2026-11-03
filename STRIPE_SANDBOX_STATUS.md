@@ -2,6 +2,31 @@
 
 This branch is isolated to Supabase project `nzdiempfezheorauxmsb` and Ace Financials LLC Stripe sandbox `acct_1UTit3GmJYt8TLMC`. Do not merge or apply its payment migration to production until the release gates below are verified.
 
+## November 3 — staff payment review access (code complete, not yet verified in the sandbox)
+
+- Added the staff review workflow the October 23 note recorded as missing. Held payments (`blocked`
+  and `refund_requested`) now have a queue, an access roster and an append-only audit trail:
+  migration `20261103120000_payment_staff_review.sql`, function `staff-payments.mts`, page
+  `/staff/payments`, and `docs/payment-staff-review.md`.
+- Access is the `payment_staff` table alone. A signed-in non-staff account gets HTTP 403; the roster
+  is not readable by other accounts. `payment_reviews` refuses UPDATE and DELETE by trigger, so the
+  trail survives a compromised backend key. Reviews are accepted only while an order is actually
+  held, and recording one never writes the ledger.
+- Recording a decision does not call Stripe. Per the owner's hold-for-review policy, the money
+  action stays manual in Stripe and the screen records who decided what, when, against which ledger
+  state and Stripe IDs.
+- `scripts/grant-payment-staff.mjs` grants, lists and revokes access; it refuses any project but the
+  isolated sandbox and refuses accounts with unconfirmed email.
+- Locally: lint, `tsc --noEmit`, static build, quality audit and 46 payment/transport/browser tests
+  pass (5 new staff tests). The new SQL suite `supabase/tests/payment-staff-review.sql` is wired into
+  CI but has not run locally — no PostgreSQL is available on this machine. Do not call the database
+  contract verified until that CI step passes.
+- Not done, and still required for item 4: Tim's actual account added to `payment_staff` on the
+  sandbox project (needs his sign-in email and the service key), one held payment reviewed by him end
+  to end in a deployed preview, and real host payout onboarding by a host with a real bank account.
+  Only the synthetic test host has onboarded, which proves a transfer to a connected Stripe balance,
+  not a bank payout. No live credentials, production deployment or Apple build changed.
+
 ## October 23 — Ace sandbox connection (in progress)
 
 ### Latest verification — October 23, 18:09–18:16 UTC
@@ -44,6 +69,7 @@ This branch is isolated to Supabase project `nzdiempfezheorauxmsb` and Ace Finan
 - Host Connect onboarding and delayed host transfers, gated on reservation end, available funds, account readiness and charge checks.
 - Authenticated server endpoints, database-enforced overlap checks, and blocked direct client reservation writes in the sandbox.
 - Sandbox-only guest and host payment UI; production payment UI remains disabled.
+- Staff-gated review queue for held refunds and disputes, with an append-only decision trail.
 
 ## Evidence so far
 
