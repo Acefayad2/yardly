@@ -61,6 +61,7 @@ test("staff confirmation captures written approval and required records", async 
   const confirmed = page.waitForRequest((request) => request.url().includes("/rpc/confirm_booking_assistance_application") && request.method() === "POST");
   await page.route("**/rest/v1/rpc/confirm_booking_assistance_application", (route) => route.fulfill({ json: { id: applicationId, confirmed_at: new Date().toISOString() } }));
   await page.goto("/booking-help/"); await page.getByRole("button", { name: "Sign in", exact: true }).click(); await login(page, "staff@example.com");
+  await expect(page.getByRole("button", { name: "AI drafting not enabled — prepare manually below" })).toBeDisabled();
   await page.getByLabel("Written venue approval evidence").fill("Written venue approval email received and archived.");
   await page.getByLabel("Venue payment record").fill("Receipt reference PAY-123 archived."); await page.getByLabel("Permit record").fill("Permit reference PERMIT-456 archived.");
   await page.getByRole("button", { name: "Record venue confirmation" }).click();

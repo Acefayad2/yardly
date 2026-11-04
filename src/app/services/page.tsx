@@ -1,3 +1,4 @@
+import ExpansionNotice from "@/components/ExpansionNotice";
 import type { Metadata } from "next";
 import ProviderMarketplace from "@/components/ProviderMarketplace";
 
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function ServicesPage() {
-  return <ProviderMarketplace />;
+  return <><ExpansionNotice /><ProviderMarketplace /></>;
 }
