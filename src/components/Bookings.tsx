@@ -9,6 +9,8 @@ import { useRef, useState } from "react";
 import DemoBookings from "./DemoBookings";
 import BookingContact from "./BookingContact";
 import NearbyActivities from "./NearbyActivities";
+import PaymentStatus from "./PaymentStatus";
+import { paymentsEnabled } from "@/lib/payments";
 
 function timeLabel(t: string) {
   const hour = parseInt(t.split(":")[0], 10);
@@ -20,7 +22,7 @@ function timeLabel(t: string) {
 export default function Bookings() {
   const { user, bookings, spaces, bookingsLoading, bookingsError, cancelBooking, setAuthOpen } = useStore();
   const params = useSearchParams();
-  const justBooked = params.get("booked") === "1";
+  const justBooked = !paymentsEnabled && params.get("booked") === "1";
   const requestedId = params.get("booking");
   const visibleBookings = requestedId ? bookings.filter((booking) => booking.id === requestedId) : bookings;
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -50,6 +52,7 @@ export default function Bookings() {
       <h1 className="text-3xl font-semibold">Your bookings</h1>
       {requestedId && <Link href="/bookings/" className="mt-3 inline-block text-sm font-semibold text-brand underline">View all bookings</Link>}
       <DemoBookings />
+      {paymentsEnabled && user && params.get("payment") && <PaymentStatus key={`${user.id}-${params.get("payment")}`} id={params.get("payment")!} />}
 
       {justBooked && (
         <div className="mt-5 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-emerald-800">
