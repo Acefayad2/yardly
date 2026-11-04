@@ -29,7 +29,7 @@
     "react-leaflet": "^5.0.0-rc.2"
   },
   "devDependencies": {
-    "@capacitor/assets": "^3.0.5",
+    "@capacitor/assets": "^4.0.0",
     "@capacitor/cli": "^8.5.0",
     "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4",
