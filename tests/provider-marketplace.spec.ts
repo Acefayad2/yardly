@@ -51,10 +51,14 @@ test("public services page renders only reviewed provider data", async ({ page }
     provider_inventory_items: [{ id: "item-1", name: "Folding chair", quantity_available: 80 }],
   }] }));
   await page.goto("/services/");
-  await expect(page.getByRole("heading", { name: "Bring the whole event together." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Services & rentals" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Gather Rentals" })).toBeVisible();
   await expect(page.getByText("Folding chair (80)")).toBeVisible();
   await expect(page.getByText("Request a separate quote")).toBeVisible();
+  await page.getByRole("button", { name: "Photography", exact: true }).click();
+  await expect(page.getByText("Gather Rentals")).toHaveCount(0);
+  await page.getByRole("button", { name: "Rentals", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Gather Rentals" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 

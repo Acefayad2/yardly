@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
@@ -95,15 +95,7 @@ export default function ProviderMarketplace() {
 
   return (
     <div className={styles.page}>
-      <section className={styles.hero}>
-        <div>
-          <p className={styles.eyebrow}>Yardly services</p>
-          <h1>Bring the whole event together.</h1>
-          <p>Browse reviewed event professionals and equipment rental providers. Every provider quotes and collects payment separately.</p>
-        </div>
-        <aside className={styles.promise}><strong>Reviewed before publishing</strong><span>A request starts a conversation. It never reserves a provider or equipment.</span></aside>
-      </section>
-
+      <h1 className={styles.title}>Services &amp; rentals</h1>
       <nav className={styles.tabs} aria-label="Services marketplace">
         <Tab active={view === "discover"} onClick={() => setView("discover")}>Discover</Tab>
         <Tab active={view === "provider"} onClick={() => setView("provider")}>List your business</Tab>
@@ -119,6 +111,10 @@ export default function ProviderMarketplace() {
       ) : (
         <ReviewQueue profiles={reviewQueue} onReviewed={load} onNotice={setNotice} />
       )}
+      {view === "discover" && <aside className={styles.quoteNote}>
+        <strong>How quotes work</strong>
+        <p>Tell a provider about your event. They’ll send pricing and availability. You arrange payment directly with them.</p>
+      </aside>}
     </div>
   );
 }
@@ -128,11 +124,40 @@ function Tab({ active, onClick, children }: { active: boolean; onClick: () => vo
 }
 
 function Directory({ profiles }: { profiles: ProviderProfile[] }) {
-  const [kind, setKind] = useState<"all" | "service" | "equipment">("all");
-  const visible = useMemo(() => profiles.filter((profile) => kind === "all" || profile.kind === kind), [kind, profiles]);
-  return <section aria-labelledby="directory-heading">
-    <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Reviewed providers</p><h2 id="directory-heading">Services and rentals</h2></div><label>Show<select value={kind} onChange={(event) => setKind(event.target.value as typeof kind)}><option value="all">Everything</option><option value="service">Event services</option><option value="equipment">Equipment rentals</option></select></label></div>
-    {!visible.length ? <Status title="No reviewed providers yet" body="Approved providers will appear here. Yardly does not display draft or pending profiles." /> : <div className={styles.grid}>{visible.map((profile) => <ProviderCard key={profile.id} profile={profile} />)}</div>}
+  const [selected, setSelected] = useState("all");
+  const categories = new Map([
+    ["all", { label: "All", icon: "✨" }],
+    ["photography", { label: "Photography", icon: "📷" }],
+    ["catering", { label: "Catering", icon: "🍽️" }],
+    ["music", { label: "Music", icon: "🎵" }],
+    ["decor", { label: "Decor", icon: "🌷" }],
+    ["equipment", { label: "Rentals", icon: "🪑" }],
+  ]);
+  function categoryKey(profile: ProviderProfile) {
+    if (profile.kind === "equipment") return "equipment";
+    const key = profile.category.trim().toLowerCase();
+    if (key === "dj" || key === "djs" || key === "live music") return "music";
+    if (key === "décor") return "decor";
+    return key === "all" || key === "equipment" ? `service-${key}` : key;
+  }
+  for (const profile of profiles) {
+    const key = categoryKey(profile);
+    if (!categories.has(key)) categories.set(key, { label: profile.category, icon: "🛎️" });
+  }
+  const visible = profiles.filter(profile => selected === "all" || categoryKey(profile) === selected);
+  const category = categories.get(selected);
+  return <section aria-label="Service directory">
+    <div className={styles.categoryBar} role="group" aria-label="Filter by service">
+      {Array.from(categories, ([key, item]) => <button type="button" key={key} aria-pressed={selected === key} onClick={() => setSelected(key)}>
+        <span aria-hidden="true">{item.icon}</span>{item.label}
+      </button>)}
+    </div>
+    <h2 className={styles.resultsTitle}>{selected === "all" ? "All services" : category?.label}</h2>
+    {!visible.length ? <div className={styles.empty} role="status">
+      <h3>{selected === "all" ? "No reviewed providers yet" : "No providers in this category yet"}</h3>
+      <p>{selected === "all" ? "Providers will appear here once Yardly reviews their business." : "Check back soon or browse the other services."}</p>
+      {selected !== "all" && <button type="button" onClick={() => setSelected("all")}>See all services</button>}
+    </div> : <div className={styles.grid}>{visible.map(profile => <ProviderCard key={profile.id} profile={profile} />)}</div>}
   </section>;
 }
 
