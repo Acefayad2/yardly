@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import L from "leaflet";
-import { MapContainer, Marker, TileLayer } from "react-leaflet";
+import UsMapOverview from "./UsMapOverview";
+import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
 import { MAP_TILE_ATTRIBUTION, MAP_TILE_SUBDOMAINS, MAP_TILE_URL } from "@/lib/maps";
 
 export interface TripMapPoint {
@@ -23,6 +25,16 @@ function photoIcon(point: TripMapPoint) {
   });
 }
 
+function TripViewport({ points }: { points: TripMapPoint[] }) {
+  const map = useMap();
+  const coordinates = JSON.stringify(points.map(point => [point.lat, point.lng]));
+  useEffect(() => {
+    const positions: [number, number][] = JSON.parse(coordinates);
+    if (positions.length) map.fitBounds(positions, { padding: [42, 56], maxZoom: 11 });
+  }, [coordinates, map]);
+  return null;
+}
+
 export default function TripsMap({ points }: { points: TripMapPoint[] }) {
   return (
     <div className="trips-map" aria-label="Map of upcoming Yardly trips">
@@ -30,6 +42,7 @@ export default function TripsMap({ points }: { points: TripMapPoint[] }) {
         center={[37.4, -98.5]}
         zoom={3}
         minZoom={2}
+        zoomSnap={0.25}
         zoomControl={false}
         scrollWheelZoom={false}
         className="h-full w-full"
@@ -48,6 +61,8 @@ export default function TripsMap({ points }: { points: TripMapPoint[] }) {
             alt={point.label}
           />
         ))}
+        <TripViewport points={points} />
+        <UsMapOverview key={points.length ? "booked" : "empty"} initiallyOpen={!points.length} />
       </MapContainer>
     </div>
   );

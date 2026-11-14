@@ -3242,3 +3242,40 @@ select:focus-visible {
 .safe-bottom-floating {
   bottom: calc(5.35rem + env(safe-area-inset-bottom, 0px));
 }
+
+.us-map-trigger, .us-map-overview {
+  position: absolute;
+  z-index: 650;
+  font-family: var(--font-sans), sans-serif;
+  color: #193b2b;
+}
+.us-map-trigger {
+  left: 1rem;
+  top: 4rem;
+  min-height: 44px;
+  padding: 0 .9rem;
+  border: 1px solid #c9d7ce;
+  border-radius: .75rem;
+  background: white;
+  font-weight: 650;
+}
+.trips-map .us-map-trigger { top: .75rem; }
+.us-map-overview {
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  justify-items: center;
+  gap: .4rem;
+  padding: .6rem 1rem 1.8rem;
+  background: #f5f7f1;
+}
+.us-map-overview header { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+.us-map-overview h2 { font-size: 1.15rem; font-weight: 650; letter-spacing: -.03em; }
+.us-map-overview header button { width: 44px; height: 44px; font-size: 1.6rem; }
+.us-map-overview img { height: 100%; width: 100%; object-fit: contain; }
+.us-map-overview select { min-height: 44px; padding: .5rem .85rem; background: white; border: 1px solid #a5b9aa; border-radius: .65rem; font-size: 1rem; max-width: 100%; }
+
+.trips-map .us-map-overview { padding-bottom: 2.4rem; }
+.yardly-map-shell:has(.us-map-overview) > :is(.yardly-map-status, .yardly-map-preview, .yardly-map-empty) { display: none; }
+
+.trips-map:has(.us-map-overview) { height: clamp(22rem, 45dvh, 32rem); }

@@ -10,6 +10,7 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
+import UsMapOverview from "./UsMapOverview";
 import { Space } from "@/lib/types";
 import { MAP_TILE_ATTRIBUTION, MAP_TILE_SUBDOMAINS, MAP_TILE_URL } from "@/lib/maps";
 import { spaceHref } from "@/lib/spaces";
@@ -227,6 +228,7 @@ export default function MapView({
             />
           );
         })}
+        <UsMapOverview />
       </MapContainer>
 
       <div className="yardly-map-status" aria-live="polite">
