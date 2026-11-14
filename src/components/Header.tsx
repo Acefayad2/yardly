@@ -120,11 +120,14 @@ function HeaderContent() {
     router.push(params.size ? `/?${params.toString()}#discover` : "/#discover");
   }
 
+  const onServices = pathname === "/services" || pathname.startsWith("/services/");
+  const categoryQuery = params.get("q") || "";
   const categories = [
-    { label: "All", icon: "🌎", href: "/#discover" },
-    { label: "Backyards", icon: "🏡", href: "/?q=Backyards#discover" },
-    { label: "Pools", icon: "💧", href: "/?q=Pools#discover" },
-    { label: "Events", icon: "🎉", href: "/?q=Event%20yards#discover" },
+    { label: "All", icon: "🌎", active: isExplore && !categoryQuery, href: "/#discover" },
+    { label: "Backyards", icon: "🏡", active: isExplore && categoryQuery === "Backyards", href: "/?q=Backyards#discover" },
+    { label: "Pools", icon: "💧", active: isExplore && categoryQuery === "Pools", href: "/?q=Pools#discover" },
+    { label: "Events", icon: "🎉", active: isExplore && categoryQuery === "Event yards", href: "/?q=Event%20yards#discover" },
+    { label: "Services", icon: "🛎️", href: "/services/", active: onServices },
   ];
 
   return (
@@ -139,11 +142,12 @@ function HeaderContent() {
           </Link>
 
           {!isHostSurface && <nav className="desktop-header-tabs" aria-label="Browse Yardly categories">
-            {categories.map((category, index) => (
+            {categories.map((category) => (
               <Link
                 key={category.label}
                 href={category.href}
-                className={`desktop-header-tab${(index === 0 ? !params.get("q") : params.get("q") === (category.label === "Events" ? "Event yards" : category.label)) ? " desktop-header-tab--active" : ""}`}
+                aria-current={category.active ? "page" : undefined}
+                className={`desktop-header-tab${category.active ? " desktop-header-tab--active" : ""}`}
               >
                 <span className="desktop-header-tab__icon" aria-hidden="true">{category.icon}</span>
                 <span>{category.label}</span>
@@ -173,6 +177,11 @@ function HeaderContent() {
 
           <div className="header-actions flex min-w-0 items-center justify-end gap-2">
             {isExplore && <MobileSearch />}
+            {!isHostSurface && (
+              <Link href="/services/" aria-current={onServices ? "page" : undefined} className="mobile-services-link lg:hidden">
+                <span aria-hidden="true">🛎️</span> Services
+              </Link>
+            )}
 
             {isHostSurface ? (
               <button type="button" onClick={() => switchTo("traveling")} className="hidden rounded-full px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-soft active:scale-[0.98] lg:block">Switch to traveling</button>

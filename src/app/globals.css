@@ -1280,6 +1280,27 @@ body {
   display: none;
 }
 
+@media (max-width: 1023px) {
+  .mobile-services-link {
+    display: inline-flex;
+    min-height: 44px;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.35rem;
+    padding-inline: 0.65rem;
+    border-radius: 999px;
+    color: var(--foreground);
+    font-size: 0.875rem;
+    font-weight: 650;
+  }
+
+  .mobile-services-link:hover,
+  .mobile-services-link[aria-current] {
+    color: var(--brand-dark);
+    background: var(--surface-soft);
+  }
+}
+
 .compact-header-search {
   display: none;
 }
