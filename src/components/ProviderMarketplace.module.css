@@ -4,10 +4,35 @@
 .tabs { display: flex; gap: 1.25rem; overflow-x: auto; border-bottom: 1px solid var(--border-soft); margin: .75rem 0 1.25rem; }
 .tabs button, .tabs a { flex: none; min-height: 44px; padding: .6rem .1rem; border-bottom: 2px solid transparent; color: var(--muted); font-size: .9rem; font-weight: 600; }
 .tabs .activeTab { color: #126641; border-bottom-color: currentColor; }
-.categoryBar { display: flex; gap: .5rem; overflow-x: auto; padding: .25rem .15rem .6rem; }
-.categoryBar button { flex: none; display: grid; justify-items: center; align-content: center; gap: .45rem; min-width: 5rem; min-height: 4.6rem; padding: .55rem .8rem; border: 1px solid var(--border-soft); border-radius: 1rem; background: white; font-size: .8rem; font-weight: 650; }
-.categoryBar span { font-size: 1.4rem; line-height: 1.2; }
-.categoryBar button[aria-pressed="true"] { background: #eef7f0; border-color: #32805a; color: #17583a; }
+.categoryBar {
+  display: flex;
+  gap: clamp(.6rem, 2vw, 2rem);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border-soft);
+  scrollbar-width: thin;
+}
+.categoryBar button {
+  flex: 1 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .65rem;
+  min-height: 64px;
+  padding: .75rem 1rem;
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.categoryBar span { font-size: 1.45rem; line-height: 1; }
+.categoryBar button:hover { color: var(--foreground); }
+.categoryBar button[aria-pressed="true"] { color: #17583a; border-bottom-color: currentColor; }
+.categoryBar button:focus-visible { outline: 2px solid #32805a; outline-offset: -4px; }
+@media (max-width: 720px) {
+  .categoryBar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .25rem .45rem; overflow: visible; }
+  .categoryBar button { flex-direction: column; gap: .4rem; min-height: 70px; padding: .45rem .15rem; font-size: .875rem; white-space: normal; overflow-wrap: anywhere; }
+}
 .resultsTitle { margin: 1.5rem 0 .8rem; font-size: 1.4rem; font-weight: 680; letter-spacing: -.035em; }
 .empty { padding: 1.6rem; border: 1px solid var(--border-soft); border-radius: 1rem; }
 .empty h3, .quoteNote strong { font-size: 1rem; font-weight: 650; }
