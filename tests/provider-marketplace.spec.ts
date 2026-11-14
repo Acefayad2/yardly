@@ -65,7 +65,7 @@ test("public services page renders only reviewed provider data", async ({ page }
 test("services page has honest empty and backend error states", async ({ page }) => {
   await page.route("**/rest/v1/provider_profiles**", (route) => route.fulfill({ json: [] }));
   await page.goto("/services/");
-  await expect(page.getByRole("heading", { name: "No reviewed providers yet" })).toBeVisible();
+  await expect(page.getByText("Example provider", { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: "List your business" }).click();
   await expect(page.getByRole("heading", { name: "Sign in to list a business" })).toBeVisible();
 

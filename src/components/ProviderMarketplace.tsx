@@ -17,6 +17,7 @@ import {
   type ProviderProfileDraft,
   type ProviderReviewState,
 } from "@/lib/provider-marketplace";
+import ExampleProviders, { hasExampleProviders } from "./ExampleProviders";
 import styles from "./ProviderMarketplace.module.css";
 
 type View = "discover" | "provider" | "review";
@@ -153,11 +154,12 @@ function Directory({ profiles }: { profiles: ProviderProfile[] }) {
       </button>)}
     </div>
     <h2 className={styles.resultsTitle}>{selected === "all" ? "All services" : category?.label}</h2>
-    {!visible.length ? <div className={styles.empty} role="status">
+    {!visible.length && !hasExampleProviders(selected) ? <div className={styles.empty} role="status">
       <h3>{selected === "all" ? "No reviewed providers yet" : "No providers in this category yet"}</h3>
       <p>{selected === "all" ? "Providers will appear here once Yardly reviews their business." : "Check back soon or browse the other services."}</p>
       {selected !== "all" && <button type="button" onClick={() => setSelected("all")}>See all services</button>}
     </div> : <div className={styles.grid}>{visible.map(profile => <ProviderCard key={profile.id} profile={profile} />)}</div>}
+    <ExampleProviders key={selected} category={selected} />
   </section>;
 }
 

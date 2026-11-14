@@ -59,3 +59,9 @@
 .reviewCard { display: grid; gap: 1rem; padding: 1rem; border: 1px solid var(--border-soft); border-radius: 1.25rem; background: #f8fbf9; }
 .reviewCard .card { box-shadow: none; }
 @media (max-width: 720px) { .sectionHeading { align-items: start; flex-direction: column; } .form { grid-template-columns: 1fr; } .form label, .wide { grid-column: 1; } .actions { align-items: stretch; flex-direction: column-reverse; } .cardFooter { align-items: start; flex-direction: column; } }
+
+.grid:empty { display: none; }
+.grid:not(:empty) + .grid { margin-top: 1.25rem; }
+.practice { display: grid; gap: .85rem; }
+.practice label { display: grid; gap: .3rem; font-size: .875rem; font-weight: 650; }
+.practice input, .practice textarea { min-width: 0; width: 100%; padding: .65rem; border: 1px solid var(--border-soft); border-radius: .6rem; font-size: 1rem; }
