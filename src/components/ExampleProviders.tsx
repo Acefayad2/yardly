@@ -37,9 +37,10 @@ function ExampleCard({ provider }: { provider: typeof providers[number] }) {
     trigger.current?.focus();
   }
   return <article className={styles.card}>
-    <div className={styles.sample} aria-hidden="true" style={{ backgroundImage: `url("/service-examples/${provider.photo}.jpg")` }} />
+    <div className={styles.sample} style={{ backgroundImage: `url("/service-examples/${provider.photo}.jpg")` }}>
+      <span className={styles.photoLabel}>Example provider</span>
+    </div>
     <div className={styles.cardBody}>
-      <span className={styles.badge}>Example provider</span>
       <h3>{provider.name}</h3><p>{provider.offer}</p>
       <div className={styles.cardFooter}><span>Example pricing<strong>{provider.rate}</strong></span>
         <button ref={trigger} className={styles.primary} aria-expanded={open} onClick={() => { setOpen(!open); setSummary(""); }}>{open ? "Close form" : "Try a quote"}</button>

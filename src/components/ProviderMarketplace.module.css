@@ -43,11 +43,11 @@
 .sectionHeading h2 { margin-top: .3rem; font-size: clamp(2rem, 4vw, 3.4rem); letter-spacing: -.05em; }
 .sectionHeading label { display: flex; gap: .6rem; align-items: center; color: var(--muted); font-size: .85rem; font-weight: 700; }
 .sectionHeading select { padding: .65rem 2rem .65rem .75rem; border: 1px solid var(--border-soft); border-radius: .75rem; background: #fff; color: var(--foreground); }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 1.25rem; }
-.card { overflow: hidden; border: 1px solid var(--border-soft); border-radius: 1.25rem; background: #fff; box-shadow: 0 16px 40px rgba(21, 66, 43, .07); }
-.sample { width: 100%; height: 14rem; background-color: #e7efe9; background-position: center; background-size: cover; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); gap: 1.75rem 1.25rem; align-items: start; }
+.card { overflow: hidden; border: 1px solid var(--border-soft); border-radius: 1.25rem; background: #fff;  }
+.sample { position: relative; width: 100%; aspect-ratio: 16 / 9; background-color: #e7efe9; background-position: center; background-size: cover; }
 .cardBody { display: grid; gap: .8rem; padding: 1.25rem; }
-.cardBody h3 { font-size: 1.4rem; letter-spacing: -.035em; }
+.cardBody h3 { font-size: 1.35rem; font-weight: 650; line-height: 1.2; letter-spacing: -.035em; }
 .cardBody p, .cardBody li, .cardBody dd { color: var(--muted); line-height: 1.55; }
 .cardBody ul { display: flex; flex-wrap: wrap; gap: .45rem; }
 .cardBody li { padding: .38rem .6rem; border-radius: 999px; background: #f0f6f2; font-size: .78rem; list-style: none; }
@@ -71,7 +71,7 @@
 .form input:focus, .form textarea:focus, .form select:focus, .reviewCard textarea:focus { outline: 3px solid rgba(18,145,90,.18); border-color: #12915a; }
 .wide { grid-column: 1 / -1; }
 .actions { display: flex; grid-column: 1 / -1; gap: .7rem; justify-content: flex-end; margin-top: .5rem; }
-.primary, .secondary { padding: .78rem 1rem; border-radius: .75rem; font-weight: 800; }
+.primary, .secondary { min-height: 44px; padding: .78rem 1rem; border-radius: .75rem; font-weight: 800; }
 .primary { color: #fff; background: #0b7045; }
 .secondary { color: #173d2b; border: 1px solid #9bb4a5; background: #fff; }
 .primary:disabled, .secondary:disabled { opacity: .55; }
@@ -83,10 +83,28 @@
 .reviewGrid { display: grid; gap: 1.5rem; }
 .reviewCard { display: grid; gap: 1rem; padding: 1rem; border: 1px solid var(--border-soft); border-radius: 1.25rem; background: #f8fbf9; }
 .reviewCard .card { box-shadow: none; }
-@media (max-width: 720px) { .sectionHeading { align-items: start; flex-direction: column; } .form { grid-template-columns: 1fr; } .form label, .wide { grid-column: 1; } .actions { align-items: stretch; flex-direction: column-reverse; } .cardFooter { align-items: start; flex-direction: column; } }
+@media (max-width: 720px) { .sectionHeading { align-items: start; flex-direction: column; } .form { grid-template-columns: 1fr; } .form label, .wide { grid-column: 1; } .actions { align-items: stretch; flex-direction: column-reverse; } .cardFooter { align-items: center; flex-wrap: wrap; } }
 
 .grid:empty { display: none; }
 .grid:not(:empty) + .grid { margin-top: 1.25rem; }
 .practice { display: grid; gap: .85rem; }
 .practice label { display: grid; gap: .3rem; font-size: .875rem; font-weight: 650; }
 .practice input, .practice textarea { min-width: 0; width: 100%; padding: .65rem; border: 1px solid var(--border-soft); border-radius: .6rem; font-size: 1rem; }
+
+.photoLabel {
+  position: absolute;
+  top: .8rem;
+  left: .8rem;
+  padding: .3rem .65rem;
+  border-radius: .45rem;
+  background: #fff;
+  color: #294535;
+  font-size: .78rem;
+  font-weight: 650;
+}
+.categoryBar button[aria-pressed="true"] { background: #f1f7f3; }
+.practice { padding-top: 1rem; border-top: 1px solid var(--border-soft); }
+.practice input:focus-visible, .practice textarea:focus-visible, .primary:focus-visible {
+  outline: 2px solid #17583a;
+  outline-offset: 2px;
+}
