@@ -52,7 +52,7 @@ function HeaderContent() {
   // Which surface is on screen. The remembered hosting/traveling mode lives in the
   // store; this only drives header chrome.
   const isHostSurface = pathname.startsWith("/host");
-  const isExplore = pathname === "/";
+  const isExplore = pathname === "/" || pathname === "/index.html";
 
   const switchTo = (next: "hosting" | "traveling") => {
     setMode(next);
@@ -177,7 +177,7 @@ function HeaderContent() {
 
           <div className="header-actions flex min-w-0 items-center justify-end gap-2">
             {isExplore && <MobileSearch />}
-            {!isHostSurface && (
+            {!isHostSurface && !isExplore && (
               <Link href="/services/" aria-current={onServices ? "page" : undefined} className="mobile-services-link lg:hidden">
                 <span aria-hidden="true">🛎️</span> Services
               </Link>
