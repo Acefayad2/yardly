@@ -55,6 +55,9 @@ test("public services page renders only reviewed provider data", async ({ page }
   await expect(page.getByRole("heading", { name: "Gather Rentals" })).toBeVisible();
   await expect(page.getByText("Folding chair (80)")).toBeVisible();
   await expect(page.getByText("Request a separate quote")).toBeVisible();
+  const filters = page.getByRole("group", { name: "Filter by service" }).getByRole("button");
+  const rowTops = await filters.evaluateAll(buttons => buttons.map(button => button.getBoundingClientRect().top));
+  expect(new Set(rowTops).size).toBe(1);
   await page.getByRole("button", { name: "Photography", exact: true }).click();
   await expect(page.getByText("Gather Rentals")).toHaveCount(0);
   await page.getByRole("button", { name: "Rentals", exact: true }).click();
